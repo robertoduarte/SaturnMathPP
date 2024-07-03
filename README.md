@@ -34,7 +34,7 @@ int main()
     Vec3 transformedVector = matrix * Vec3(1.0, 0.0, 0.0);
 
     // Example usage of frustum
-    Frustum frustum(60.0_fx, 1.333_fx, 0.1_fx, 100.0_fx);
+    Frustum frustum(60.0, 1.333, 0.1, 100.0);
     Vec3 position(0.0, 0.0, 0.0);
     Vec3 xAxis(1.0, 0.0, 0.0);
     Vec3 yAxis(0.0, 1.0, 0.0);
