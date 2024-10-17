@@ -13,17 +13,15 @@ SaturnMath++ is a C++23 library dedicated to Sega Saturn hardware, offering esse
 
 To use SaturnMath++ in your C++23 project for Sega Saturn:
 1. Clone the repository or download the source files.
-2. Include the necessary header files (`Mat33.hpp`, `Mat43.hpp`, `Vec3.hpp`, `Frustum.hpp`, `fxp.hpp`) in your project.
+2. Include the main header file (`saturn_math.hpp`) in your project.
 3. Instantiate objects of `Mat33`, `Mat43`, `Vec3`, `Frustum`, and `Fxp` to perform matrix operations, vector transformations, fixed-point arithmetic, or frustum visibility checks.
 
-## Example
+## Example usage of matrices and vectors
 
 ```cpp
-#include "Mat33.hpp"
-#include "Mat43.hpp"
-#include "vec3.hpp"
-#include "Frustum.hpp"
-#include "fxp.hpp"
+#include "saturn_math.hpp"
+
+using namespace SaturnMath;
 
 int main()
 {
@@ -33,6 +31,18 @@ int main()
     Mat33 matrix(up, direction);
     Vec3 transformedVector = matrix * Vec3(1.0, 0.0, 0.0);
 
+    return 0;
+}
+
+## Example usage of frustum
+
+```cpp
+#include "saturn_math.hpp"
+
+using namespace SaturnMath;
+
+int main()
+{
     // Example usage of frustum
     Frustum frustum(60.0, 1.333, 0.1, 100.0);
     Vec3 position(0.0, 0.0, 0.0);
@@ -42,6 +52,18 @@ int main()
     frustum.Update(position, xAxis, yAxis, zAxis);
     bool isInFrustum = frustum.PointInFrustum(Vec3(1.0, 1.0, 1.0));
 
+    return 0;
+}
+
+## Example usage of fixed-point arithmetic
+
+```cpp
+#include "saturn_math.hpp"
+
+using namespace SaturnMath;
+
+int main()
+{
     // Example usage of fixed-point arithmetic
     Fxp fixedPointValue(1.5); // Represents 1.5 in fixed-point format
     Fxp fixedPointSquare = fixedPointValue.Square(); // Computes the square of the value
