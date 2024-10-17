@@ -13,7 +13,7 @@ SaturnMath++ is a C++23 library dedicated to Sega Saturn hardware, offering esse
 
 To use SaturnMath++ in your C++23 project for Sega Saturn:
 1. Clone the repository or download the source files.
-2. Include the necessary header files (`Mat33.hpp`, `Mat43.hpp`, `Vec3.hpp`, `Frustum.hpp`, `Fxp.hpp`) in your project.
+2. Include the necessary header files (`Mat33.hpp`, `Mat43.hpp`, `Vec3.hpp`, `Frustum.hpp`, `fxp.hpp`) in your project.
 3. Instantiate objects of `Mat33`, `Mat43`, `Vec3`, `Frustum`, and `Fxp` to perform matrix operations, vector transformations, fixed-point arithmetic, or frustum visibility checks.
 
 ## Example
@@ -21,9 +21,9 @@ To use SaturnMath++ in your C++23 project for Sega Saturn:
 ```cpp
 #include "Mat33.hpp"
 #include "Mat43.hpp"
-#include "Vec3.hpp"
+#include "vec3.hpp"
 #include "Frustum.hpp"
-#include "Fxp.hpp"
+#include "fxp.hpp"
 
 int main()
 {
