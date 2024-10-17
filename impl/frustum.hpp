@@ -52,22 +52,22 @@ namespace SaturnMath
          */
         void Update(const Mat43& viewMatrix)
         {
-            Vec3 xAxis = viewMatrix.row0;
-            Vec3 yAxis = viewMatrix.row1;
-            Vec3 zAxis = viewMatrix.row2;
-            Vec3 position = viewMatrix.row3;
+            Vector3D xAxis = viewMatrix.row0;
+            Vector3D yAxis = viewMatrix.row1;
+            Vector3D zAxis = viewMatrix.row2;
+            Vector3D position = viewMatrix.row3;
 
-            Vec3 farCentre(position + zAxis);
-            Vec3 farHalfHeight(yAxis * farHeight);
-            Vec3 farHalfWidth(yAxis * farWidth);
+            Vector3D farCentre(position + zAxis);
+            Vector3D farHalfHeight(yAxis * farHeight);
+            Vector3D farHalfWidth(yAxis * farWidth);
 
-            Vec3 farTop(farCentre + farHalfHeight);
-            Vec3 farTopLeft(farTop - farHalfWidth);
-            Vec3 farTopRight(farTop + farHalfWidth);
+            Vector3D farTop(farCentre + farHalfHeight);
+            Vector3D farTopLeft(farTop - farHalfWidth);
+            Vector3D farTopRight(farTop + farHalfWidth);
 
-            Vec3 farBottom(farCentre - farHalfHeight);
-            Vec3 farBottomRight(farBottom + farHalfWidth);
-            Vec3 farBottomLeft(farBottom - farHalfWidth);
+            Vector3D farBottom(farCentre - farHalfHeight);
+            Vector3D farBottomRight(farBottom + farHalfWidth);
+            Vector3D farBottomLeft(farBottom - farHalfWidth);
 
             plane[PLANE_NEAR] = Plane(-zAxis, position + zAxis * nearDistance);
             plane[PLANE_FAR] = Plane(zAxis, position + zAxis * farDistance);
@@ -82,7 +82,7 @@ namespace SaturnMath
          * @param point The point to check.
          * @return True if the point is inside the frustum, false otherwise.
          */
-        bool Contains(const Vec3& point) const
+        bool Contains(const Vector3D& point) const
         {
             for (size_t i = 0; i < PLANE_COUNT; i++)
             {
@@ -115,7 +115,7 @@ namespace SaturnMath
          */
         bool Contains(const AABB& aabb) const
         {
-            Vec3 vertexN;
+            Vector3D vertexN;
             for (size_t i = 0; i < PLANE_COUNT; i++)
             {
                 if (aabb.Intersects(plane[i]) == false)

@@ -1,35 +1,33 @@
 #pragma once
 
-#include "fxp.hpp"
+#include "vector2d.hpp"
 
 namespace SaturnMath
 {
     /**
      * @brief A struct for three-dimensional fixed-point vector arithmetic operations.
      */
-    struct Vec3
+    struct Vector3D : public Vector2D
     {
-        Fxp x; /**< The X-coordinate. */
-        Fxp y; /**< The Y-coordinate. */
         Fxp z; /**< The Z-coordinate. */
 
         // Constructors
         /**
          * @brief Default constructor, initializes all coordinates to 0.
          */
-        constexpr Vec3() : x(), y(), z() {}
+        constexpr Vector3D() : Vector2D(), z() {}
 
         /**
          * @brief Constructor to initialize all coordinates with the same value.
          * @param fxp The value to initialize all coordinates with.
          */
-        constexpr Vec3(const Fxp& fxp) : x(fxp), y(fxp), z(fxp) {}
+        constexpr Vector3D(const Fxp& fxp) : Vector2D(fxp), z(fxp) {}
 
         /**
          * @brief Copy constructor.
          * @param vec The Vec3 object to copy.
          */
-        constexpr Vec3(const Vec3& vec) : x(vec.x), y(vec.y), z(vec.z) {}
+        constexpr Vector3D(const Vector3D& vec) : Vector2D(vec), z(vec.z) {}
 
         /**
          * @brief Constructor to initialize coordinates with specific values.
@@ -37,7 +35,7 @@ namespace SaturnMath
          * @param valueY The Y-coordinate.
          * @param valueZ The Z-coordinate.
          */
-        constexpr Vec3(const Fxp& valueX, const Fxp& valueY, const Fxp& valueZ) : x(valueX), y(valueY), z(valueZ) {}
+        constexpr Vector3D(const Fxp& valueX, const Fxp& valueY, const Fxp& valueZ) : Vector2D(valueX, valueY), z(valueZ) {}
 
         // Assignment operator
         /**
@@ -45,7 +43,7 @@ namespace SaturnMath
          * @param vec The Vec3 object to assign.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vec3& operator=(const Vec3& vec)
+        constexpr Vector3D& operator=(const Vector3D& vec)
         {
             x = vec.x;
             y = vec.y;
@@ -58,9 +56,9 @@ namespace SaturnMath
          * @brief Calculate the absolute values of each coordinate.
          * @return A new Vec3 object with absolute values.
          */
-        constexpr Vec3 Abs() const
+        constexpr Vector3D Abs() const
         {
-            return Vec3(x.Abs(), y.Abs(), z.Abs());
+            return Vector3D(x.Abs(), y.Abs(), z.Abs());
         }
 
         /**
@@ -69,9 +67,9 @@ namespace SaturnMath
          * @return A new Vec3 object with sorted coordinates.
          */
         template <bool Ascending = true>
-        constexpr Vec3 Sort()
+        constexpr Vector3D Sort()
         {
-            Vec3 result(*this);
+            Vector3D result(*this);
             Fxp temp;
 
             if (Ascending ? result.x > result.y : result.x < result.y)
@@ -103,7 +101,7 @@ namespace SaturnMath
          * @param vec The Vec3 object to calculate the dot product with.
          * @return The dot product as an Fxp value.
          */
-        constexpr Fxp Dot(const Vec3& vec) const
+        constexpr Fxp Dot(const Vector3D& vec) const
         {
             if consteval
             {
@@ -139,11 +137,13 @@ namespace SaturnMath
          * @param vec The Vec3 object to calculate the cross product with.
          * @return The cross product as an Vec3 object.
          */
-        constexpr Vec3 Cross(const Vec3& vec) const
+        constexpr Vector3D Cross(const Vector3D& vec) const
         {
-            return Vec3(z * vec.y - y * vec.z,
+            return Vector3D(
+                z * vec.y - y * vec.z,
                 x * vec.z - z * vec.x,
-                y * vec.x - x * vec.y);
+                y * vec.x - x * vec.y
+            );
         }
 
         // Scalar multiplication and division
@@ -152,9 +152,9 @@ namespace SaturnMath
          * @param fxp The scalar value to multiply by.
          * @return The resulting Vec3 object.
          */
-        constexpr Vec3 operator*(const Fxp& fxp) const
+        constexpr Vector3D operator*(const Fxp& fxp) const
         {
-            return Vec3(x * fxp, y * fxp, z * fxp);
+            return Vector3D(x * fxp, y * fxp, z * fxp);
         }
 
         /**
@@ -162,9 +162,9 @@ namespace SaturnMath
          * @param fxp The scalar value to divide by.
          * @return The resulting Vec3 object.
          */
-        constexpr Vec3 operator/(const Fxp& fxp) const
+        constexpr Vector3D operator/(const Fxp& fxp) const
         {
-            return Vec3(x / fxp, y / fxp, z / fxp);
+            return Vector3D(x / fxp, y / fxp, z / fxp);
         }
 
         // Vector length calculation
@@ -192,8 +192,8 @@ namespace SaturnMath
          */
         constexpr Fxp TurboLength() const
         {
-            constexpr Vec3 alphaBetaGama =
-                Vec3
+            constexpr Vector3D alphaBetaGama =
+                Vector3D
                 (
                     0.9398086351723256, // Alpha
                     0.38928148272372454, // Beta
@@ -208,13 +208,13 @@ namespace SaturnMath
          * @brief Normalize the vector represented by this Vec3 object.
          * @return A normalized Vec3 object.
          */
-        constexpr Vec3 Normalize() const
+        constexpr Vector3D Normalize() const
         {
             Fxp length = Length();
             if (length != 0.0F)
-                return Vec3(length / x, length / y, length / z);
+                return Vector3D(length / x, length / y, length / z);
             else
-                return Vec3();
+                return Vector3D();
         }
 
         // Vector normalization
@@ -222,13 +222,13 @@ namespace SaturnMath
          * @brief Normalize the vector represented by this Vec3 object.
          * @return A normalized Vec3 object.
          */
-        constexpr Vec3 FastNormalize() const
+        constexpr Vector3D FastNormalize() const
         {
             Fxp length = FastLength();
             if (length != 0.0F)
-                return Vec3(length / x, length / y, length / z);
+                return Vector3D(length / x, length / y, length / z);
             else
-                return Vec3();
+                return Vector3D();
         }
 
         // Vector normalization
@@ -236,13 +236,13 @@ namespace SaturnMath
            * @brief Normalize the vector represented by this Vec3 object.
            * @return A normalized Vec3 object.
            */
-        constexpr Vec3 TurboNormalize() const
+        constexpr Vector3D TurboNormalize() const
         {
             Fxp length = TurboLength();
             if (length != 0.0F)
-                return Vec3(length / x, length / y, length / z);
+                return Vector3D(length / x, length / y, length / z);
             else
-                return Vec3();
+                return Vector3D();
         }
 
         /**
@@ -252,7 +252,7 @@ namespace SaturnMath
          * @param vertexC The third vertex.
          * @return The normal vector as an Vec3 object.
          */
-        constexpr static Vec3 CalcNormal(const Vec3& vertexA, const Vec3& vertexB, const Vec3& vertexC)
+        constexpr static Vector3D CalcNormal(const Vector3D& vertexA, const Vector3D& vertexB, const Vector3D& vertexC)
         {
             return (vertexA - vertexB).Cross(vertexC - vertexB);
         }
@@ -263,7 +263,7 @@ namespace SaturnMath
          * @param vec The Vec3 object to compare.
          * @return True if not equal, false otherwise.
          */
-        constexpr bool operator!=(const Vec3& vec) const
+        constexpr bool operator!=(const Vector3D& vec) const
         {
             return x != vec.x && y != vec.y && z != vec.z;
         }
@@ -274,9 +274,9 @@ namespace SaturnMath
          * @param shiftAmount The number of positions to shift.
          * @return The resulting Vec3 object.
          */
-        constexpr Vec3 operator>>(const size_t& shiftAmount)
+        constexpr Vector3D operator>>(const size_t& shiftAmount)
         {
-            return Vec3(x >> shiftAmount, y >> shiftAmount, z >> shiftAmount);
+            return Vector3D(x >> shiftAmount, y >> shiftAmount, z >> shiftAmount);
         }
 
         /**
@@ -284,7 +284,7 @@ namespace SaturnMath
          * @param shiftAmount The number of positions to shift.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vec3& operator>>=(const size_t& shiftAmount)
+        constexpr Vector3D& operator>>=(const size_t& shiftAmount)
         {
             x >>= shiftAmount;
             y >>= shiftAmount;
@@ -297,9 +297,9 @@ namespace SaturnMath
          * @param shiftAmount The number of positions to shift.
          * @return The resulting Vec3 object.
          */
-        constexpr Vec3 operator<<(const size_t& shiftAmount)
+        constexpr Vector3D operator<<(const size_t& shiftAmount)
         {
-            return Vec3(x << shiftAmount, y << shiftAmount, z << shiftAmount);
+            return Vector3D(x << shiftAmount, y << shiftAmount, z << shiftAmount);
         }
 
         /**
@@ -307,7 +307,7 @@ namespace SaturnMath
          * @param shiftAmount The number of positions to shift.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vec3& operator<<=(const size_t& shiftAmount)
+        constexpr Vector3D& operator<<=(const size_t& shiftAmount)
         {
             x <<= shiftAmount;
             y <<= shiftAmount;
@@ -320,9 +320,9 @@ namespace SaturnMath
          * @brief Unary negation operator.
          * @return A new Vec3 object with negated coordinates.
          */
-        constexpr Vec3 operator-() const
+        constexpr Vector3D operator-() const
         {
-            return Vec3(-x, -y, -z);
+            return Vector3D(-x, -y, -z);
         }
 
         // Binary operators
@@ -331,9 +331,9 @@ namespace SaturnMath
          * @param vec The Vec3 object to add.
          * @return The sum as an Vec3 object.
          */
-        constexpr Vec3 operator+(const Vec3& vec) const
+        constexpr Vector3D operator+(const Vector3D& vec) const
         {
-            return Vec3(x + vec.x, y + vec.y, z + vec.z);
+            return Vector3D(x + vec.x, y + vec.y, z + vec.z);
         }
 
         /**
@@ -341,9 +341,9 @@ namespace SaturnMath
          * @param vec The Vec3 object to subtract.
          * @return The difference as an Vec3 object.
          */
-        constexpr Vec3 operator-(const Vec3& vec) const
+        constexpr Vector3D operator-(const Vector3D& vec) const
         {
-            return Vec3(x - vec.x, y - vec.y, z - vec.z);
+            return Vector3D(x - vec.x, y - vec.y, z - vec.z);
         }
 
         /**
@@ -351,7 +351,7 @@ namespace SaturnMath
          * @param vec The Vec3 object to add.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vec3 operator+=(const Vec3& vec)
+        constexpr Vector3D operator+=(const Vector3D& vec)
         {
             x += vec.x;
             y += vec.y;
@@ -364,7 +364,7 @@ namespace SaturnMath
          * @param vec The Vec3 object to subtract.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vec3 operator-=(const Vec3& vec)
+        constexpr Vector3D operator-=(const Vector3D& vec)
         {
             x -= vec.x;
             y -= vec.y;

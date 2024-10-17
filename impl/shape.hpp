@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vec3.hpp"
+#include "vector3d.hpp"
 #include "plane.hpp"
 
 namespace SaturnMath
@@ -14,13 +14,13 @@ namespace SaturnMath
      * @brief Constructor for Shape.
      * @param positionIn The position of the shape.
      */
-    Shape(const Vec3& positionIn) : position(positionIn) {}
+    Shape(const Vector3D& positionIn) : position(positionIn) {}
 
     /**
      * @brief Get the position of the shape.
      * @return The position of the shape.
      */
-    Vec3 GetPosition() const { return position; }
+    Vector3D GetPosition() const { return position; }
 
     /**
      * @brief Check if the shape intersects with a plane.
@@ -30,6 +30,6 @@ namespace SaturnMath
     virtual bool Intersects(const Plane& plane) const = 0;
 
     protected:
-        Vec3 position;
+        Vector3D position;
     };
 }   

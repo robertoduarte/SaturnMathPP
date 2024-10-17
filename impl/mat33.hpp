@@ -1,15 +1,15 @@
 #pragma once
 
-#include "vec3.hpp"
+#include "vector3d.hpp"
 #include "trigonometry.hpp"
 
 namespace SaturnMath
 {
     struct Mat33
     {
-        Vec3 row0; /**< The first row of the 3x3 matrix. */
-        Vec3 row1; /**< The second row of the 3x3 matrix. */
-        Vec3 row2; /**< The third row of the 3x3 matrix. */
+        Vector3D row0; /**< The first row of the 3x3 matrix. */
+        Vector3D row1; /**< The second row of the 3x3 matrix. */
+        Vector3D row2; /**< The third row of the 3x3 matrix. */
 
         /**
          * @brief Default constructor initializing a 3x3 matrix with zeros.
@@ -21,7 +21,7 @@ namespace SaturnMath
          * @param up The up vector.
          * @param direction The direction vector.
          */
-        constexpr Mat33(const Vec3& up, const Vec3& direction) : row0(up.Cross(direction)), row1(up), row2(direction) {}
+        constexpr Mat33(const Vector3D& up, const Vector3D& direction) : row0(up.Cross(direction)), row1(up), row2(direction) {}
 
         /**
          * @brief Constructor initializing a 3x3 matrix with specified rows.
@@ -29,7 +29,7 @@ namespace SaturnMath
          * @param row1In The second row of the matrix.
          * @param row2In The third row of the matrix.
          */
-        constexpr Mat33(const Vec3& row0In, const Vec3& row1In, const Vec3& row2In) : row0(row0In), row1(row1In), row2(row2In) {}
+        constexpr Mat33(const Vector3D& row0In, const Vector3D& row1In, const Vector3D& row2In) : row0(row0In), row1(row1In), row2(row2In) {}
 
         /**
          * @brief Multiply this matrix by another matrix.
@@ -42,9 +42,9 @@ namespace SaturnMath
             transposed.Transpose();
 
             return Mat33(
-                Vec3(row0.Dot(transposed.row0), row0.Dot(transposed.row1), row0.Dot(transposed.row2)),
-                Vec3(row1.Dot(transposed.row0), row1.Dot(transposed.row1), row1.Dot(transposed.row2)),
-                Vec3(row2.Dot(transposed.row0), row2.Dot(transposed.row1), row2.Dot(transposed.row2))
+                Vector3D(row0.Dot(transposed.row0), row0.Dot(transposed.row1), row0.Dot(transposed.row2)),
+                Vector3D(row1.Dot(transposed.row0), row1.Dot(transposed.row1), row1.Dot(transposed.row2)),
+                Vector3D(row2.Dot(transposed.row0), row2.Dot(transposed.row1), row2.Dot(transposed.row2))
             );
         }
 
@@ -53,7 +53,7 @@ namespace SaturnMath
          * @param v The vector to multiply with.
          * @return The result of the matrix-vector multiplication.
          */
-        Vec3 operator*(const Vec3& v) const { return Vec3(row0.Dot(v), row1.Dot(v), row2.Dot(v)); }
+        Vector3D operator*(const Vector3D& v) const { return Vector3D(row0.Dot(v), row1.Dot(v), row2.Dot(v)); }
 
         /**
          * @brief Transposes the 3x3 matrix.
@@ -182,9 +182,9 @@ namespace SaturnMath
         static consteval Mat33 Identity()
         {
             return Mat33(
-                Vec3(1.0, 0.0, 0.0),
-                Vec3(0.0, 1.0, 0.0),
-                Vec3(0.0, 0.0, 1.0)
+                Vector3D(1.0, 0.0, 0.0),
+                Vector3D(0.0, 1.0, 0.0),
+                Vector3D(0.0, 0.0, 1.0)
             );
         }
     };

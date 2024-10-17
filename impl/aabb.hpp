@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vec3.hpp"
+#include "vector3d.hpp"
 #include "fxp.hpp"
 #include "shape.hpp"
 
@@ -14,7 +14,7 @@ namespace SaturnMath
        * @param positionIn The position of the AABB.
        * @param sizeIn The size of the AABB.
        */
-        AABB(const Vec3& positionIn, const Fxp& sizeIn)
+        AABB(const Vector3D& positionIn, const Fxp& sizeIn)
             : Shape(positionIn), size(sizeIn)
         {
         }
@@ -23,18 +23,18 @@ namespace SaturnMath
          * @brief Get the minimum point of the AABB.
          * @return The minimum point of the AABB.
          */
-        Vec3 GetMin() const
+        Vector3D GetMin() const
         {
-            return position - Vec3(size / 2.0f);
+            return position - Vector3D(size / 2.0f);
         }
 
         /**
          * @brief Get the maximum point of the AABB.
          * @return The maximum point of the AABB.
          */
-        Vec3 GetMax() const
+        Vector3D GetMax() const
         {
-            return position + Vec3(size / 2.0f);
+            return position + Vector3D(size / 2.0f);
         }
 
         /**
@@ -44,14 +44,14 @@ namespace SaturnMath
          * @return The calculated vertex of the AABB.
          */
         template <bool getPositiveVector>
-        Vec3 GetVertex(const Vec3& normal) const
+        Vector3D GetVertex(const Vector3D& normal) const
         {
             Fxp halfExtent = size / 2.0;
 
             if constexpr (!getPositiveVector)
                 halfExtent = -halfExtent;
 
-            Vec3 result;
+            Vector3D result;
             result.x = (normal.x >= 0.0) ? position.x + halfExtent : position.x - halfExtent;
             result.y = (normal.y >= 0.0) ? position.y + halfExtent : position.y - halfExtent;
             result.z = (normal.z >= 0.0) ? position.z + halfExtent : position.z - halfExtent;
@@ -66,7 +66,7 @@ namespace SaturnMath
          */
         bool Intersects(const Plane& plane) const override
         {
-            Vec3 vertexN = this->GetVertex<false>(plane.normal);
+            Vector3D vertexN = this->GetVertex<false>(plane.normal);
             return plane.Distance(vertexN) >= 0.0;
         }
 
@@ -75,7 +75,7 @@ namespace SaturnMath
          * @param point The point to check.
          * @return True if the point is inside the AABB, false otherwise.
          */
-        bool ContainsPoint(const Vec3& point) const
+        bool ContainsPoint(const Vector3D& point) const
         {
             return (point.x >= GetMin().x && point.x <= GetMax().x) &&
                 (point.y >= GetMin().y && point.y <= GetMax().y) &&
@@ -107,7 +107,7 @@ namespace SaturnMath
          * @brief Get the position of the AABB.
          * @return The position of the AABB.
          */
-        Vec3 GetPosition() const
+        Vector3D GetPosition() const
         {
             return position;
         }

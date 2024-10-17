@@ -33,7 +33,8 @@ namespace SaturnMath
         static inline auto& dvdnth = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F10UL);
         static inline auto& dvdntl = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F14UL);
 
-        friend class Vec3;
+        friend class Vector2D;
+        friend class Vector3D;
         friend class Trigonometry;
 
         struct Internal

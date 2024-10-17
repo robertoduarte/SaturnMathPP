@@ -4,7 +4,7 @@
 #include "impl/fxp.hpp"
 
 // Vector and matrix headers
-#include "impl/vec3.hpp"
+#include "impl/vector3d.hpp"
 #include "impl/mat33.hpp"
 #include "impl/mat43.hpp"
 

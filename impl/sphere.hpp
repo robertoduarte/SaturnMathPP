@@ -12,7 +12,7 @@ namespace SaturnMath
          * @param positionIn The position of the sphere.
          * @param radiusIn The radius of the sphere.
          */
-        Sphere(const Vec3& positionIn, const Fxp& radiusIn)
+        Sphere(const Vector3D& positionIn, const Fxp& radiusIn)
             : Shape(positionIn), radius(radiusIn)
         {
         }
