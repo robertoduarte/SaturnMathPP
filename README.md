@@ -46,12 +46,12 @@ int main()
 {
     // Example usage of frustum
     Frustum frustum(60.0, 1.333, 0.1, 100.0);
-    Vec3 position(0.0, 0.0, 0.0);
-    Vec3 xAxis(1.0, 0.0, 0.0);
-    Vec3 yAxis(0.0, 1.0, 0.0);
-    Vec3 zAxis(0.0, 0.0, 1.0);
-    frustum.Update(position, xAxis, yAxis, zAxis);
-    bool isInFrustum = frustum.PointInFrustum(Vec3(1.0, 1.0, 1.0));
+    Mat43 viewMatrix = Mat43::Identity();
+    frustum.Update(viewMatrix);
+    Vec3 point(1.0, 1.0, 1.0);
+    bool isPointInFrustum = frustum.Contains(point);
+    Sphere sphere(point, 1.0); // Instantiate a Sphere object
+    bool isSphereInFrustum = frustum.Contains(sphere); // Call Contains() on the Sphere object
 
     return 0;
 }
