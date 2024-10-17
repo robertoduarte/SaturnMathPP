@@ -33,6 +33,7 @@ int main()
 
     return 0;
 }
+```
 
 ## Example usage of frustum
 
@@ -54,6 +55,7 @@ int main()
 
     return 0;
 }
+```
 
 ## Example usage of fixed-point arithmetic
 
@@ -70,3 +72,4 @@ int main()
 
     return 0;
 }
+```
