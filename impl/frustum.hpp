@@ -111,7 +111,7 @@ namespace SaturnMath
         {
             for (const Plane& p : planes)
             {
-                if (p.Distance(point) < 0.0)
+                if (p.Distance(point) < 0)
                     return false;  // Outside this plane
             }
             return true;  // Inside all planes

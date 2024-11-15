@@ -83,17 +83,17 @@ Just include the library in your Sega Saturn project:
 using namespace SaturnMath;
 
 // 3D vector operations
-Vector3D position(1.0, 2.0, 3.0);
+Vector3D position(1, 2, 3);
 Vector3D direction = Vector3D::UnitZ();  // Forward direction (0,0,1)
 
 // 2D vector operations
 Vector2D screenPos = Vector2D::Zero();
-screenPos += Vector2D::Right() * 10.0;  // Move 10 units right
-screenPos += Vector2D::Up() * 5.0;      // Move 5 units up
+screenPos += Vector2D::Right() * 10;  // Move 10 units right
+screenPos += Vector2D::Up() * 5;      // Move 5 units up
 
 // Matrix operations
 Matrix43 transform = Matrix43::Identity();
-transform.Translate(Vector3D::UnitY() * 5.0);  // Move 5 units up
+transform.Translate(Vector3D::UnitY() * 5);  // Move 5 units up
 transform.Rotate(Vector3D(0, Angle::FromDegrees(90), 0));
 
 // Transform the position
@@ -111,8 +111,8 @@ Vector3D normalized = direction.TurboNormalize();  // Fastest normalization
 using namespace SaturnMath;
 
 // Create geometric primitives
-AABB box(Vector3D::Zero(), 2.0);  // 2x2x2 box at origin
-Sphere sphere(Vector3D::One(), 1.0);  // Sphere at (1,1,1) with radius 1
+AABB box(Vector3D::Zero(), 2);  // 2x2x2 box at origin
+Sphere sphere(Vector3D::One(), 1);  // Sphere at (1,1,1) with radius 1
 Plane plane(Vector3D::UnitY(), 0);  // Ground plane at Y=0
 
 // Perform intersection tests
@@ -150,9 +150,10 @@ if (frustum.Contains(sphere)) {
 using namespace SaturnMath;
 
 // Fixed-point arithmetic
-Fxp a(1.5);
-Fxp b(2.0);
-Fxp result = a * b;  // 3.0 in fixed-point
+Fxp a(5);                   // 5 (0x00050000)
+Fxp b(2.5);                // 2.5 (0x00028000)
+Fxp c = a * b;             // 12.5 (0x000C8000)
+int16_t i = c.ToInt();     // 12
 
 // Angle calculations
 Angle rotation = Angle::FromDegrees(45);

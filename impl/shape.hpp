@@ -6,36 +6,35 @@
 namespace SaturnMath
 {
     /**
-     * @brief Abstract base class for 3D geometric shapes.
+     * @brief Base class for geometric shapes.
      * 
-     * Provides common functionality for all shapes:
-     * - Position in 3D space
-     * - Core intersection tests
-     * 
-     * All derived shapes must implement:
-     * - Intersection with planes
-     * - Point containment test
+     * Common functionality:
+     * - Position (center point)
+     * - Intersection tests
+     * - Containment tests
      */
     class Shape
     {
     public:
         /**
          * @brief Creates shape at specified position.
-         * @param center Center point of shape
+         * @param pos Center point
          */
-        constexpr Shape(const Vector3D& center) noexcept : position(center) {}
+        constexpr Shape(const Vector3D& pos) : position(pos) {}
+
+        /**
+         * @brief Creates shape at origin (0,0,0).
+         */
+        constexpr Shape() : position() {}
 
         /** @brief Virtual destructor for proper cleanup. */
         virtual ~Shape() = default;
 
-        /** @brief Gets shape's center position. */
-        constexpr const Vector3D& GetPosition() const noexcept { return position; }
+        /** @brief Gets shape center position. */
+        constexpr Vector3D GetPosition() const { return position; }
 
-        /**
-         * @brief Sets shape's center position.
-         * @param newPos New center position
-         */
-        constexpr void SetPosition(const Vector3D& newPos) noexcept { position = newPos; }
+        /** @brief Sets shape center position. */
+        constexpr void SetPosition(const Vector3D& pos) { position = pos; }
 
         /**
          * @brief Tests intersection with plane.
@@ -60,6 +59,6 @@ namespace SaturnMath
         virtual bool Contains(const Vector3D& point) const = 0;
 
     protected:
-        Vector3D position;  /**< Center point of shape */
+        Vector3D position; /**< Center point of shape */
     };
 }

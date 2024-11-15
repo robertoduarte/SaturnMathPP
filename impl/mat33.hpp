@@ -146,9 +146,9 @@ namespace SaturnMath
             const Fxp s = Trigonometry::Sin(angle);
             const Fxp c = Trigonometry::Cos(angle);
             return Matrix33(
-                Vector3D(1.0, 0.0, 0.0),
-                Vector3D(0.0, c, s),
-                Vector3D(0.0, -s, c)
+                Vector3D(1, 0, 0),
+                Vector3D(0, c, s),
+                Vector3D(0, -s, c)
             );
         }
 
@@ -195,9 +195,9 @@ namespace SaturnMath
             const Fxp s = Trigonometry::Sin(angle);
             const Fxp c = Trigonometry::Cos(angle);
             return Matrix33(
-                Vector3D(c, 0.0, -s),
-                Vector3D(0.0, 1.0, 0.0),
-                Vector3D(s, 0.0, c)
+                Vector3D(c, 0, -s),
+                Vector3D(0, 1, 0),
+                Vector3D(s, 0, c)
             );
         }
 
@@ -244,9 +244,9 @@ namespace SaturnMath
             const Fxp s = Trigonometry::Sin(angle);
             const Fxp c = Trigonometry::Cos(angle);
             return Matrix33(
-                Vector3D(c, s, 0.0),
-                Vector3D(-s, c, 0.0),
-                Vector3D(0.0, 0.0, 1.0)
+                Vector3D(c, s, 0),
+                Vector3D(-s, c, 0),
+                Vector3D(0, 0, 1)
             );
         }
 
@@ -329,9 +329,9 @@ namespace SaturnMath
         static constexpr Matrix33 CreateScale(const Vector3D& scale)
         {
             return Matrix33(
-                Vector3D(scale.x, 0.0, 0.0),
-                Vector3D(0.0, scale.y, 0.0),
-                Vector3D(0.0, 0.0, scale.z)
+                Vector3D(scale.x, 0, 0),
+                Vector3D(0, scale.y, 0),
+                Vector3D(0, 0, scale.z)
             );
         }
 
@@ -342,9 +342,9 @@ namespace SaturnMath
         static consteval Matrix33 Identity()
         {
             return Matrix33(
-                Vector3D(1.0, 0.0, 0.0),
-                Vector3D(0.0, 1.0, 0.0),
-                Vector3D(0.0, 0.0, 1.0)
+                Vector3D(1, 0, 0),
+                Vector3D(0, 1, 0),
+                Vector3D(0, 0, 1)
             );
         }
     };

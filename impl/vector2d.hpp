@@ -149,7 +149,7 @@ namespace SaturnMath
         constexpr Vector2D Normalize() const
         {
             Fxp magnitude = Magnitude();
-            if (magnitude != 0.0)
+            if (magnitude != 0)
                 return Vector2D(x / magnitude, y / magnitude);
             else
                 return Vector2D();
@@ -163,7 +163,7 @@ namespace SaturnMath
         constexpr Vector2D FastNormalize() const
         {
             Fxp magnitude = FastMagnitude();
-            if (magnitude != 0.0)
+            if (magnitude != 0)
                 return Vector2D(x / magnitude, y / magnitude);
             else
                 return Vector2D();
@@ -177,7 +177,7 @@ namespace SaturnMath
         constexpr Vector2D TurboNormalize() const
         {
             Fxp magnitude = TurboMagnitude();
-            if (magnitude != 0.0)
+            if (magnitude != 0)
                 return Vector2D(x / magnitude, y / magnitude);
             else
                 return Vector2D();
@@ -190,7 +190,7 @@ namespace SaturnMath
          */
         static consteval Vector2D UnitX()
         {
-            return Vector2D(1.0, 0.0);
+            return Vector2D(1, 0);
         }
 
         /**
@@ -199,7 +199,7 @@ namespace SaturnMath
          */
         static consteval Vector2D UnitY()
         {
-            return Vector2D(0.0, 1.0);
+            return Vector2D(0, 1);
         }
 
         /**
@@ -208,7 +208,7 @@ namespace SaturnMath
          */
         static consteval Vector2D Zero()
         {
-            return Vector2D(0.0);
+            return Vector2D(0);
         }
 
         /**
@@ -217,7 +217,7 @@ namespace SaturnMath
          */
         static consteval Vector2D One()
         {
-            return Vector2D(1.0);
+            return Vector2D(1);
         }
 
         /**
@@ -236,7 +236,7 @@ namespace SaturnMath
          */
         static consteval Vector2D Left()
         {
-            return Vector2D(-1.0, 0.0);
+            return Vector2D(-1, 0);
         }
 
         /**
@@ -255,7 +255,7 @@ namespace SaturnMath
          */
         static consteval Vector2D Down()
         {
-            return Vector2D(0.0, -1.0);
+            return Vector2D(0, -1);
         }
 
         // Arithmetic operators

@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <concepts>
 
 namespace SaturnMath
 {
@@ -13,9 +14,9 @@ namespace SaturnMath
      * - Lower 16 bits: Fractional part (1/65536 units)
      * 
      * Value range:
-     * - Minimum: -32768.0 (0x80000000)
+     * - Minimum: -32768 (0x80000000)
      * - Maximum: 32767.99998474 (0x7FFFFFFF)
-     * - Resolution: ~0.0000152587 (1/65536)
+     * - Resolution: ~0000152587 (1/65536)
      * 
      * Performance features:
      * - Compile-time evaluation with constexpr/consteval
@@ -25,7 +26,7 @@ namespace SaturnMath
      * 
      * Example:
      * @code
-     * Fxp a = Fxp::FromInt(5);     // 5.0 (0x00050000)
+     * Fxp a = Fxp::FromInt(5);     // 5 (0x00050000)
      * Fxp b(2.5);                  // 2.5 (0x00028000)
      * Fxp c = a * b;               // 12.5 (0x000C8000)
      * int16_t i = c.ToInt();       // 12
@@ -55,19 +56,76 @@ namespace SaturnMath
          */
         constexpr Fxp(const int32_t& inValue) : value(inValue) {}
 
+        // Type constraints for constructors
+        template<typename T>
+        static constexpr bool IsValidFloatingPoint = std::is_same_v<T, float> || std::is_same_v<T, double>;
+
+        template<typename T>
+        static constexpr bool IsValidInteger = std::is_same_v<T, int16_t>;
+
+        template<typename T>
+        static constexpr bool IsInvalidInteger = 
+            std::is_integral_v<T> && 
+            !std::is_same_v<T, int16_t>;
+
+        // Compile-time range check for integer literals
+        static consteval bool IsInInt16Range(auto value) {
+            return value >= INT16_MIN && value <= INT16_MAX;
+        }
+
+        // Compile-time range check for floating-point values
+        static consteval bool IsInFixedPointRange(auto value) {
+            return value >= -32768.0 && value <= 32767.99998474;
+        }
+
     public:
-        /** @brief Default constructor. Initializes to 0.0 */
+        /** @brief Default constructor. Initializes to 0 */
         constexpr Fxp() : value(0) {}
 
         /** @brief Copy constructor */
         constexpr Fxp(const Fxp& fxp) : value(fxp.value) {}
 
         /**
-         * @brief Creates fixed-point from double at compile time.
-         * @param f Double value to convert
+         * @brief Creates fixed-point from floating-point at compile time.
+         * @param f Floating-point value to convert
          * @warning Only available at compile time to avoid runtime floating-point
+         * @throws Compile error if value is outside fixed-point range
          */
-        consteval Fxp(const double& f) : value(f * 65536.0) {}
+        template<typename T> requires IsValidFloatingPoint<T>
+        consteval Fxp(const T& f) {
+            if constexpr (!IsInFixedPointRange(f)) {
+                throw "Floating-point value out of fixed-point range";
+            }
+            value = f * 65536.0;
+        }
+
+        /**
+         * @brief Creates fixed-point from 16-bit signed integer.
+         * @param i Integer value to convert
+         */
+        template<typename T> requires IsValidInteger<T>
+        constexpr Fxp(const T& i) : value(static_cast<int32_t>(i) << 16) {}
+
+        /**
+         * @brief Creates fixed-point from integer literal at compile time.
+         * @param i Integer literal to convert
+         * @note Only accepts values within int16_t range (-32768 to 32767)
+         * @throws Compile error if value is outside range
+         */
+        template<typename T> requires (std::is_integral_v<T> && !IsValidInteger<T>)
+        consteval Fxp(const T& i) {
+            if constexpr (!IsInInt16Range(i)) {
+                throw "Integer literal out of int16_t range";
+            }
+            value = static_cast<int32_t>(i) << 16;
+        }
+
+        /**
+         * @brief Deleted constructor for invalid integer types.
+         * @note This prevents implicit conversion from 32-bit or unsigned integers
+         */
+        template<typename T> requires IsInvalidInteger<T>
+        Fxp(const T&) = delete;
 
         /***********Static Functions************/
 
@@ -92,13 +150,6 @@ namespace SaturnMath
         {
             return (a < b) ? a : b;
         }
-
-        /**
-         * @brief Creates fixed-point from integer.
-         * @param integerValue Integer value to convert
-         * @return Fixed-point value (integerValue.0)
-         */
-        static constexpr Fxp FromInt(const int16_t& integerValue) { return Fxp(static_cast<int32_t>(integerValue) << 16); }
 
         /**
          * @brief Creates fixed-point from raw 16.16 value.
@@ -191,7 +242,7 @@ namespace SaturnMath
          * 
          * Uses binary search approximation:
          * - ~6% maximum error
-         * - Special handling for x < 1.0
+         * - Special handling for x < 1
          * - Much faster than precise Sqrt()
          * 
          * Best for:
@@ -268,7 +319,7 @@ namespace SaturnMath
          * @return Double value
          * @note Only available at compile time due to consteval
          */
-        consteval double ToFloat() { return value / 65536.0f; }
+        consteval double ToFloat() { return value / 65536.0; }
 
         /**************Operators****************/
 
@@ -289,12 +340,11 @@ namespace SaturnMath
         /**
          * @brief Fixed-point multiplication (a *= b).
          * 
-         * Uses Saturn's dmuls.l instruction at runtime.
-         * For compile-time evaluation, uses double math.
+         * Uses Saturn's hardware multiplier unit at runtime for optimal performance.
+         * Falls back to double math at compile time.
          * 
          * @param fxp Value to multiply by
          * @return Reference to this
-         * @note Can be evaluated at compile time
          */
         constexpr Fxp& operator*=(const Fxp& fxp)
         {
@@ -302,7 +352,7 @@ namespace SaturnMath
             {
                 double a = value / 65536.0;
                 double b = fxp.value / 65536.0;
-                value = (a * b) * 65536.0;;
+                value = (a * b) * 65536.0;
             }
             else
             {
@@ -310,17 +360,11 @@ namespace SaturnMath
                 __asm__ volatile(
                     "\tdmuls.l %[a], %[b]\n"
                     "\tsts mach, %[mach]\n"
-                    "\tsts macl, %[out]\n"
-                    "\txtrct %[mach], %[out]\n"
-                    /* Output */
-                    : [mach] "=&r" (mach),
-                    [out] "=&r" (value)
-                    /* Input */
-                    : [a] "r" (value),
-                    [b] "r" (fxp.value)
+                    : [mach] "=r"(mach)
+                    : [a] "r"(value), [b] "r"(fxp.value)
                     : "mach", "macl");
+                value = mach;
             }
-
             return *this;
         }
 
@@ -349,7 +393,7 @@ namespace SaturnMath
             {
                 double a = value / 65536.0;
                 double b = fxp.value / 65536.0;
-                value = (a / b) * 65536.0;;
+                value = (a / b) * 65536.0;
             }
             else
             {

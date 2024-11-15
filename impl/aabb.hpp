@@ -11,50 +11,108 @@ namespace SaturnMath
     {
     public:
         /**
-         * @brief Default constructor for AABB.
+         * @brief Creates AABB at origin with zero size.
          */
-        AABB() : Shape(Vector3D()), size() {}
+        constexpr AABB() : Shape(), size() {}
 
         /**
-         * @brief Constructor for AABB.
-         * @param positionIn The position of the AABB.
-         * @param sizeIn The size of the AABB.
+         * @brief Creates AABB from center and size.
+         * @param center Center point
+         * @param size Half-extents in each axis
          */
-        AABB(const Vector3D& positionIn, const Fxp& sizeIn)
-            : Shape(positionIn), size(sizeIn)
-        {
-        }
+        constexpr AABB(const Vector3D& center, const Fxp& size)
+            : Shape(center), size(size) {}
 
         /**
-         * @brief Construct an AABB from min and max points.
-         * @param min The minimum point.
-         * @param max The maximum point.
-         * @return A new AABB that encompasses the points.
+         * @brief Creates AABB from center and half-extents.
+         * @param center Center point
+         * @param halfSize Half-extents for each axis
          */
-        static AABB FromMinMax(const Vector3D& min, const Vector3D& max)
+        constexpr AABB(const Vector3D& center, const Vector3D& halfSize)
+            : Shape(center), size(halfSize) {}
+
+        /**
+         * @brief Creates AABB from min/max points.
+         * @param minPoint Minimum point (x,y,z)
+         * @param maxPoint Maximum point (x,y,z)
+         * @return AABB containing the points
+         */
+        static constexpr AABB FromMinMax(const Vector3D& minPoint, const Vector3D& maxPoint)
         {
-            Vector3D center = (min + max) / Fxp(2.0f);
-            Vector3D diagonal = max - min;
-            Fxp size = std::max(std::max(diagonal.x, diagonal.y), diagonal.z);
+            Vector3D center = (minPoint + maxPoint) / 2;
+            Vector3D size = (maxPoint - minPoint) / 2;
             return AABB(center, size);
         }
 
         /**
-         * @brief Get the minimum point of the AABB.
-         * @return The minimum point of the AABB.
+         * @brief Gets box half-size.
          */
-        Vector3D GetMin() const
+        constexpr Vector3D GetSize() const { return size; }
+
+        /**
+         * @brief Gets minimum corner point.
+         */
+        constexpr Vector3D GetMin() const { return position - size; }
+
+        /**
+         * @brief Gets maximum corner point.
+         */
+        constexpr Vector3D GetMax() const { return position + size; }
+
+        /**
+         * @brief Calculate the volume of the AABB.
+         * @return The volume as an Fxp value.
+         */
+        constexpr Fxp GetVolume() const
         {
-            return position - Vector3D(size / 2.0f);
+            return 8 * size.x * size.y * size.z;
         }
 
         /**
-         * @brief Get the maximum point of the AABB.
-         * @return The maximum point of the AABB.
+         * @brief Calculate the surface area of the AABB.
+         * @return The surface area as an Fxp value.
          */
-        Vector3D GetMax() const
+        constexpr Fxp GetSurfaceArea() const
         {
-            return position + Vector3D(size / 2.0f);
+            return 6 * size * size;
+        }
+
+        /**
+         * @brief Expand the AABB by a margin.
+         * @param margin The margin to expand by.
+         * @return A new expanded AABB.
+         */
+        constexpr AABB Expand(const Fxp& margin) const
+        {
+            return AABB(position, size + (margin * 2));
+        }
+
+        /**
+         * @brief Scale the AABB by a factor.
+         * @param scale The scale factor.
+         * @return A new scaled AABB.
+         */
+        constexpr AABB Scale(const Fxp& scale) const
+        {
+            return AABB(position, size * scale);
+        }
+
+        /**
+         * @brief Gets closest point on AABB to target point.
+         * @param point Target point
+         * @return Closest point on AABB surface or inside
+         */
+        constexpr Vector3D GetClosestPoint(const Vector3D& point) const
+        {
+            // Clamp point to AABB bounds
+            Vector3D min = GetMin();
+            Vector3D max = GetMax();
+            
+            return Vector3D(
+                Fxp::Max(min.x, Fxp::Min(point.x, max.x)),
+                Fxp::Max(min.y, Fxp::Min(point.y, max.y)),
+                Fxp::Max(min.z, Fxp::Min(point.z, max.z))
+            );
         }
 
         /**
@@ -80,44 +138,6 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Calculate the volume of the AABB.
-         * @return The volume as an Fxp value.
-         */
-        Fxp GetVolume() const
-        {
-            return size * size * size;
-        }
-
-        /**
-         * @brief Calculate the surface area of the AABB.
-         * @return The surface area as an Fxp value.
-         */
-        Fxp GetSurfaceArea() const
-        {
-            return Fxp(6.0f) * size * size;
-        }
-
-        /**
-         * @brief Expand the AABB by a margin.
-         * @param margin The margin to expand by.
-         * @return A new expanded AABB.
-         */
-        AABB Expand(const Fxp& margin) const
-        {
-            return AABB(position, size + (margin * Fxp(2.0f)));
-        }
-
-        /**
-         * @brief Scale the AABB by a factor.
-         * @param scale The scale factor.
-         * @return A new scaled AABB.
-         */
-        AABB Scale(const Fxp& scale) const
-        {
-            return AABB(position, size * scale);
-        }
-
-        /**
          * @brief Check if the AABB intersects with a plane.
          * @param plane The plane to check intersection with.
          * @return True if the AABB intersects with the plane, false otherwise.
@@ -132,7 +152,7 @@ namespace SaturnMath
                 (plane.normal.y >= 0) ? min.y : max.y,
                 (plane.normal.z >= 0) ? min.z : max.z
             );
-            return plane.Distance(vertexN) >= 0.0;
+            return plane.Distance(vertexN) >= 0;
         }
 
         /**
@@ -222,15 +242,6 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Get the size of the AABB.
-         * @return The size of the AABB.
-         */
-        Fxp GetSize() const
-        {
-            return size;
-        }
-
-        /**
          * @brief Get the position of the AABB.
          * @return The position of the AABB.
          */
@@ -240,6 +251,6 @@ namespace SaturnMath
         }
 
     private:
-        Fxp size;
+        Vector3D size;
     };
 }

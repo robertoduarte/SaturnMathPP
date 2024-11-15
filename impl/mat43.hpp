@@ -129,9 +129,9 @@ namespace SaturnMath
         static constexpr Matrix43 CreateTranslation(const Vector3D& translation)
         {
             return Matrix43(
-                Vector3D(1.0, 0.0, 0.0),
-                Vector3D(0.0, 1.0, 0.0),
-                Vector3D(0.0, 0.0, 1.0),
+                Vector3D(1, 0, 0),
+                Vector3D(0, 1, 0),
+                Vector3D(0, 0, 1),
                 translation
             );
         }
@@ -234,7 +234,7 @@ namespace SaturnMath
         static Matrix43 CreateBillboard(
             const Vector3D& position,
             const Vector3D& cameraPos,
-            const Vector3D& up = Vector3D(0.0, 1.0, 0.0))
+            const Vector3D& up = Vector3D(0, 1, 0))
         {
             const Vector3D look = (cameraPos - position).Normalize();
             const Vector3D right = up.Cross(look).Normalize();
@@ -259,7 +259,7 @@ namespace SaturnMath
         static Matrix43 FastCreateBillboard(
             const Vector3D& position,
             const Vector3D& cameraPos,
-            const Vector3D& up = Vector3D(0.0, 1.0, 0.0))
+            const Vector3D& up = Vector3D(0, 1, 0))
         {
             const Vector3D look = (cameraPos - position).FastNormalize();
             const Vector3D right = up.Cross(look).FastNormalize();
@@ -284,7 +284,7 @@ namespace SaturnMath
         static Matrix43 TurboCreateBillboard(
             const Vector3D& position,
             const Vector3D& cameraPos,
-            const Vector3D& up = Vector3D(0.0, 1.0, 0.0))
+            const Vector3D& up = Vector3D(0, 1, 0))
         {
             const Vector3D look = (cameraPos - position).TurboNormalize();
             const Vector3D right = up.Cross(look).TurboNormalize();
@@ -336,7 +336,9 @@ namespace SaturnMath
             Fxp xzLen = Trigonometry::Sqrt(rotMat.Row0.x * rotMat.Row0.x + rotMat.Row0.z * rotMat.Row0.z);
             rotation.x = Trigonometry::Atan2(rotMat.Row0.y, xzLen);
 
-            if (xzLen > 0.0001f)  // Small threshold for gimbal lock detection
+            // Use a small threshold for gimbal lock detection (1/1024)
+            static constexpr Fxp threshold = Fxp(1) >> 10;
+            if (xzLen > threshold)
             {
                 rotation.z = Trigonometry::Atan2(rotMat.Row1.x * rotMat.Row0.z - rotMat.Row1.z * rotMat.Row0.x,
                                                rotMat.Row2.x * rotMat.Row0.z - rotMat.Row2.z * rotMat.Row0.x);
@@ -382,7 +384,9 @@ namespace SaturnMath
             Fxp xzLen = Trigonometry::FastSqrt(rotMat.Row0.x * rotMat.Row0.x + rotMat.Row0.z * rotMat.Row0.z);
             rotation.x = Trigonometry::Atan2(rotMat.Row0.y, xzLen);
 
-            if (xzLen > 0.0001)  // Small threshold for gimbal lock detection
+            // Use a small threshold for gimbal lock detection (1/1024)
+            static constexpr Fxp threshold = Fxp(1) >> 10;
+            if (xzLen > threshold)
             {
                 rotation.z = Trigonometry::Atan2(rotMat.Row1.x * rotMat.Row0.z - rotMat.Row1.z * rotMat.Row0.x,
                                                rotMat.Row2.x * rotMat.Row0.z - rotMat.Row2.z * rotMat.Row0.x);
@@ -429,7 +433,7 @@ namespace SaturnMath
         static Matrix43 CreateFastTransform(
             const Vector3D& translation,
             const Vector3D& rotation,
-            const Vector3D& scale = Vector3D(1.0, 1.0, 1.0))
+            const Vector3D& scale = Vector3D(1, 1, 1))
         {
             // Use existing rotation methods since they're already optimized
             Matrix43 result = Matrix43::Identity();
@@ -452,7 +456,7 @@ namespace SaturnMath
         static Matrix43 CreateTransform(
             const Vector3D& translation,
             const Vector3D& rotation,
-            const Vector3D& scale = Vector3D(1.0, 1.0, 1.0))
+            const Vector3D& scale = Vector3D(1, 1, 1))
         {
             Matrix43 result = Matrix43::Identity();
             result.Scale(scale);
@@ -470,10 +474,59 @@ namespace SaturnMath
         static consteval Matrix43 Identity()
         {
             return Matrix43(
-                Vector3D(1.0, 0.0, 0.0),
-                Vector3D(0.0, 1.0, 0.0),
-                Vector3D(0.0, 0.0, 1.0),
-                Vector3D(0.0, 0.0, 0.0)
+                Vector3D(1, 0, 0),
+                Vector3D(0, 1, 0),
+                Vector3D(0, 0, 1),
+                Vector3D(0, 0, 0)
+            );
+        }
+
+        /**
+         * @brief Creates a translation matrix.
+         * @param x X translation
+         * @param y Y translation
+         * @param z Z translation
+         * @return Translation matrix
+         */
+        static constexpr Matrix43 Translation(const Fxp& x, const Fxp& y, const Fxp& z)
+        {
+            return Matrix43(
+                Vector3D(1, 0, 0),
+                Vector3D(0, 1, 0),
+                Vector3D(0, 0, 1),
+                Vector3D(x, y, z)
+            );
+        }
+
+        /**
+         * @brief Creates a uniform scale matrix.
+         * @param scale Scale factor for all axes
+         * @return Scale matrix
+         */
+        static constexpr Matrix43 Scale(const Fxp& scale)
+        {
+            return Matrix43(
+                Vector3D(scale, 0, 0),
+                Vector3D(0, scale, 0),
+                Vector3D(0, 0, scale),
+                Vector3D(0, 0, 0)
+            );
+        }
+
+        /**
+         * @brief Creates a non-uniform scale matrix.
+         * @param x X scale factor
+         * @param y Y scale factor
+         * @param z Z scale factor
+         * @return Scale matrix
+         */
+        static constexpr Matrix43 Scale(const Fxp& x, const Fxp& y, const Fxp& z)
+        {
+            return Matrix43(
+                Vector3D(x, 0, 0),
+                Vector3D(0, y, 0),
+                Vector3D(0, 0, z),
+                Vector3D(0, 0, 0)
             );
         }
     };

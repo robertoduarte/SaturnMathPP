@@ -10,10 +10,10 @@ namespace SaturnMath
      * 
      * Represents angles using a 16-bit integer where the full circle (360°)
      * maps from 0x0000 to 0xFFFF. This provides an angle resolution of
-     * approximately 0.0055 degrees (360° / 65536).
+     * approximately 0055 degrees (360° / 65536).
      * 
      * Common angle values:
-     * - 0x0000 = 0° = 0.0 turns
+     * - 0x0000 = 0° = 0 turns
      * - 0x4000 = 90° = 0.25 turns
      * - 0x8000 = 180° = 0.5 turns
      * - 0xC000 = 270° = 0.75 turns
@@ -70,14 +70,14 @@ namespace SaturnMath
          * @param radians Angle in radians
          * @return Angle object
          */
-        static consteval Angle RadiansToAngle(double radians) { return Angle(static_cast<uint16_t>(Fxp(radians / (2.0 * RadPi)).Value)); }
+        static consteval Angle RadiansToAngle(double radians) { return Angle(static_cast<uint16_t>(Fxp(radians / (2 * RadPi)).Value)); }
 
         /**
          * @brief Converts degrees to angle at compile time.
          * @param degrees Angle in degrees
          * @return Angle object
          */
-        static consteval Angle DegreesToAngle(double degrees) { return Angle(static_cast<uint16_t>(Fxp(degrees / 360.0).Value)); }
+        static consteval Angle DegreesToAngle(double degrees) { return Angle(static_cast<uint16_t>(Fxp(degrees / 360).Value)); }
 
         /**
          * @brief Creates angle from radians.

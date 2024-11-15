@@ -213,7 +213,7 @@ namespace SaturnMath
         constexpr Vector3D Normalize() const
         {
             Fxp length = CalcLength();
-            if (length != 0.0)
+            if (length != 0)
                 return Vector3D(x / length, y / length, z / length);
             else
                 return Vector3D();
@@ -228,8 +228,8 @@ namespace SaturnMath
         constexpr Vector3D FastNormalize() const
         {
             Fxp length = FastCalcLength();
-            if (length != 0.0F)
-                return Vector3D(length / x, length / y, length / z);
+            if (length != 0)
+                return Vector3D(x / length, y / length, z / length);
             else
                 return Vector3D();
         }
@@ -243,8 +243,8 @@ namespace SaturnMath
         constexpr Vector3D TurboNormalize() const
         {
             Fxp length = TurboCalcLength();
-            if (length != 0.0F)
-                return Vector3D(length / x, length / y, length / z);
+            if (length != 0)
+                return Vector3D(x / length, y / length, z / length);
             else
                 return Vector3D();
         }
@@ -310,7 +310,7 @@ namespace SaturnMath
          */
         static consteval Vector3D UnitX()
         {
-            return Vector3D(1.0, 0.0, 0.0);
+            return Vector3D(1, 0, 0);
         }
 
         /**
@@ -319,7 +319,7 @@ namespace SaturnMath
          */
         static consteval Vector3D UnitY()
         {
-            return Vector3D(0.0, 1.0, 0.0);
+            return Vector3D(0, 1, 0);
         }
 
         /**
@@ -328,7 +328,7 @@ namespace SaturnMath
          */
         static consteval Vector3D UnitZ()
         {
-            return Vector3D(0.0, 0.0, 1.0);
+            return Vector3D(0, 0, 1);
         }
 
         /**
@@ -337,7 +337,7 @@ namespace SaturnMath
          */
         static consteval Vector3D Zero()
         {
-            return Vector3D(0.0);
+            return Vector3D(0);
         }
 
         /**
@@ -346,7 +346,7 @@ namespace SaturnMath
          */
         static consteval Vector3D One()
         {
-            return Vector3D(1.0);
+            return Vector3D(1);
         }
 
         // Comparison operators

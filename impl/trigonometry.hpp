@@ -20,7 +20,7 @@ namespace SaturnMath
      * - All operations are constexpr-capable
      * - Zero runtime floating-point operations
      * 
-     * @note All trigonometric functions use angles in turns where 1.0 = 360°
+     * @note All trigonometric functions use angles in turns where 1 = 360°
      */
     struct Trigonometry
     {
@@ -76,8 +76,8 @@ namespace SaturnMath
 
         // Lookup tables with pre-calculated values
         static constexpr LookupCache<int32_t, 0x3FF, 15> sinTable[] = {
-            {Fxp(0.000000).value, 205556},   // Sine value for 0 degrees
-            {Fxp(0.098017).value, 203577},   // Sine value for 5.625 degrees
+            {Fxp(000000).value, 205556},   // Sine value for 0 degrees
+            {Fxp(098017).value, 203577},   // Sine value for 5.625 degrees
             {Fxp(0.195090).value, 199637},   // Sine value for 11.25 degrees
             {Fxp(0.290285).value, 193774},   // Sine value for 16.875 degrees
             {Fxp(0.382683).value, 186045},   // Sine value for 22.5 degrees
@@ -92,7 +92,7 @@ namespace SaturnMath
             {Fxp(0.956940).value, 50006},    // Sine value for 73.125 degrees
             {Fxp(0.980785).value, 30197},    // Sine value for 78.75 degrees
             {Fxp(0.995185).value, 10098},    // Sine value for 84.375 degrees
-            {Fxp(1.000000).value, -10098},   // Sine value for 90 degrees
+            {Fxp(100000).value, -10098},   // Sine value for 90 degrees
             {Fxp(0.995185).value, -30197},   // Sine value for 95.625 degrees
             {Fxp(0.980785).value, -50006},   // Sine value for 101.25 degrees
             {Fxp(0.956940).value, -69333},   // Sine value for 106.875 degrees
@@ -107,9 +107,9 @@ namespace SaturnMath
             {Fxp(0.382683).value, -193774},  // Sine value for 157.5 degrees
             {Fxp(0.290285).value, -199637},  // Sine value for 163.125 degrees
             {Fxp(0.195090).value, -203577},  // Sine value for 168.75 degrees
-            {Fxp(0.098017).value, -205556},  // Sine value for 174.375 degrees
-            {Fxp(0.000000).value, -205556},  // Sine value for 180 degrees
-            {Fxp(-0.098017).value, -203577}, // Sine value for -174.375 degrees
+            {Fxp(098017).value, -205556},  // Sine value for 174.375 degrees
+            {Fxp(000000).value, -205556},  // Sine value for 180 degrees
+            {Fxp(-098017).value, -203577}, // Sine value for -174.375 degrees
             {Fxp(-0.195090).value, -199637}, // Sine value for -168.75 degrees
             {Fxp(-0.290285).value, -193774}, // Sine value for -163.125 degrees
             {Fxp(-0.382683).value, -186045}, // Sine value for -157.5 degrees
@@ -124,7 +124,7 @@ namespace SaturnMath
             {Fxp(-0.956940).value, -50006},  // Sine value for -106.875 degrees
             {Fxp(-0.980785).value, -30197},  // Sine value for -101.25 degrees
             {Fxp(-0.995185).value, -10098},  // Sine value for -95.625 degrees
-            {Fxp(-1.000000).value, 10098},   // Sine value for -90 degrees
+            {Fxp(-100000).value, 10098},   // Sine value for -90 degrees
             {Fxp(-0.995185).value, 30197},   // Sine value for -84.375 degrees
             {Fxp(-0.980785).value, 50006},   // Sine value for -78.75 degrees
             {Fxp(-0.956940).value, 69333},   // Sine value for -73.125 degrees
@@ -139,24 +139,24 @@ namespace SaturnMath
             {Fxp(-0.382683).value, 193774},  // Sine value for -22.5 degrees
             {Fxp(-0.290285).value, 199637},  // Sine value for -16.875 degrees
             {Fxp(-0.195090).value, 203577},  // Sine value for -11.25 degrees
-            {Fxp(-0.098017).value, 205556}   // Sine value for -5.625 degrees
+            {Fxp(-098017).value, 205556}   // Sine value for -5.625 degrees
         };
 
         static constexpr LookupCache<int32_t, 0x3FF, 10> tanTable1[] = {
-            {Fxp(0.00000).value, 6454},
-            {Fxp(0.09849).value, 6581},
+            {Fxp(00000).value, 6454},
+            {Fxp(09849).value, 6581},
             {Fxp(0.19891).value, 6844},
             {Fxp(0.30335).value, 7265},
             {Fxp(0.41421).value, 7883},
             {Fxp(0.53451).value, 8760},
             {Fxp(0.66818).value, 9994},
             {Fxp(0.82068).value, 11751},
-            {Fxp(1.00000).value, 14319},
+            {Fxp(10000).value, 14319},
             {Fxp(1.21850).value, 18225},
             {Fxp(1.49661).value, 24527},
             {Fxp(2.41421).value, 57825},
             {Fxp(3.29656).value, 113428},
-            {Fxp(5.02734).value, 335926}};
+            {Fxp(52734).value, 335926}};
 
         static constexpr LookupCache<int32_t, 0x0FF, 8> tanTable2[] = {
             {Fxp(10.15317).value, 223051},
@@ -225,7 +225,7 @@ namespace SaturnMath
         /**
          * @brief Calculates sine of an angle.
          * @param angle Input angle
-         * @return Sine value in fixed-point format [-1.0, 1.0]
+         * @return Sine value in fixed-point format [-1, 1]
          */
         static constexpr Fxp Sin(const Angle& angle)
         {
@@ -237,7 +237,7 @@ namespace SaturnMath
         /**
          * @brief Calculates cosine of an angle.
          * @param angle Input angle
-         * @return Cosine value in fixed-point format [-1.0, 1.0]
+         * @return Cosine value in fixed-point format [-1, 1]
          */
         static constexpr Fxp Cos(const Angle& angle)
         {
@@ -295,15 +295,15 @@ namespace SaturnMath
          */
         static constexpr Angle Atan2(const Fxp& y, const Fxp& x)
         {
-            uint16_t result = x < 0.0 ? 
-                (y < 0.0 ? Angle::Pi().value : -Angle::Pi().value) : 0;
+            uint16_t result = x < 0 ? 
+                (y < 0 ? Angle::Pi().value : -Angle::Pi().value) : 0;
 
             int32_t divResult;
 
             if (x.Abs() < y.Abs())
             {
                 divResult = (x / y).value;
-                result += divResult < 0.0 ? -Angle::HalfPi().value : Angle::HalfPi().value;
+                result += divResult < 0 ? -Angle::HalfPi().value : Angle::HalfPi().value;
             }
             else
             {
