@@ -22,15 +22,16 @@ SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints
 - **2D Vectors**: `Vector2D` class with optimized operations
   - Unit vectors (UnitX, UnitY)
   - Directional vectors (Left, Right, Up, Down)
-  - Multiple precision levels for length/normalization
+  - Multiple precision levels for normalization and length calculations
 - **3D Vectors**: `Vector3D` class extending `Vector2D` functionality
   - Unit vectors (UnitX, UnitY, UnitZ)
-  - Fast approximation methods
   - Optimized cross/dot products
+  - Template-based precision control for geometric operations
 - **Matrix Operations**: Efficient `Matrix33` and `Matrix43` implementations
   - Common transformations (scale, rotate, translate)
   - Optimized multiplication
   - Identity/zero matrix constants
+  - Precision-controlled decomposition and view matrix creation
 - **Matrix Stack**: Fixed-size stack for transform hierarchies
   - No dynamic allocation
   - Depth checking
@@ -54,38 +55,6 @@ SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints
   - Fast plane extraction from matrices
   - Comprehensive intersection tests
   - View space utilities
-
-### Precision Control
-
-SaturnMath++ provides a template-based precision control system that allows you to balance between accuracy and performance. Each precision level is optimized for different use cases:
-
-```cpp
-using namespace SaturnMath;
-
-// Standard precision - highest accuracy
-Vector3D normal = direction.Normalize<Precision::Standard>();
-
-// Fast precision - balanced performance
-Vector3D approxNormal = direction.Normalize<Precision::Fast>();
-
-// Turbo precision - fastest calculation
-Vector3D quickNormal = direction.Normalize<Precision::Turbo>();
-```
-
-Supported operations with precision control:
-- Vector normalization and length calculations
-- Matrix decomposition and transformations
-- Square root calculations
-- Geometric calculations (normals, distances)
-
-Default precision is Standard when template parameter is not specified.
-
-### Performance Features
-- Multiple precision levels (standard/fast/turbo) for critical operations
-- Cache-friendly data layouts
-- Fixed-size containers to avoid dynamic allocation
-- Lookup table-based trigonometry
-- Compile-time constant evaluation
 
 ## Installation
 
@@ -177,30 +146,45 @@ auto [sin, cos] = SinCos(rotation);
 
 // Integer math utilities
 uint32_t value = 100;
-uint32_t sqrt = IntegerUtils::FastSqrt(value);  // Quick integer square root
+uint32_t sqrt = IntegerUtils::Sqrt<Precision::Fast>(value);  // Quick square root calculation
 ```
 
 ## Performance Considerations
 
-### Optimization Levels
-- **Standard**: Full precision, suitable for static calculations
-  ```cpp
-  Vector3D normal = Vector3D::CalcNormal<Precision::Standard>(v1, v2, v3);
-  Fxp length = vector.Length<Precision::Standard>();
-  ```
-- **Fast**: Good precision, suitable for real-time updates
-  ```cpp
-  Vector3D normal = Vector3D::CalcNormal<Precision::Fast>(v1, v2, v3);
-  Fxp length = vector.Length<Precision::Fast>();
-  ```
-- **Turbo**: Approximate results, suitable for non-critical calculations
-  ```cpp
-  Vector3D normal = Vector3D::CalcNormal<Precision::Turbo>(v1, v2, v3);
-  Fxp length = vector.Length<Precision::Turbo>();
-  ```
+### Performance Features
+- Template-based precision control for performance-critical operations
+- Cache-friendly data layouts
+- Fixed-size containers to avoid dynamic allocation
+- Lookup table-based trigonometry
+- Compile-time constant evaluation
+
+### Precision Control
+
+SaturnMath++ provides a template-based precision control system that allows you to balance between accuracy and performance. Each precision level is optimized for different use cases. Operations that support precision control will use `Standard` precision by default when no template parameter is specified.
+
+```cpp
+using namespace SaturnMath;
+
+// Standard precision - highest accuracy
+Vector3D normal = direction.Normalize<Precision::Standard>();  // Explicit
+Vector3D same = direction.Normalize();                        // Implicit (defaults to Standard)
+
+// Fast precision - balanced performance
+Vector3D approxNormal = direction.Normalize<Precision::Fast>();
+
+// Turbo precision - fastest calculation
+Vector3D quickNormal = direction.Normalize<Precision::Turbo>();
+```
+
+Supported operations with precision control:
+- Vector normalization and length calculations
+- Matrix decomposition and transformations
+- Square root calculations
+- Geometric calculations (normals, distances)
 
 ### Best Practices
-- Use `Fast` and `Turbo` precision levels for non-critical calculations
+- Use `Fast` or `Turbo` precision for non-critical calculations where performance is important
+- Keep `Standard` precision (default) for calculations requiring high accuracy
 - Prefer fixed-size containers (like `MatrixStack`) over dynamic allocation
 - Take advantage of lookup-based trig functions for better performance
 - Leverage compile-time constants with `consteval` methods
@@ -212,4 +196,4 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
