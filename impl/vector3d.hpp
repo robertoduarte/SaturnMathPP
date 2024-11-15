@@ -39,6 +39,13 @@ namespace SaturnMath
          */
         constexpr Vector3D(const Fxp& valueX, const Fxp& valueY, const Fxp& valueZ) : Vector2D(valueX, valueY), Z(valueZ) {}
 
+        /**
+         * @brief Constructor to initialize from a Vector2D and a Z coordinate.
+         * @param vec2d The Vector2D to copy X and Y from.
+         * @param valueZ The Z-coordinate.
+         */
+        constexpr Vector3D(const Vector2D& vec2d, const Fxp& valueZ) : Vector2D(vec2d), Z(valueZ) {}
+
         // Assignment operator
         /**
          * @brief Assignment operator.
