@@ -2,74 +2,201 @@
 
 SaturnMath++ is a C++23 library dedicated to Sega Saturn hardware, offering essential mathematical operations tailored for fixed-point arithmetic and geometric calculations.
 
+## Overview
+
+SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints and capabilities:
+- Uses fixed-point arithmetic instead of floating-point
+- Optimized for SH-2's 32-bit operations
+- Cache-friendly data layouts
+- Compile-time optimizations with constexpr/consteval
+- Zero dynamic memory allocation
+
 ## Features
 
-- **Matrices and Vectors**: Efficient implementations for 3x3 matrices (`Mat33`) and 4x3 matrices (`Mat43`), along with 3D vector operations (`Vec3`).
-- **Frustum**: A robust implementation of a view frustum (`Frustum`) for determining visible objects within a 3D scene using plane equations.
-- **Fixed-Point Arithmetic**: Includes the `Fxp` class for precise fixed-point arithmetic operations, crucial for Sega Saturn's hardware limitations.
-- **Geometry Calculations**: Provides methods for matrix multiplication, vector transformations, and geometric tests such as point-in-frustum and sphere-in-frustum checks.
+### Core Components
+- **Fixed-Point Arithmetic**: High-performance `Fxp` class with precise fixed-point operations
+- **Angle Handling**: Type-safe `Angle` class for angular calculations
+- **Integer Math**: Efficient integer operations via `IntegerUtils`
 
-## Usage
+### Vectors and Matrices
+- **2D Vectors**: `Vector2D` class with optimized operations
+  - Unit vectors (UnitX, UnitY)
+  - Directional vectors (Left, Right, Up, Down)
+  - Multiple precision levels for length/normalization
+- **3D Vectors**: `Vector3D` class extending `Vector2D` functionality
+  - Unit vectors (UnitX, UnitY, UnitZ)
+  - Fast approximation methods
+  - Optimized cross/dot products
+- **Matrix Operations**: Efficient `Matrix33` and `Matrix43` implementations
+  - Common transformations (scale, rotate, translate)
+  - Optimized multiplication
+  - Identity/zero matrix constants
+- **Matrix Stack**: Fixed-size stack for transform hierarchies
+  - No dynamic allocation
+  - Depth checking
+  - Direct transformation methods
 
-To use SaturnMath++ in your C++23 project for Sega Saturn:
-1. Clone the repository or download the source files.
-2. Include the main header file (`saturn_math.hpp`) in your project.
-3. Instantiate objects of `Mat33`, `Mat43`, `Vec3`, `Frustum`, and `Fxp` to perform matrix operations, vector transformations, fixed-point arithmetic, or frustum visibility checks.
+### Geometric Primitives
+- **Shapes**: Abstract base class for geometric primitives
+- **AABB**: Axis-aligned bounding box with comprehensive intersection tests
+  - Fast min/max calculations
+  - Volume and surface area computation
+  - Merging and expansion operations
+- **Sphere**: Perfect sphere with exact collision detection
+  - Point containment tests
+  - Sphere-sphere intersection
+  - Sphere-AABB intersection
+- **Plane**: Infinite plane with normal and distance representation
+  - Point-plane distance calculation
+  - Construction from points/normal
+  - Normalization utilities
+- **Frustum**: View frustum for efficient visibility culling
+  - Fast plane extraction from matrices
+  - Comprehensive intersection tests
+  - View space utilities
 
-## Example usage of matrices and vectors
+### Performance Features
+- Multiple precision levels (standard/fast/turbo) for critical operations
+- Cache-friendly data layouts
+- Fixed-size containers to avoid dynamic allocation
+- Lookup table-based trigonometry
+- Compile-time constant evaluation
+
+## Installation
+
+### Requirements
+- C++23 compliant compiler
+- No external dependencies
+
+### Integration
+Just include the library in your Sega Saturn project:
+```cpp
+#include "saturn_math.hpp"
+```
+
+## Usage Examples
+
+### Vector and Matrix Operations
 
 ```cpp
 #include "saturn_math.hpp"
-
 using namespace SaturnMath;
 
-int main()
-{
-    // Example usage of matrices and vectors
-    Vec3 up(0.0, 1.0, 0.0);
-    Vec3 direction(1.0, 0.0, 0.0);
-    Mat33 matrix(up, direction);
-    Vec3 transformedVector = matrix * Vec3(1.0, 0.0, 0.0);
+// 3D vector operations
+Vector3D position(1.0, 2.0, 3.0);
+Vector3D direction = Vector3D::UnitZ();  // Forward direction (0,0,1)
 
-    return 0;
-}
+// 2D vector operations
+Vector2D screenPos = Vector2D::Zero();
+screenPos += Vector2D::Right() * 10.0;  // Move 10 units right
+screenPos += Vector2D::Up() * 5.0;      // Move 5 units up
+
+// Matrix operations
+Matrix43 transform = Matrix43::Identity();
+transform.Translate(Vector3D::UnitY() * 5.0);  // Move 5 units up
+transform.Rotate(Vector3D(0, Angle::FromDegrees(90), 0));
+
+// Transform the position
+Vector3D transformed = transform * position;
+
+// Fast vector operations
+Fxp length = direction.FastCalcLength();  // Quick approximation
+Vector3D normalized = direction.TurboNormalize();  // Fastest normalization
 ```
 
-## Example usage of frustum
+### Geometric Tests
 
 ```cpp
 #include "saturn_math.hpp"
-
 using namespace SaturnMath;
 
-int main()
-{
-    // Example usage of frustum
-    Frustum frustum(60.0, 1.333, 0.1, 100.0);
-    Mat43 viewMatrix = Mat43::Identity();
-    frustum.Update(viewMatrix);
-    Vec3 point(1.0, 1.0, 1.0);
-    bool isPointInFrustum = frustum.Contains(point);
-    Sphere sphere(point, 1.0); // Instantiate a Sphere object
-    bool isSphereInFrustum = frustum.Contains(sphere); // Call Contains() on the Sphere object
+// Create geometric primitives
+AABB box(Vector3D::Zero(), 2.0);  // 2x2x2 box at origin
+Sphere sphere(Vector3D::One(), 1.0);  // Sphere at (1,1,1) with radius 1
+Plane plane(Vector3D::UnitY(), 0);  // Ground plane at Y=0
 
-    return 0;
+// Perform intersection tests
+if (sphere.Intersects(box)) {
+    // Handle sphere-box collision
+}
+
+// Check point containment
+Vector3D point(0.5, 0.5, 0.5);
+if (box.Contains(point)) {
+    // Point is inside box
+}
+
+// Create and update view frustum
+Frustum frustum(
+    Angle::FromDegrees(60),  // 60° vertical FOV
+    16.0/9.0,               // 16:9 aspect ratio
+    0.1,                    // Near plane
+    100.0                   // Far plane
+);
+
+Matrix43 viewMatrix = Matrix43::Identity();
+frustum.Update(viewMatrix);
+
+// Check if objects are visible
+if (frustum.Contains(sphere)) {
+    // Sphere is visible
 }
 ```
 
-## Example usage of fixed-point arithmetic
+### Fixed-Point and Angle Math
 
 ```cpp
 #include "saturn_math.hpp"
-
 using namespace SaturnMath;
 
-int main()
-{
-    // Example usage of fixed-point arithmetic
-    Fxp fixedPointValue(1.5); // Represents 1.5 in fixed-point format
-    Fxp fixedPointSquare = fixedPointValue.Square(); // Computes the square of the value
+// Fixed-point arithmetic
+Fxp a(1.5);
+Fxp b(2.0);
+Fxp result = a * b;  // 3.0 in fixed-point
 
-    return 0;
-}
+// Angle calculations
+Angle rotation = Angle::FromDegrees(45);
+Fxp sine = Sin(rotation);
+Fxp cosine = Cos(rotation);
+
+// Efficient simultaneous calculation
+auto [sin, cos] = SinCos(rotation);
+
+// Integer math utilities
+uint32_t value = 100;
+uint32_t sqrt = IntegerUtils::FastSqrt(value);  // Quick integer square root
 ```
+
+## Performance Considerations
+
+### Optimization Levels
+- **Standard**: Full precision, suitable for static calculations
+  ```cpp
+  Vector3D normal = Vector3D::CalcNormal(v1, v2, v3);
+  Fxp length = vector.CalcLength();
+  ```
+- **Fast**: Good precision, suitable for real-time updates
+  ```cpp
+  Vector3D normal = Vector3D::FastCalcNormal(v1, v2, v3);
+  Fxp length = vector.FastCalcLength();
+  ```
+- **Turbo**: Approximate results, suitable for non-critical calculations
+  ```cpp
+  Vector3D normal = Vector3D::TurboCalcNormal(v1, v2, v3);
+  Fxp length = vector.TurboCalcLength();
+  ```
+
+### Best Practices
+- Use `FastCalcLength()` and `TurboNormalize()` for non-critical calculations
+- Prefer fixed-size containers (like `MatrixStack`) over dynamic allocation
+- Take advantage of lookup-based trig functions for better performance
+- Leverage compile-time constants with `consteval` methods
+- Structure data for optimal cache usage on SH-2
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

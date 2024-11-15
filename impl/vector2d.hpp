@@ -183,6 +183,81 @@ namespace SaturnMath
                 return Vector2D();
         }
 
+        // Unit vectors and directional methods
+        /**
+         * @brief Get a unit vector pointing along the X axis (1,0).
+         * @return Unit vector along X axis.
+         */
+        static consteval Vector2D UnitX()
+        {
+            return Vector2D(1.0, 0.0);
+        }
+
+        /**
+         * @brief Get a unit vector pointing along the Y axis (0,1).
+         * @return Unit vector along Y axis.
+         */
+        static consteval Vector2D UnitY()
+        {
+            return Vector2D(0.0, 1.0);
+        }
+
+        /**
+         * @brief Get a zero vector (0,0).
+         * @return Zero vector.
+         */
+        static consteval Vector2D Zero()
+        {
+            return Vector2D(0.0);
+        }
+
+        /**
+         * @brief Get a vector with all components set to one (1,1).
+         * @return Vector with all ones.
+         */
+        static consteval Vector2D One()
+        {
+            return Vector2D(1.0);
+        }
+
+        /**
+         * @brief Get a vector pointing right (1,0).
+         * Same as UnitX(), provided for semantic clarity.
+         * @return Right-pointing unit vector.
+         */
+        static consteval Vector2D Right()
+        {
+            return UnitX();
+        }
+
+        /**
+         * @brief Get a vector pointing left (-1,0).
+         * @return Left-pointing unit vector.
+         */
+        static consteval Vector2D Left()
+        {
+            return Vector2D(-1.0, 0.0);
+        }
+
+        /**
+         * @brief Get a vector pointing up (0,1).
+         * Same as UnitY(), provided for semantic clarity.
+         * @return Upward-pointing unit vector.
+         */
+        static consteval Vector2D Up()
+        {
+            return UnitY();
+        }
+
+        /**
+         * @brief Get a vector pointing down (0,-1).
+         * @return Downward-pointing unit vector.
+         */
+        static consteval Vector2D Down()
+        {
+            return Vector2D(0.0, -1.0);
+        }
+
         // Arithmetic operators
         /**
          * @brief Addition operator.

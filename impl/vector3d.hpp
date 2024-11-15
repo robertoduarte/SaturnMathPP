@@ -303,6 +303,52 @@ namespace SaturnMath
             return edge1.Cross(edge2).TurboNormalize();
         }
 
+        // Unit vector and common vector constant methods
+        /**
+         * @brief Get a unit vector pointing along the X axis (1,0,0).
+         * @return Unit vector along X axis.
+         */
+        static consteval Vector3D UnitX()
+        {
+            return Vector3D(1.0, 0.0, 0.0);
+        }
+
+        /**
+         * @brief Get a unit vector pointing along the Y axis (0,1,0).
+         * @return Unit vector along Y axis.
+         */
+        static consteval Vector3D UnitY()
+        {
+            return Vector3D(0.0, 1.0, 0.0);
+        }
+
+        /**
+         * @brief Get a unit vector pointing along the Z axis (0,0,1).
+         * @return Unit vector along Z axis.
+         */
+        static consteval Vector3D UnitZ()
+        {
+            return Vector3D(0.0, 0.0, 1.0);
+        }
+
+        /**
+         * @brief Get a zero vector (0,0,0).
+         * @return Zero vector.
+         */
+        static consteval Vector3D Zero()
+        {
+            return Vector3D(0.0);
+        }
+
+        /**
+         * @brief Get a vector with all components set to one (1,1,1).
+         * @return Vector with all ones.
+         */
+        static consteval Vector3D One()
+        {
+            return Vector3D(1.0);
+        }
+
         // Comparison operators
         /**
          * @brief Check if two Vec3 objects are not equal.
