@@ -122,9 +122,9 @@ namespace SaturnMath
         {
             const Matrix43& m = stack[currentDepth];
             return Vector3D(
-                m.Row0.Dot(point) + m.Row3.x,
-                m.Row1.Dot(point) + m.Row3.y,
-                m.Row2.Dot(point) + m.Row3.z
+                m.Row0.Dot(point) + m.Row3.X,
+                m.Row1.Dot(point) + m.Row3.Y,
+                m.Row2.Dot(point) + m.Row3.Z
             );
         }
 

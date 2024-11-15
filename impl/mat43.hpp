@@ -102,9 +102,9 @@ namespace SaturnMath
         Vector3D TransformPoint(const Vector3D& point) const
         {
             return Vector3D(
-                Row0.Dot(point) + Row3.x,
-                Row1.Dot(point) + Row3.y,
-                Row2.Dot(point) + Row3.z
+                Row0.Dot(point) + Row3.X,
+                Row1.Dot(point) + Row3.Y,
+                Row2.Dot(point) + Row3.Z
             );
         }
 
@@ -161,10 +161,10 @@ namespace SaturnMath
 
             // Construct the matrix
             return Matrix43(
-                right.x, right.y, right.z,
-                actualUp.x, actualUp.y, actualUp.z,
-                look.x, look.y, look.z,
-                position.x, position.y, position.z
+                right.X, right.Y, right.Z,
+                actualUp.X, actualUp.Y, actualUp.Z,
+                look.X, look.Y, look.Z,
+                position.X, position.Y, position.Z
             );
         }
 
@@ -193,10 +193,10 @@ namespace SaturnMath
 
             // Construct the view matrix
             return Matrix43(
-                right.x, right.y, right.z,
-                actualUp.x, actualUp.y, actualUp.z,
-                look.x, look.y, look.z,
-                eye.x, eye.y, eye.z
+                right.X, right.Y, right.Z,
+                actualUp.X, actualUp.Y, actualUp.Z,
+                look.X, look.Y, look.Z,
+                eye.X, eye.Y, eye.Z
             );
         }
 
@@ -216,27 +216,27 @@ namespace SaturnMath
         {
             static_assert(P != Precision::Turbo, "Turbo precision is not supported for CreateTransform");
 
-            const Fxp cosX = Trigonometry::Cos(rotation.x);
-            const Fxp sinX = Trigonometry::Sin(rotation.x);
-            const Fxp cosY = Trigonometry::Cos(rotation.y);
-            const Fxp sinY = Trigonometry::Sin(rotation.y);
-            const Fxp cosZ = Trigonometry::Cos(rotation.z);
-            const Fxp sinZ = Trigonometry::Sin(rotation.z);
+            const Fxp cosX = Trigonometry::Cos(rotation.X);
+            const Fxp sinX = Trigonometry::Sin(rotation.X);
+            const Fxp cosY = Trigonometry::Cos(rotation.Y);
+            const Fxp sinY = Trigonometry::Sin(rotation.Y);
+            const Fxp cosZ = Trigonometry::Cos(rotation.Z);
+            const Fxp sinZ = Trigonometry::Sin(rotation.Z);
 
             // Create rotation matrix
             Matrix43 result(
-                (cosY * cosZ) * scale.x,
-                (cosY * sinZ) * scale.x,
-                (-sinY) * scale.x,
-                ((sinX * sinY * cosZ) - (cosX * sinZ)) * scale.y,
-                ((sinX * sinY * sinZ) + (cosX * cosZ)) * scale.y,
-                (sinX * cosY) * scale.y,
-                ((cosX * sinY * cosZ) + (sinX * sinZ)) * scale.z,
-                ((cosX * sinY * sinZ) - (sinX * cosZ)) * scale.z,
-                (cosX * cosY) * scale.z,
-                translation.x,
-                translation.y,
-                translation.z
+                (cosY * cosZ) * scale.X,
+                (cosY * sinZ) * scale.X,
+                (-sinY) * scale.X,
+                ((sinX * sinY * cosZ) - (cosX * sinZ)) * scale.Y,
+                ((sinX * sinY * sinZ) + (cosX * cosZ)) * scale.Y,
+                (sinX * cosY) * scale.Y,
+                ((cosX * sinY * cosZ) + (sinX * sinZ)) * scale.Z,
+                ((cosX * sinY * sinZ) - (sinX * cosZ)) * scale.Z,
+                (cosX * cosY) * scale.Z,
+                translation.X,
+                translation.Y,
+                translation.Z
             );
 
             return result;
@@ -261,31 +261,31 @@ namespace SaturnMath
             translation = Row3;
 
             // Extract scale
-            scale.x = Vector3D(Row0.x, Row0.y, Row0.z).Length<P>();
-            scale.y = Vector3D(Row1.x, Row1.y, Row1.z).Length<P>();
-            scale.z = Vector3D(Row2.x, Row2.y, Row2.z).Length<P>();
+            scale.X = Vector3D(Row0.X, Row0.Y, Row0.Z).Length<P>();
+            scale.Y = Vector3D(Row1.X, Row1.Y, Row1.Z).Length<P>();
+            scale.Z = Vector3D(Row2.X, Row2.Y, Row2.Z).Length<P>();
 
             // Create rotation matrix by removing scale
             Matrix33 rotMat(
-                Row0.x / scale.x, Row0.y / scale.x, Row0.z / scale.x,
-                Row1.x / scale.y, Row1.y / scale.y, Row1.z / scale.y,
-                Row2.x / scale.z, Row2.y / scale.z, Row2.z / scale.z
+                Row0.X / scale.X, Row0.Y / scale.X, Row0.Z / scale.X,
+                Row1.X / scale.Y, Row1.Y / scale.Y, Row1.Z / scale.Y,
+                Row2.X / scale.Z, Row2.Y / scale.Z, Row2.Z / scale.Z
             );
 
             // Extract rotation angles (Euler angles in XYZ order)
-            rotation.y = Trigonometry::Asin(-rotMat.Row1.z);
+            rotation.Y = Trigonometry::Asin(-rotMat.Row1.Z);
 
             // Check for gimbal lock
-            if (rotMat.Row1.z < 0.999999 && rotMat.Row1.z > -0.999999)
+            if (rotMat.Row1.Z < 0.999999 && rotMat.Row1.Z > -0.999999)
             {
-                rotation.x = Trigonometry::Atan2(rotMat.Row2.z, rotMat.Row3.z);
-                rotation.z = Trigonometry::Atan2(rotMat.Row1.y, rotMat.Row1.x);
+                rotation.X = Trigonometry::Atan2(rotMat.Row2.Z, rotMat.Row3.z);
+                rotation.Z = Trigonometry::Atan2(rotMat.Row1.Y, rotMat.Row1.X);
             }
             else
             {
                 // Gimbal lock has occurred
-                rotation.x = 0;
-                rotation.z = Trigonometry::Atan2(-rotMat.Row2.x, rotMat.Row2.y);
+                rotation.X = 0;
+                rotation.Z = Trigonometry::Atan2(-rotMat.Row2.X, rotMat.Row2.Y);
             }
         }
 

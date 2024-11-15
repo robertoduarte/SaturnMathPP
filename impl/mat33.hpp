@@ -86,19 +86,19 @@ namespace SaturnMath
         Matrix33& Transpose()
         {
             // Swap row0.y and row1.x
-            const Fxp m01 = Row0.y;
-            Row0.y = Row1.x;
-            Row1.x = m01;
+            const Fxp m01 = Row0.Y;
+            Row0.Y = Row1.X;
+            Row1.X = m01;
 
             // Swap row0.z and row2.x
-            const Fxp m02 = Row0.z;
-            Row0.z = Row2.x;
-            Row2.x = m02;
+            const Fxp m02 = Row0.Z;
+            Row0.Z = Row2.X;
+            Row2.X = m02;
 
             // Swap row1.z and row2.y
-            const Fxp m12 = Row1.z;
-            Row1.z = Row2.y;
-            Row2.y = m12;
+            const Fxp m12 = Row1.Z;
+            Row1.Z = Row2.Y;
+            Row2.Y = m12;
 
             return *this;
         }
@@ -116,21 +116,21 @@ namespace SaturnMath
             Fxp cosValue = Trigonometry::Cos(angleX);
 
             // Update matrix elements to perform rotation around the X-axis
-            const Fxp m01 = Row0.y;
-            const Fxp m02 = Row0.z;
-            const Fxp m11 = Row1.y;
-            const Fxp m12 = Row1.z;
-            const Fxp m21 = Row2.y;
-            const Fxp m22 = Row2.z;
+            const Fxp m01 = Row0.Y;
+            const Fxp m02 = Row0.Z;
+            const Fxp m11 = Row1.Y;
+            const Fxp m12 = Row1.Z;
+            const Fxp m21 = Row2.Y;
+            const Fxp m22 = Row2.Z;
 
-            Row0.y = (m01 * cosValue) + (m02 * sinValue);
-            Row0.z = -(m01 * sinValue) + (m02 * cosValue);
+            Row0.Y = (m01 * cosValue) + (m02 * sinValue);
+            Row0.Z = -(m01 * sinValue) + (m02 * cosValue);
 
-            Row1.y = (m11 * cosValue) + (m12 * sinValue);
-            Row1.z = -(m11 * sinValue) + (m12 * cosValue);
+            Row1.Y = (m11 * cosValue) + (m12 * sinValue);
+            Row1.Z = -(m11 * sinValue) + (m12 * cosValue);
 
-            Row2.y = (m21 * cosValue) + (m22 * sinValue);
-            Row2.z = -(m21 * sinValue) + (m22 * cosValue);
+            Row2.Y = (m21 * cosValue) + (m22 * sinValue);
+            Row2.Z = -(m21 * sinValue) + (m22 * cosValue);
 
             return *this;
         }
@@ -165,21 +165,21 @@ namespace SaturnMath
             Fxp cosValue = Trigonometry::Cos(angleY);
 
             // Update matrix elements to perform rotation around the Y-axis
-            const Fxp m00 = Row0.x;
-            const Fxp m02 = Row0.z;
-            const Fxp m10 = Row1.x;
-            const Fxp m12 = Row1.z;
-            const Fxp m20 = Row2.x;
-            const Fxp m22 = Row2.z;
+            const Fxp m00 = Row0.X;
+            const Fxp m02 = Row0.Z;
+            const Fxp m10 = Row1.X;
+            const Fxp m12 = Row1.Z;
+            const Fxp m20 = Row2.X;
+            const Fxp m22 = Row2.Z;
 
-            Row0.x = (m00 * cosValue) - (m02 * sinValue);
-            Row0.z = (m00 * sinValue) + (m02 * cosValue);
+            Row0.X = (m00 * cosValue) - (m02 * sinValue);
+            Row0.Z = (m00 * sinValue) + (m02 * cosValue);
 
-            Row1.x = (m10 * cosValue) - (m12 * sinValue);
-            Row1.z = (m10 * sinValue) + (m12 * cosValue);
+            Row1.X = (m10 * cosValue) - (m12 * sinValue);
+            Row1.Z = (m10 * sinValue) + (m12 * cosValue);
 
-            Row2.x = (m20 * cosValue) - (m22 * sinValue);
-            Row2.z = (m20 * sinValue) + (m22 * cosValue);
+            Row2.X = (m20 * cosValue) - (m22 * sinValue);
+            Row2.Z = (m20 * sinValue) + (m22 * cosValue);
 
             return *this;
         }
@@ -214,21 +214,21 @@ namespace SaturnMath
             Fxp cosValue = Trigonometry::Cos(angleZ);
 
             // Update matrix elements to perform rotation around the Z-axis
-            const Fxp m00 = Row0.x;
-            const Fxp m01 = Row0.y;
-            const Fxp m10 = Row1.x;
-            const Fxp m11 = Row1.y;
-            const Fxp m20 = Row2.x;
-            const Fxp m21 = Row2.y;
+            const Fxp m00 = Row0.X;
+            const Fxp m01 = Row0.Y;
+            const Fxp m10 = Row1.X;
+            const Fxp m11 = Row1.Y;
+            const Fxp m20 = Row2.X;
+            const Fxp m21 = Row2.Y;
 
-            Row0.x = (m00 * cosValue) + (m01 * sinValue);
-            Row0.y = -(m00 * sinValue) + (m01 * cosValue);
+            Row0.X = (m00 * cosValue) + (m01 * sinValue);
+            Row0.Y = -(m00 * sinValue) + (m01 * cosValue);
 
-            Row1.x = (m10 * cosValue) + (m11 * sinValue);
-            Row1.y = -(m10 * sinValue) + (m11 * cosValue);
+            Row1.X = (m10 * cosValue) + (m11 * sinValue);
+            Row1.Y = -(m10 * sinValue) + (m11 * cosValue);
 
-            Row2.x = (m20 * cosValue) + (m21 * sinValue);
-            Row2.y = -(m20 * sinValue) + (m21 * cosValue);
+            Row2.X = (m20 * cosValue) + (m21 * sinValue);
+            Row2.Y = -(m20 * sinValue) + (m21 * cosValue);
 
             return *this;
         }
@@ -258,9 +258,9 @@ namespace SaturnMath
          */
         static constexpr Matrix33 CreateRotation(const Vector3D& angles)
         {
-            return CreateRotationZ(angles.z) * 
-                   CreateRotationY(angles.y) * 
-                   CreateRotationX(angles.x);
+            return CreateRotationZ(angles.Z) * 
+                   CreateRotationY(angles.Y) * 
+                   CreateRotationX(angles.X);
         }
 
         /**
@@ -270,15 +270,15 @@ namespace SaturnMath
          */
         Matrix33& Scale(const Vector3D& scale)
         {
-            Row0.x *= scale.x;
-            Row0.y *= scale.y;
-            Row0.z *= scale.z;
-            Row1.x *= scale.x;
-            Row1.y *= scale.y;
-            Row1.z *= scale.z;
-            Row2.x *= scale.x;
-            Row2.y *= scale.y;
-            Row2.z *= scale.z;
+            Row0.X *= scale.X;
+            Row0.Y *= scale.Y;
+            Row0.Z *= scale.Z;
+            Row1.X *= scale.X;
+            Row1.Y *= scale.Y;
+            Row1.Z *= scale.Z;
+            Row2.X *= scale.X;
+            Row2.Y *= scale.Y;
+            Row2.Z *= scale.Z;
             return *this;
         }
 
@@ -288,9 +288,9 @@ namespace SaturnMath
          */
         constexpr Fxp Determinant() const
         {
-            return Row0.x * (Row1.y * Row2.z - Row1.z * Row2.y) -
-                   Row0.y * (Row1.x * Row2.z - Row1.z * Row2.x) +
-                   Row0.z * (Row1.x * Row2.y - Row1.y * Row2.x);
+            return Row0.X * (Row1.Y * Row2.Z - Row1.Z * Row2.Y) -
+                   Row0.Y * (Row1.X * Row2.Z - Row1.Z * Row2.X) +
+                   Row0.Z * (Row1.X * Row2.Y - Row1.Y * Row2.X);
         }
 
         /**
@@ -306,17 +306,17 @@ namespace SaturnMath
             const Fxp invDet = Fxp(1) / det;
 
             // Calculate cofactors and adjugate matrix
-            out.Row0.x = (Row1.y * Row2.z - Row1.z * Row2.y) * invDet;
-            out.Row0.y = (Row0.z * Row2.y - Row0.y * Row2.z) * invDet;
-            out.Row0.z = (Row0.y * Row1.z - Row0.z * Row1.y) * invDet;
+            out.Row0.X = (Row1.Y * Row2.Z - Row1.Z * Row2.Y) * invDet;
+            out.Row0.Y = (Row0.Z * Row2.Y - Row0.Y * Row2.Z) * invDet;
+            out.Row0.Z = (Row0.Y * Row1.Z - Row0.Z * Row1.Y) * invDet;
 
-            out.Row1.x = (Row1.z * Row2.x - Row1.x * Row2.z) * invDet;
-            out.Row1.y = (Row0.x * Row2.z - Row0.z * Row2.x) * invDet;
-            out.Row1.z = (Row0.z * Row1.x - Row0.x * Row1.z) * invDet;
+            out.Row1.X = (Row1.Z * Row2.X - Row1.X * Row2.Z) * invDet;
+            out.Row1.Y = (Row0.X * Row2.Z - Row0.Z * Row2.X) * invDet;
+            out.Row1.Z = (Row0.Z * Row1.X - Row0.X * Row1.Z) * invDet;
 
-            out.Row2.x = (Row1.x * Row2.y - Row1.y * Row2.x) * invDet;
-            out.Row2.y = (Row0.y * Row2.x - Row0.x * Row2.y) * invDet;
-            out.Row2.z = (Row0.x * Row1.y - Row0.y * Row1.x) * invDet;
+            out.Row2.X = (Row1.X * Row2.Y - Row1.Y * Row2.X) * invDet;
+            out.Row2.Y = (Row0.Y * Row2.X - Row0.X * Row2.Y) * invDet;
+            out.Row2.Z = (Row0.X * Row1.Y - Row0.Y * Row1.X) * invDet;
 
             return true;
         }
@@ -329,9 +329,9 @@ namespace SaturnMath
         static constexpr Matrix33 CreateScale(const Vector3D& scale)
         {
             return Matrix33(
-                Vector3D(scale.x, 0, 0),
-                Vector3D(0, scale.y, 0),
-                Vector3D(0, 0, scale.z)
+                Vector3D(scale.X, 0, 0),
+                Vector3D(0, scale.Y, 0),
+                Vector3D(0, 0, scale.Z)
             );
         }
 

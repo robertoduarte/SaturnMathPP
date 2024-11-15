@@ -11,33 +11,33 @@ namespace SaturnMath
      */
     struct Vector2D
     {
-        Fxp x; /**< The X-coordinate. */
-        Fxp y; /**< The Y-coordinate. */
+        Fxp X; /**< The X-coordinate. */
+        Fxp Y; /**< The Y-coordinate. */
 
         // Constructors
         /**
          * @brief Default constructor, initializes all coordinates to 0.
          */
-        constexpr Vector2D() : x(), y() {}
+        constexpr Vector2D() : X(), Y() {}
 
         /**
          * @brief Constructor to initialize all coordinates with the same value.
          * @param fxp The value to initialize all coordinates with.
          */
-        constexpr Vector2D(const Fxp& fxp) : x(fxp), y(fxp) {}
+        constexpr Vector2D(const Fxp& fxp) : X(fxp), Y(fxp) {}
 
         /**
          * @brief Copy constructor.
          * @param vec The Vec2 object to copy.
          */
-        constexpr Vector2D(const Vector2D& vec) : x(vec.x), y(vec.y) {}
+        constexpr Vector2D(const Vector2D& vec) : X(vec.X), Y(vec.Y) {}
 
         /**
          * @brief Constructor to initialize coordinates with specific values.
          * @param valueX The X-coordinate.
          * @param valueY The Y-coordinate.
          */
-        constexpr Vector2D(const Fxp& valueX, const Fxp& valueY) : x(valueX), y(valueY) {}
+        constexpr Vector2D(const Fxp& valueX, const Fxp& valueY) : X(valueX), Y(valueY) {}
 
         // Assignment operator
         /**
@@ -47,8 +47,8 @@ namespace SaturnMath
          */
         constexpr Vector2D& operator=(const Vector2D& vec)
         {
-            x = vec.x;
-            y = vec.y;
+            X = vec.X;
+            Y = vec.Y;
             return *this;
         }
 
@@ -59,7 +59,7 @@ namespace SaturnMath
          */
         constexpr Vector2D Abs() const
         {
-            return Vector2D(x.Abs(), y.Abs());
+            return Vector2D(X.Abs(), Y.Abs());
         }
 
         /**
@@ -71,11 +71,11 @@ namespace SaturnMath
         constexpr Vector2D Sort() const
         {
             Vector2D result(*this);
-            if (O == SortOrder::Ascending ? result.x > result.y : result.x < result.y)
+            if (O == SortOrder::Ascending ? result.X > result.Y : result.X < result.Y)
             {
-                Fxp temp = result.x;
-                result.x = result.y;
-                result.y = temp;
+                Fxp temp = result.X;
+                result.X = result.Y;
+                result.Y = temp;
             }
             return result;
         }
@@ -148,7 +148,7 @@ namespace SaturnMath
         {
             Fxp length = Length<P>();
             if (length != 0)
-                return Vector2D(x / length, y / length);
+                return Vector2D(X / length, Y / length);
             return Vector2D();
         }
 

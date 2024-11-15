@@ -65,7 +65,7 @@ namespace SaturnMath
          */
         constexpr Fxp GetVolume() const
         {
-            return 8 * size.x * size.y * size.z;
+            return 8 * size.X * size.Y * size.Z;
         }
 
         /**
@@ -109,9 +109,9 @@ namespace SaturnMath
             Vector3D max = GetMax();
             
             return Vector3D(
-                Fxp::Max(min.x, Fxp::Min(point.x, max.x)),
-                Fxp::Max(min.y, Fxp::Min(point.y, max.y)),
-                Fxp::Max(min.z, Fxp::Min(point.z, max.z))
+                Fxp::Max(min.X, Fxp::Min(point.X, max.X)),
+                Fxp::Max(min.Y, Fxp::Min(point.Y, max.Y)),
+                Fxp::Max(min.Z, Fxp::Min(point.Z, max.Z))
             );
         }
 
@@ -126,14 +126,14 @@ namespace SaturnMath
             Vector3D max = GetMax();
             
             return {
-                Vector3D(min.x, min.y, min.z), // 0: left bottom back
-                Vector3D(max.x, min.y, min.z), // 1: right bottom back
-                Vector3D(max.x, max.y, min.z), // 2: right top back
-                Vector3D(min.x, max.y, min.z), // 3: left top back
-                Vector3D(min.x, min.y, max.z), // 4: left bottom front
-                Vector3D(max.x, min.y, max.z), // 5: right bottom front
-                Vector3D(max.x, max.y, max.z), // 6: right top front
-                Vector3D(min.x, max.y, max.z)  // 7: left top front
+                Vector3D(min.X, min.Y, min.Z), // 0: left bottom back
+                Vector3D(max.X, min.Y, min.Z), // 1: right bottom back
+                Vector3D(max.X, max.Y, min.Z), // 2: right top back
+                Vector3D(min.X, max.Y, min.Z), // 3: left top back
+                Vector3D(min.X, min.Y, max.Z), // 4: left bottom front
+                Vector3D(max.X, min.Y, max.Z), // 5: right bottom front
+                Vector3D(max.X, max.Y, max.Z), // 6: right top front
+                Vector3D(min.X, max.Y, max.Z)  // 7: left top front
             };
         }
 
@@ -148,9 +148,9 @@ namespace SaturnMath
             Vector3D min = GetMin();
             Vector3D max = GetMax();
             Vector3D vertexN(
-                (plane.normal.x >= 0) ? min.x : max.x,
-                (plane.normal.y >= 0) ? min.y : max.y,
-                (plane.normal.z >= 0) ? min.z : max.z
+                (plane.normal.X >= 0) ? min.X : max.X,
+                (plane.normal.Y >= 0) ? min.Y : max.Y,
+                (plane.normal.Z >= 0) ? min.Z : max.Z
             );
             return plane.Distance(vertexN) >= 0;
         }
@@ -162,9 +162,9 @@ namespace SaturnMath
          */
         bool ContainsPoint(const Vector3D& point) const
         {
-            return (point.x >= GetMin().x && point.x <= GetMax().x) &&
-                   (point.y >= GetMin().y && point.y <= GetMax().y) &&
-                   (point.z >= GetMin().z && point.z <= GetMax().z);
+            return (point.X >= GetMin().X && point.X <= GetMax().X) &&
+                   (point.Y >= GetMin().Y && point.Y <= GetMax().Y) &&
+                   (point.Z >= GetMin().Z && point.Z <= GetMax().Z);
         }
 
         /**
@@ -175,15 +175,15 @@ namespace SaturnMath
         AABB Merge(const AABB& other) const
         {
             Vector3D min(
-                std::min(GetMin().x, other.GetMin().x),
-                std::min(GetMin().y, other.GetMin().y),
-                std::min(GetMin().z, other.GetMin().z)
+                std::min(GetMin().X, other.GetMin().X),
+                std::min(GetMin().Y, other.GetMin().Y),
+                std::min(GetMin().Z, other.GetMin().Z)
             );
             
             Vector3D max(
-                std::max(GetMax().x, other.GetMax().x),
-                std::max(GetMax().y, other.GetMax().y),
-                std::max(GetMax().z, other.GetMax().z)
+                std::max(GetMax().X, other.GetMax().X),
+                std::max(GetMax().Y, other.GetMax().Y),
+                std::max(GetMax().Z, other.GetMax().Z)
             );
             
             return FromMinMax(min, max);
@@ -196,9 +196,9 @@ namespace SaturnMath
          */
         bool ContainsAABB(const AABB& other) const
         {
-            return (other.GetMin().x >= GetMin().x && other.GetMax().x <= GetMax().x) &&
-                   (other.GetMin().y >= GetMin().y && other.GetMax().y <= GetMax().y) &&
-                   (other.GetMin().z >= GetMin().z && other.GetMax().z <= GetMax().z);
+            return (other.GetMin().X >= GetMin().X && other.GetMax().X <= GetMax().X) &&
+                   (other.GetMin().Y >= GetMin().Y && other.GetMax().Y <= GetMax().Y) &&
+                   (other.GetMin().Z >= GetMin().Z && other.GetMax().Z <= GetMax().Z);
         }
 
         /**
@@ -208,12 +208,12 @@ namespace SaturnMath
          */
         bool IntersectsAABB(const AABB& other) const
         {
-            return !(other.GetMin().x > GetMax().x || 
-                    other.GetMax().x < GetMin().x ||
-                    other.GetMin().y > GetMax().y ||
-                    other.GetMax().y < GetMin().y ||
-                    other.GetMin().z > GetMax().z ||
-                    other.GetMax().z < GetMin().z);
+            return !(other.GetMin().X > GetMax().X || 
+                    other.GetMax().X < GetMin().X ||
+                    other.GetMin().Y > GetMax().Y ||
+                    other.GetMax().Y < GetMin().Y ||
+                    other.GetMin().Z > GetMax().Z ||
+                    other.GetMax().Z < GetMin().Z);
         }
 
         /**
@@ -227,15 +227,15 @@ namespace SaturnMath
                 return AABB();
 
             Vector3D min(
-                std::max(GetMin().x, other.GetMin().x),
-                std::max(GetMin().y, other.GetMin().y),
-                std::max(GetMin().z, other.GetMin().z)
+                std::max(GetMin().X, other.GetMin().X),
+                std::max(GetMin().Y, other.GetMin().Y),
+                std::max(GetMin().Z, other.GetMin().Z)
             );
             
             Vector3D max(
-                std::min(GetMax().x, other.GetMax().x),
-                std::min(GetMax().y, other.GetMax().y),
-                std::min(GetMax().z, other.GetMax().z)
+                std::min(GetMax().X, other.GetMax().X),
+                std::min(GetMax().Y, other.GetMax().Y),
+                std::min(GetMax().Z, other.GetMax().Z)
             );
             
             return FromMinMax(min, max);
@@ -251,6 +251,6 @@ namespace SaturnMath
         }
 
     private:
-        Vector3D size;
+        Vector3D size; /**< Half-extents in each axis */
     };
 }

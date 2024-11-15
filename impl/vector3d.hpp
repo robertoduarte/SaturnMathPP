@@ -11,25 +11,25 @@ namespace SaturnMath
      */
     struct Vector3D : public Vector2D
     {
-        Fxp z; /**< The Z-coordinate. */
+        Fxp Z; /**< The Z-coordinate. */
 
         // Constructors
         /**
          * @brief Default constructor, initializes all coordinates to 0.
          */
-        constexpr Vector3D() : Vector2D(), z() {}
+        constexpr Vector3D() : Vector2D(), Z() {}
 
         /**
          * @brief Constructor to initialize all coordinates with the same value.
          * @param fxp The value to initialize all coordinates with.
          */
-        constexpr Vector3D(const Fxp& fxp) : Vector2D(fxp), z(fxp) {}
+        constexpr Vector3D(const Fxp& fxp) : Vector2D(fxp), Z(fxp) {}
 
         /**
          * @brief Copy constructor.
          * @param vec The Vec3 object to copy.
          */
-        constexpr Vector3D(const Vector3D& vec) : Vector2D(vec), z(vec.z) {}
+        constexpr Vector3D(const Vector3D& vec) : Vector2D(vec), Z(vec.Z) {}
 
         /**
          * @brief Constructor to initialize coordinates with specific values.
@@ -37,7 +37,7 @@ namespace SaturnMath
          * @param valueY The Y-coordinate.
          * @param valueZ The Z-coordinate.
          */
-        constexpr Vector3D(const Fxp& valueX, const Fxp& valueY, const Fxp& valueZ) : Vector2D(valueX, valueY), z(valueZ) {}
+        constexpr Vector3D(const Fxp& valueX, const Fxp& valueY, const Fxp& valueZ) : Vector2D(valueX, valueY), Z(valueZ) {}
 
         // Assignment operator
         /**
@@ -48,7 +48,7 @@ namespace SaturnMath
         constexpr Vector3D& operator=(const Vector3D& vec)
         {
             Vector2D::operator=(vec);
-            z = vec.z;
+            Z = vec.Z;
             return *this;
         }
 
@@ -58,7 +58,7 @@ namespace SaturnMath
          */
         constexpr Vector3D Abs() const
         {
-            return Vector3D(Vector2D::Abs(), z.Abs());
+            return Vector3D(Vector2D::Abs(), Z.Abs());
         }
 
         /**
@@ -72,25 +72,25 @@ namespace SaturnMath
             Vector3D result(*this);
             Fxp temp;
 
-            if (O == SortOrder::Ascending ? result.x > result.y : result.x < result.y)
+            if (O == SortOrder::Ascending ? result.X > result.Y : result.X < result.Y)
             {
-                temp = result.x;
-                result.x = result.y;
-                result.y = temp;
+                temp = result.X;
+                result.X = result.Y;
+                result.Y = temp;
             }
 
-            if (O == SortOrder::Ascending ? result.x > result.z : result.x < result.z)
+            if (O == SortOrder::Ascending ? result.X > result.Z : result.X < result.Z)
             {
-                temp = result.x;
-                result.x = result.z;
-                result.z = temp;
+                temp = result.X;
+                result.X = result.Z;
+                result.Z = temp;
             }
 
-            if (O == SortOrder::Ascending ? result.y > result.z : result.y < result.z)
+            if (O == SortOrder::Ascending ? result.Y > result.Z : result.Y < result.Z)
             {
-                temp = result.y;
-                result.y = result.z;
-                result.z = temp;
+                temp = result.Y;
+                result.Y = result.Z;
+                result.Z = temp;
             }
 
             return result;
@@ -140,9 +140,9 @@ namespace SaturnMath
         constexpr Vector3D Cross(const Vector3D& vec) const
         {
             return Vector3D(
-                z * vec.y - y * vec.z,
-                x * vec.z - z * vec.x,
-                y * vec.x - x * vec.y
+                Z * vec.Y - Y * vec.Z,
+                X * vec.Z - Z * vec.X,
+                Y * vec.X - X * vec.Y
             );
         }
 
@@ -180,7 +180,7 @@ namespace SaturnMath
         {
             Fxp length = Length<P>();
             if (length != 0)
-                return Vector3D(x / length, y / length, z / length);
+                return Vector3D(X / length, Y / length, Z / length);
             return Vector3D();
         }
 
@@ -211,7 +211,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator*(const Fxp& fxp) const
         {
-            return Vector3D(Vector2D::operator*(fxp), z * fxp);
+            return Vector3D(Vector2D::operator*(fxp), Z * fxp);
         }
 
         /**
@@ -221,7 +221,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator/(const Fxp& fxp) const
         {
-            return Vector3D(Vector2D::operator/(fxp), z / fxp);
+            return Vector3D(Vector2D::operator/(fxp), Z / fxp);
         }
 
         // Unit vector and common vector constant methods
