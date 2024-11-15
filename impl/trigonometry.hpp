@@ -76,8 +76,8 @@ namespace SaturnMath
 
         // Lookup tables with pre-calculated values
         static constexpr LookupCache<int32_t, 0x3FF, 15> sinTable[] = {
-            {Fxp(000000).value, 205556},   // Sine value for 0 degrees
-            {Fxp(098017).value, 203577},   // Sine value for 5.625 degrees
+            {Fxp(0.000000).value, 205556},   // Sine value for 0 degrees
+            {Fxp(0.098017).value, 203577},   // Sine value for 5.625 degrees
             {Fxp(0.195090).value, 199637},   // Sine value for 11.25 degrees
             {Fxp(0.290285).value, 193774},   // Sine value for 16.875 degrees
             {Fxp(0.382683).value, 186045},   // Sine value for 22.5 degrees
@@ -92,7 +92,7 @@ namespace SaturnMath
             {Fxp(0.956940).value, 50006},    // Sine value for 73.125 degrees
             {Fxp(0.980785).value, 30197},    // Sine value for 78.75 degrees
             {Fxp(0.995185).value, 10098},    // Sine value for 84.375 degrees
-            {Fxp(100000).value, -10098},   // Sine value for 90 degrees
+            {Fxp(1.000000).value, -10098},   // Sine value for 90 degrees
             {Fxp(0.995185).value, -30197},   // Sine value for 95.625 degrees
             {Fxp(0.980785).value, -50006},   // Sine value for 101.25 degrees
             {Fxp(0.956940).value, -69333},   // Sine value for 106.875 degrees
@@ -107,9 +107,9 @@ namespace SaturnMath
             {Fxp(0.382683).value, -193774},  // Sine value for 157.5 degrees
             {Fxp(0.290285).value, -199637},  // Sine value for 163.125 degrees
             {Fxp(0.195090).value, -203577},  // Sine value for 168.75 degrees
-            {Fxp(098017).value, -205556},  // Sine value for 174.375 degrees
-            {Fxp(000000).value, -205556},  // Sine value for 180 degrees
-            {Fxp(-098017).value, -203577}, // Sine value for -174.375 degrees
+            {Fxp(0.098017).value, -205556},  // Sine value for 174.375 degrees
+            {Fxp(0.000000).value, -205556},  // Sine value for 180 degrees
+            {Fxp(-0.098017).value, -203577}, // Sine value for -174.375 degrees
             {Fxp(-0.195090).value, -199637}, // Sine value for -168.75 degrees
             {Fxp(-0.290285).value, -193774}, // Sine value for -163.125 degrees
             {Fxp(-0.382683).value, -186045}, // Sine value for -157.5 degrees
@@ -124,7 +124,7 @@ namespace SaturnMath
             {Fxp(-0.956940).value, -50006},  // Sine value for -106.875 degrees
             {Fxp(-0.980785).value, -30197},  // Sine value for -101.25 degrees
             {Fxp(-0.995185).value, -10098},  // Sine value for -95.625 degrees
-            {Fxp(-100000).value, 10098},   // Sine value for -90 degrees
+            {Fxp(-1.000000).value, 10098},   // Sine value for -90 degrees
             {Fxp(-0.995185).value, 30197},   // Sine value for -84.375 degrees
             {Fxp(-0.980785).value, 50006},   // Sine value for -78.75 degrees
             {Fxp(-0.956940).value, 69333},   // Sine value for -73.125 degrees
@@ -139,24 +139,24 @@ namespace SaturnMath
             {Fxp(-0.382683).value, 193774},  // Sine value for -22.5 degrees
             {Fxp(-0.290285).value, 199637},  // Sine value for -16.875 degrees
             {Fxp(-0.195090).value, 203577},  // Sine value for -11.25 degrees
-            {Fxp(-098017).value, 205556}   // Sine value for -5.625 degrees
+            {Fxp(-0.098017).value, 205556}   // Sine value for -5.625 degrees
         };
 
         static constexpr LookupCache<int32_t, 0x3FF, 10> tanTable1[] = {
-            {Fxp(00000).value, 6454},
-            {Fxp(09849).value, 6581},
+            {Fxp(0.00000).value, 6454},
+            {Fxp(0.09849).value, 6581},
             {Fxp(0.19891).value, 6844},
             {Fxp(0.30335).value, 7265},
             {Fxp(0.41421).value, 7883},
             {Fxp(0.53451).value, 8760},
             {Fxp(0.66818).value, 9994},
             {Fxp(0.82068).value, 11751},
-            {Fxp(10000).value, 14319},
+            {Fxp(1.00000).value, 14319},
             {Fxp(1.21850).value, 18225},
             {Fxp(1.49661).value, 24527},
             {Fxp(2.41421).value, 57825},
             {Fxp(3.29656).value, 113428},
-            {Fxp(52734).value, 335926}};
+            {Fxp(5.02734).value, 335926}};
 
         static constexpr LookupCache<int32_t, 0x0FF, 8> tanTable2[] = {
             {Fxp(10.15317).value, 223051},
