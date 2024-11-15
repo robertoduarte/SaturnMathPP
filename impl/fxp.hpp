@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <concepts>
+#include "precision.hpp"
 
 namespace SaturnMath
 {
@@ -200,91 +201,68 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Precise square root calculation.
-         * 
-         * Uses bit-by-bit calculation for maximum precision:
-         * - 31 iterations for full range
-         * - No approximation errors (beyond fixed-point limits)
-         * - Handles full 16.16 range correctly
-         * 
-         * @return √x in fixed-point format
-         * @note Slower but more accurate than FastSqrt()
+         * @brief Calculate square root with configurable precision
+         * @tparam P Precision level for calculation
+         * @return Square root with specified precision
          */
+        template<Precision P = Precision::Standard>
         constexpr Fxp Sqrt() const
         {
-            uint32_t remainder = static_cast<uint32_t>(value);
-            uint32_t root = 0;
-            uint32_t bit = 0x40000000; // Set the initial bit to the highest bit for 32-bit integers
-
-            while (bit > 0x40)
+            if constexpr (P == Precision::Standard)
             {
-                // Try the current bit in the root calculation
-                uint32_t trial = root + bit;
+                uint32_t remainder = static_cast<uint32_t>(value);
+                uint32_t root = 0;
+                uint32_t bit = 0x40000000;
 
-                if (remainder >= trial)
+                while (bit > 0x40)
                 {
-                    remainder -= trial;
-                    root = trial + bit;
+                    uint32_t trial = root + bit;
+                    if (remainder >= trial)
+                    {
+                        remainder -= trial;
+                        root = trial + bit;
+                    }
+                    remainder <<= 1;
+                    bit >>= 1;
                 }
 
-                // Shift the remainder and decrease the bit for the next iteration
-                remainder <<= 1;
-                bit >>= 1;
+                root >>= 8;
+                return static_cast<int32_t>(root);
             }
-
-            root >>= 8; // Adjust the result
-
-            return static_cast<int32_t>(root);
-        }
-
-        /**
-         * @brief Fast approximate square root.
-         * 
-         * Uses binary search approximation:
-         * - ~6% maximum error
-         * - Special handling for x < 1
-         * - Much faster than precise Sqrt()
-         * 
-         * Best for:
-         * - Games (physics, vectors)
-         * - Graphics (distance calculations)
-         * - Any case where speed > accuracy
-         * 
-         * @return Approximate √x in fixed-point
-         */
-        constexpr Fxp FastSqrt() const
-        {
-            int32_t baseEstimation = 0;
-            int32_t estimation = value;
-
-            if (estimation > 0)
+            else // Precision::Fast or Precision::Turbo
             {
-                if (estimation < 65536)
-                {
-                    baseEstimation = 1 << 7;
-                    estimation <<= 7;
+                int32_t baseEstimation = 0;
+                int32_t estimation = value;
 
-                    uint32_t iterationValue = value >> 1;
-                    while (iterationValue)
+                if (estimation > 0)
+                {
+                    if (estimation < 65536)
                     {
-                        estimation >>= 1;
-                        baseEstimation <<= 1;
-                        iterationValue >>= 2;
+                        baseEstimation = 1 << 7;
+                        estimation <<= 7;
+
+                        uint32_t iterationValue = value >> 1;
+                        while (iterationValue)
+                        {
+                            estimation >>= 1;
+                            baseEstimation <<= 1;
+                            iterationValue >>= 2;
+                        }
+                    }
+                    else
+                    {
+                        baseEstimation = (1 << 14);
+
+                        while (baseEstimation < estimation)
+                        {
+                            estimation >>= 1;
+                            baseEstimation <<= 1;
+                        }
                     }
                 }
-                else
-                {
-                    baseEstimation = (1 << 14);
 
-                    while (baseEstimation < estimation)
-                    {
-                        estimation >>= 1;
-                        baseEstimation <<= 1;
-                    }
-                }
+                return baseEstimation + estimation;
             }
-
-            return baseEstimation + estimation;
         }
 
         /**

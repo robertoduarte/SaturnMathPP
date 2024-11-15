@@ -1,7 +1,8 @@
-// impl/vector2d.hpp
 #pragma once
 
 #include "fxp.hpp"
+#include "precision.hpp"
+#include "sort_order.hpp"
 
 namespace SaturnMath
 {
@@ -62,12 +63,21 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Sort coordinates in ascending order.
-         * @return A new Vec2 object with sorted coordinates.
+         * @brief Sort coordinates in specified order
+         * @tparam O Sort order (Ascending or Descending)
+         * @return A new Vec2 object with sorted coordinates
          */
-        constexpr Vector2D Sorted() const
+        template <SortOrder O = SortOrder::Ascending>
+        constexpr Vector2D Sort() const
         {
-            return Vector2D(x < y ? x : y, x < y ? y : x);
+            Vector2D result(*this);
+            if (O == SortOrder::Ascending ? result.x > result.y : result.x < result.y)
+            {
+                Fxp temp = result.x;
+                result.x = result.y;
+                result.y = temp;
+            }
+            return result;
         }
 
         /**
@@ -106,81 +116,40 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Calculate the magnitude (length) of the vector.
-         * Provides standard precision, ideal for non-performance-critical calculations.
-         * @return The magnitude of the vector.
+         * @brief Calculate the length of the vector
+         * @tparam P Precision level for calculation
+         * @return Length of the vector
          */
-        constexpr Fxp Magnitude() const
+        template<Precision P = Precision::Standard>
+        constexpr Fxp Length() const
         {
-            return Dot(*this).Sqrt();
+            if constexpr (P == Precision::Turbo)
+            {
+                // Use alpha-beta coefficients for fastest approximation
+                constexpr Vector2D alphaBeta(
+                    0.96043387010342,    // Alpha
+                    0.39782473475533     // Beta
+                );
+                return Abs().Sort<SortOrder::Descending>().Dot(alphaBeta);
+            }
+            else
+            {
+                return Dot(*this).Sqrt<P>();
+            }
         }
 
         /**
-         * @brief Calculate the magnitude using fast approximation.
-         * Good for real-time calculations where precision isn't critical.
-         * @return The approximate magnitude of the vector.
+         * @brief Normalize the vector
+         * @tparam P Precision level for calculation
+         * @return Normalized vector
          */
-        constexpr Fxp FastMagnitude() const
-        {
-            return Dot(*this).FastSqrt();
-        }
-
-        /**
-         * @brief Calculate the magnitude using fastest approximation.
-         * Best for particle effects and non-critical calculations.
-         * Uses alpha-beta coefficient method.
-         * @return The approximate magnitude of the vector.
-         */
-        constexpr Fxp TurboMagnitude() const
-        {
-            constexpr Vector2D alphaBeta(
-                0.96043387010342,    // Alpha
-                0.39782473475533     // Beta
-            );
-
-            return Abs().Sorted().Dot(alphaBeta);
-        }
-
-        /**
-         * @brief Normalize the vector using standard precision.
-         * Ideal for important calculations requiring accuracy.
-         * @return A normalized Vec2 object.
-         */
+        template<Precision P = Precision::Standard>
         constexpr Vector2D Normalize() const
         {
-            Fxp magnitude = Magnitude();
-            if (magnitude != 0)
-                return Vector2D(x / magnitude, y / magnitude);
-            else
-                return Vector2D();
-        }
-
-        /**
-         * @brief Normalize the vector using fast approximation.
-         * Good for real-time calculations where precision isn't critical.
-         * @return A normalized Vec2 object.
-         */
-        constexpr Vector2D FastNormalize() const
-        {
-            Fxp magnitude = FastMagnitude();
-            if (magnitude != 0)
-                return Vector2D(x / magnitude, y / magnitude);
-            else
-                return Vector2D();
-        }
-
-        /**
-         * @brief Normalize the vector using fastest approximation.
-         * Best for particle effects and non-critical calculations.
-         * @return A normalized Vec2 object.
-         */
-        constexpr Vector2D TurboNormalize() const
-        {
-            Fxp magnitude = TurboMagnitude();
-            if (magnitude != 0)
-                return Vector2D(x / magnitude, y / magnitude);
-            else
-                return Vector2D();
+            Fxp length = Length<P>();
+            if (length != 0)
+                return Vector2D(x / length, y / length);
+            return Vector2D();
         }
 
         // Unit vectors and directional methods

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "vector2d.hpp"
+#include "precision.hpp"
+#include "sort_order.hpp"
 
 namespace SaturnMath
 {
@@ -50,7 +52,6 @@ namespace SaturnMath
             return *this;
         }
 
-        // Other member functions
         /**
          * @brief Calculate the absolute values of each coordinate.
          * @return A new Vec3 object with absolute values.
@@ -65,27 +66,27 @@ namespace SaturnMath
          * @tparam Ascending If true, sort in ascending order; otherwise, in descending order.
          * @return A new Vec3 object with sorted coordinates.
          */
-        template <bool Ascending = true>
+        template <SortOrder O = SortOrder::Ascending>
         constexpr Vector3D Sort()
         {
             Vector3D result(*this);
             Fxp temp;
 
-            if (Ascending ? result.x > result.y : result.x < result.y)
+            if (O == SortOrder::Ascending ? result.x > result.y : result.x < result.y)
             {
                 temp = result.x;
                 result.x = result.y;
                 result.y = temp;
             }
 
-            if (Ascending ? result.x > result.z : result.x < result.z)
+            if (O == SortOrder::Ascending ? result.x > result.z : result.x < result.z)
             {
                 temp = result.x;
                 result.x = result.z;
                 result.z = temp;
             }
 
-            if (Ascending ? result.y > result.z : result.y < result.z)
+            if (O == SortOrder::Ascending ? result.y > result.z : result.y < result.z)
             {
                 temp = result.y;
                 result.y = result.z;
@@ -145,6 +146,63 @@ namespace SaturnMath
             );
         }
 
+        /**
+         * @brief Calculate the length of the vector
+         * @tparam P Precision level for calculation
+         * @return Length of the vector
+         */
+        template<Precision P = Precision::Standard>
+        constexpr Fxp Length() const
+        {
+            if constexpr (P == Precision::Turbo)
+            {
+                // Use alpha-beta-gamma coefficients for fastest approximation
+                constexpr Vector3D alphaBetaGamma(
+                    0.9398086351723256,  // Alpha
+                    0.38928148272372454, // Beta
+                    0.2987061876143797   // Gamma
+                );
+                return Abs().Sort<SortOrder::Descending>().Dot(alphaBetaGamma);
+            }
+            else
+            {
+                return Dot(*this).Sqrt<P>();
+            }
+        }
+
+        /**
+         * @brief Normalize the vector
+         * @tparam P Precision level for calculation
+         * @return Normalized vector
+         */
+        template<Precision P = Precision::Standard>
+        constexpr Vector3D Normalize() const
+        {
+            Fxp length = Length<P>();
+            if (length != 0)
+                return Vector3D(x / length, y / length, z / length);
+            return Vector3D();
+        }
+
+        /**
+         * @brief Calculate normal vector for a triangle
+         * @tparam P Precision level for calculation
+         * @param vertexA First vertex of the triangle
+         * @param vertexB Second vertex of the triangle
+         * @param vertexC Third vertex of the triangle
+         * @return Normalized normal vector
+         */
+        template<Precision P = Precision::Standard>
+        static Vector3D CalcNormal(
+            const Vector3D& vertexA,
+            const Vector3D& vertexB,
+            const Vector3D& vertexC)
+        {
+            const Vector3D edge1 = vertexB - vertexA;
+            const Vector3D edge2 = vertexC - vertexA;
+            return edge1.Cross(edge2).Normalize<P>();
+        }
+
         // Scalar multiplication and division
         /**
          * @brief Multiply each coordinate by a scalar value.
@@ -164,143 +222,6 @@ namespace SaturnMath
         constexpr Vector3D operator/(const Fxp& fxp) const
         {
             return Vector3D(Vector2D::operator/(fxp), z / fxp);
-        }
-
-        // Vector length calculation
-        /**
-         * @brief Calculate the length of the vector represented by this Vec3 object.
-         * @return The length as an Fxp value.
-         */
-        constexpr Fxp CalcLength() const
-        {
-            return Dot(*this).Sqrt();
-        }
-
-        /**
-         * @brief Calculate the length of the vector using fast approximation.
-         * Good for real-time calculations where precision isn't critical.
-         * @return The approximate length as an Fxp value.
-         */
-        constexpr Fxp FastCalcLength() const
-        {
-            return Dot(*this).FastSqrt();
-        }
-
-        /**
-         * @brief Calculate the length of the vector using fastest approximation.
-         * Best for particle effects and non-critical calculations.
-         * @return The approximate length as an Fxp value.
-         */
-        constexpr Fxp TurboCalcLength() const
-        {
-            constexpr Vector3D alphaBetaGama =
-                Vector3D
-                (
-                    0.9398086351723256, // Alpha
-                    0.38928148272372454, // Beta
-                    0.2987061876143797   // Gamma
-                );
-
-            return Abs().Sort<false>().Dot(alphaBetaGama);
-        }
-
-        // Vector normalization
-        /**
-         * @brief Normalize the vector using standard precision.
-         * Ideal for important calculations requiring accuracy.
-         * @return A normalized Vec3 object.
-         */
-        constexpr Vector3D Normalize() const
-        {
-            Fxp length = CalcLength();
-            if (length != 0)
-                return Vector3D(x / length, y / length, z / length);
-            else
-                return Vector3D();
-        }
-
-        /**
-         * @brief Normalize the vector using fast approximation.
-         * Uses reciprocal approximation to avoid division.
-         * Good for real-time updates where slight imprecision is acceptable.
-         * @return A normalized Vec3 object.
-         */
-        constexpr Vector3D FastNormalize() const
-        {
-            Fxp length = FastCalcLength();
-            if (length != 0)
-                return Vector3D(x / length, y / length, z / length);
-            else
-                return Vector3D();
-        }
-
-        /**
-         * @brief Normalize the vector using fastest approximation.
-         * Uses alpha/beta/gamma coefficients and no division.
-         * Best for particle effects and non-critical calculations.
-         * @return A normalized Vec3 object.
-         */
-        constexpr Vector3D TurboNormalize() const
-        {
-            Fxp length = TurboCalcLength();
-            if (length != 0)
-                return Vector3D(x / length, y / length, z / length);
-            else
-                return Vector3D();
-        }
-
-        /**
-         * @brief Calculate normal vector with standard precision.
-         * Ideal for static geometry and important surface calculations.
-         * @param vertexA First vertex of the triangle.
-         * @param vertexB Second vertex of the triangle.
-         * @param vertexC Third vertex of the triangle.
-         * @return Normalized normal vector.
-         */
-        static Vector3D CalcNormal(
-            const Vector3D& vertexA,
-            const Vector3D& vertexB,
-            const Vector3D& vertexC)
-        {
-            const Vector3D edge1 = vertexB - vertexA;
-            const Vector3D edge2 = vertexC - vertexA;
-            return edge1.Cross(edge2).Normalize();
-        }
-
-        /**
-         * @brief Calculate normal vector with fast approximation.
-         * Good for dynamic geometry and real-time mesh deformation.
-         * @param vertexA First vertex of the triangle.
-         * @param vertexB Second vertex of the triangle.
-         * @param vertexC Third vertex of the triangle.
-         * @return Fast-normalized normal vector.
-         */
-        static Vector3D FastCalcNormal(
-            const Vector3D& vertexA,
-            const Vector3D& vertexB,
-            const Vector3D& vertexC)
-        {
-            const Vector3D edge1 = vertexB - vertexA;
-            const Vector3D edge2 = vertexC - vertexA;
-            return edge1.Cross(edge2).FastNormalize();
-        }
-
-        /**
-         * @brief Calculate normal vector with fastest approximation.
-         * Best for particle effects or temporary visual effects.
-         * @param vertexA First vertex of the triangle.
-         * @param vertexB Second vertex of the triangle.
-         * @param vertexC Third vertex of the triangle.
-         * @return Turbo-normalized normal vector.
-         */
-        static Vector3D TurboCalcNormal(
-            const Vector3D& vertexA,
-            const Vector3D& vertexB,
-            const Vector3D& vertexC)
-        {
-            const Vector3D edge1 = vertexB - vertexA;
-            const Vector3D edge2 = vertexC - vertexA;
-            return edge1.Cross(edge2).TurboNormalize();
         }
 
         // Unit vector and common vector constant methods

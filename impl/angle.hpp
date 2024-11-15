@@ -62,22 +62,18 @@ namespace SaturnMath
 
         /**
          * @name Angle Conversions
-         * Compile-time conversion functions between different angle representations.
+         * Functions for converting between different angle representations.
          * @{
          */
         /**
-         * @brief Converts radians to angle at compile time.
-         * @param radians Angle in radians
+         * @brief Creates angle from radians at compile time.
+         * @param radians Angle in radians as floating-point value
          * @return Angle object
          */
-        static consteval Angle RadiansToAngle(double radians) { return Angle(static_cast<uint16_t>(Fxp(radians / (2 * RadPi)).Value)); }
-
-        /**
-         * @brief Converts degrees to angle at compile time.
-         * @param degrees Angle in degrees
-         * @return Angle object
-         */
-        static consteval Angle DegreesToAngle(double degrees) { return Angle(static_cast<uint16_t>(Fxp(degrees / 360).Value)); }
+        static consteval Angle FromRadians(double radians)
+        {
+            return Angle(static_cast<uint16_t>(Fxp(radians / (2 * RadPi)).Value));
+        }
 
         /**
          * @brief Creates angle from radians.
@@ -86,7 +82,17 @@ namespace SaturnMath
          */
         static constexpr Angle FromRadians(const Fxp& radianTurns)
         {
-            return Angle(static_cast<uint16_t>(radianTurns.value));
+            return Angle(static_cast<uint16_t>((radianTurns / (2 * RadPi)).Value));
+        }
+
+        /**
+         * @brief Creates angle from degrees at compile time.
+         * @param degrees Angle in degrees as floating-point value
+         * @return Angle object
+         */
+        static consteval Angle FromDegrees(double degrees)
+        {
+            return Angle(static_cast<uint16_t>(Fxp(degrees / 360).Value));
         }
 
         /**
@@ -96,7 +102,7 @@ namespace SaturnMath
          */
         static constexpr Angle FromDegrees(const Fxp& degreeTurns)
         {
-            return Angle(static_cast<uint16_t>(degreeTurns.value));
+            return Angle(static_cast<uint16_t>((degreeTurns / 360).Value));
         }
         /** @} */
 

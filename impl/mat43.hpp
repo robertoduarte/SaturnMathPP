@@ -137,334 +137,156 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Creates view matrix for camera with standard precision.
-         * Ideal for initial camera setup and important viewpoints.
-         * @param eye Camera position.
-         * @param target Point camera is looking at.
-         * @param up World up vector (usually 0,1,0).
-         * @return View transformation matrix.
+         * @brief Create a billboard matrix that always faces the camera
+         * @tparam P Precision level for calculation
+         * @param position The position of the billboard
+         * @param cameraPosition The position of the camera
+         * @param up The up vector (usually Vector3D::UnitY())
+         * @return The billboard matrix
          */
+        template<Precision P = Precision::Standard>
+        static Matrix43 CreateBillboard(
+            const Vector3D& position,
+            const Vector3D& cameraPosition,
+            const Vector3D& up = Vector3D::UnitY())
+        {
+            // Calculate the look vector from billboard to camera
+            Vector3D look = (cameraPosition - position).Normalize<P>();
+            
+            // Calculate right vector as cross product of up and look
+            Vector3D right = up.Cross(look).Normalize<P>();
+            
+            // Calculate actual up vector as cross product of look and right
+            Vector3D actualUp = look.Cross(right);
+
+            // Construct the matrix
+            return Matrix43(
+                right.x, right.y, right.z,
+                actualUp.x, actualUp.y, actualUp.z,
+                look.x, look.y, look.z,
+                position.x, position.y, position.z
+            );
+        }
+
+        /**
+         * @brief Create a look-at matrix for camera positioning
+         * @tparam P Precision level for calculation
+         * @param eye The position of the camera
+         * @param target The point to look at
+         * @param up The up vector (usually Vector3D::UnitY())
+         * @return The look-at matrix
+         */
+        template<Precision P = Precision::Standard>
         static Matrix43 CreateLookAt(
             const Vector3D& eye,
             const Vector3D& target,
-            const Vector3D& up)
+            const Vector3D& up = Vector3D::UnitY())
         {
-            const Vector3D zaxis = (eye - target).Normalize();  // Forward
-            const Vector3D xaxis = up.Cross(zaxis).Normalize(); // Right
-            const Vector3D yaxis = zaxis.Cross(xaxis);          // Up (already normalized)
-
-            return Matrix43(
-                xaxis,
-                yaxis,
-                zaxis,
-                Vector3D(
-                    -xaxis.Dot(eye),
-                    -yaxis.Dot(eye),
-                    -zaxis.Dot(eye)
-                )
-            );
-        }
-
-        /**
-         * @brief Creates view matrix for camera with fast approximation.
-         * Good for dynamic camera movement where slight imprecision is acceptable.
-         * @param eye Camera position.
-         * @param target Point camera is looking at.
-         * @param up World up vector (usually 0,1,0).
-         * @return View transformation matrix.
-         */
-        static Matrix43 FastCreateLookAt(
-            const Vector3D& eye,
-            const Vector3D& target,
-            const Vector3D& up)
-        {
-            const Vector3D zaxis = (eye - target).FastNormalize();  // Forward
-            const Vector3D xaxis = up.Cross(zaxis).FastNormalize(); // Right
-            const Vector3D yaxis = zaxis.Cross(xaxis);              // Up (already normalized)
-
-            return Matrix43(
-                xaxis,
-                yaxis,
-                zaxis,
-                Vector3D(
-                    -xaxis.Dot(eye),
-                    -yaxis.Dot(eye),
-                    -zaxis.Dot(eye)
-                )
-            );
-        }
-
-        /**
-         * @brief Creates view matrix for camera with fastest approximation.
-         * Best for temporary views or rapid camera updates.
-         * @param eye Camera position.
-         * @param target Point camera is looking at.
-         * @param up World up vector (usually 0,1,0).
-         * @return View transformation matrix.
-         */
-        static Matrix43 TurboCreateLookAt(
-            const Vector3D& eye,
-            const Vector3D& target,
-            const Vector3D& up)
-        {
-            const Vector3D zaxis = (eye - target).TurboNormalize();  // Forward
-            const Vector3D xaxis = up.Cross(zaxis).TurboNormalize(); // Right
-            const Vector3D yaxis = zaxis.Cross(xaxis);               // Up (already normalized)
-
-            return Matrix43(
-                xaxis,
-                yaxis,
-                zaxis,
-                Vector3D(
-                    -xaxis.Dot(eye),
-                    -yaxis.Dot(eye),
-                    -zaxis.Dot(eye)
-                )
-            );
-        }
-
-        /**
-         * @brief Creates billboard matrix with standard precision.
-         * Ideal for important UI elements or precise sprite positioning.
-         * @param position Center position of the billboard.
-         * @param cameraPos Position of the viewing camera.
-         * @param up World up vector (usually 0,1,0).
-         * @return Billboard transformation matrix.
-         */
-        static Matrix43 CreateBillboard(
-            const Vector3D& position,
-            const Vector3D& cameraPos,
-            const Vector3D& up = Vector3D(0, 1, 0))
-        {
-            const Vector3D look = (cameraPos - position).Normalize();
-            const Vector3D right = up.Cross(look).Normalize();
-            const Vector3D upVec = look.Cross(right);  // Already normalized
-
-            return Matrix43(
-                right,
-                upVec,
-                look,
-                position
-            );
-        }
-
-        /**
-         * @brief Creates billboard matrix with fast approximation.
-         * Good for particle effects and dynamic UI elements.
-         * @param position Center position of the billboard.
-         * @param cameraPos Position of the viewing camera.
-         * @param up World up vector (usually 0,1,0).
-         * @return Billboard transformation matrix.
-         */
-        static Matrix43 FastCreateBillboard(
-            const Vector3D& position,
-            const Vector3D& cameraPos,
-            const Vector3D& up = Vector3D(0, 1, 0))
-        {
-            const Vector3D look = (cameraPos - position).FastNormalize();
-            const Vector3D right = up.Cross(look).FastNormalize();
-            const Vector3D upVec = look.Cross(right);  // Already normalized
-
-            return Matrix43(
-                right,
-                upVec,
-                look,
-                position
-            );
-        }
-
-        /**
-         * @brief Creates billboard matrix with fastest approximation.
-         * Best for numerous particles or temporary effects.
-         * @param position Center position of the billboard.
-         * @param cameraPos Position of the viewing camera.
-         * @param up World up vector (usually 0,1,0).
-         * @return Billboard transformation matrix.
-         */
-        static Matrix43 TurboCreateBillboard(
-            const Vector3D& position,
-            const Vector3D& cameraPos,
-            const Vector3D& up = Vector3D(0, 1, 0))
-        {
-            const Vector3D look = (cameraPos - position).TurboNormalize();
-            const Vector3D right = up.Cross(look).TurboNormalize();
-            const Vector3D upVec = look.Cross(right);  // Already normalized
-
-            return Matrix43(
-                right,
-                upVec,
-                look,
-                position
-            );
-        }
-
-        /**
-         * @brief Extracts scale, rotation, and translation components.
-         * Useful for animation, physics, and transformation debugging.
-         * Note: Assumes standard TRS (Translation * Rotation * Scale) order.
-         * @param scale Output scale vector.
-         * @param rotation Output Euler angles (X=pitch, Y=yaw, Z=roll).
-         * @param translation Output position vector.
-         */
-        void Decompose(
-            Vector3D& scale,
-            Vector3D& rotation,
-            Vector3D& translation) const
-        {
-            // Extract translation (always safe)
-            translation = Row3;
-
-            // Extract scale (length of axes)
-            scale.x = Vector3D(Row0.x, Row0.y, Row0.z).Length();
-            scale.y = Vector3D(Row1.x, Row1.y, Row1.z).Length();
-            scale.z = Vector3D(Row2.x, Row2.y, Row2.z).Length();
-
-            // Remove scale from rotation matrix
-            Matrix33 rotMat(
-                Vector3D(Row0.x / scale.x, Row0.y / scale.x, Row0.z / scale.x),
-                Vector3D(Row1.x / scale.y, Row1.y / scale.y, Row1.z / scale.y),
-                Vector3D(Row2.x / scale.z, Row2.y / scale.z, Row2.z / scale.z)
-            );
-
-            // Extract Euler angles using only Atan2
-            // This method avoids ArcSin and is more numerically stable
+            // Calculate the look vector
+            Vector3D look = (target - eye).Normalize<P>();
             
-            // For Y (yaw), we can use atan2(x,z) from the rotated x-axis
-            rotation.y = Trigonometry::Atan2(rotMat.Row0.x, rotMat.Row0.z);
+            // Calculate right vector as cross product of up and look
+            Vector3D right = up.Cross(look).Normalize<P>();
+            
+            // Calculate actual up vector as cross product of look and right
+            Vector3D actualUp = look.Cross(right);
 
-            // For X (pitch), use atan2 of y component and length of xz projection
-            Fxp xzLen = Trigonometry::Sqrt(rotMat.Row0.x * rotMat.Row0.x + rotMat.Row0.z * rotMat.Row0.z);
-            rotation.x = Trigonometry::Atan2(rotMat.Row0.y, xzLen);
-
-            // Use a small threshold for gimbal lock detection (1/1024)
-            static constexpr Fxp threshold = Fxp(1) >> 10;
-            if (xzLen > threshold)
-            {
-                rotation.z = Trigonometry::Atan2(rotMat.Row1.x * rotMat.Row0.z - rotMat.Row1.z * rotMat.Row0.x,
-                                               rotMat.Row2.x * rotMat.Row0.z - rotMat.Row2.z * rotMat.Row0.x);
-            }
-            else
-            {
-                // Near gimbal lock: simplified roll calculation
-                rotation.z = Trigonometry::Atan2(-rotMat.Row2.x, rotMat.Row1.x);
-            }
-        }
-
-        /**
-         * @brief Fast but less accurate matrix decomposition.
-         * Ideal for real-time updates where speed is more important than precision.
-         * @param scale Output scale vector.
-         * @param rotation Output Euler angles (X=pitch, Y=yaw, Z=roll).
-         * @param translation Output position vector.
-         */
-        void FastDecompose(
-            Vector3D& scale,
-            Vector3D& rotation,
-            Vector3D& translation) const
-        {
-            // Extract translation (always safe)
-            translation = Row3;
-
-            // Extract scale using fast square root
-            scale.x = Vector3D(Row0.x, Row0.y, Row0.z).FastLength();
-            scale.y = Vector3D(Row1.x, Row1.y, Row1.z).FastLength();
-            scale.z = Vector3D(Row2.x, Row2.y, Row2.z).FastLength();
-
-            // Remove scale from rotation matrix
-            Matrix33 rotMat(
-                Vector3D(Row0.x / scale.x, Row0.y / scale.x, Row0.z / scale.x),
-                Vector3D(Row1.x / scale.y, Row1.y / scale.y, Row1.z / scale.y),
-                Vector3D(Row2.x / scale.z, Row2.y / scale.z, Row2.z / scale.z)
-            );
-
-            // Extract Euler angles using only Atan2
-            rotation.y = Trigonometry::Atan2(rotMat.Row0.x, rotMat.Row0.z);
-
-            // Use FastSqrt for xz length
-            Fxp xzLen = Trigonometry::FastSqrt(rotMat.Row0.x * rotMat.Row0.x + rotMat.Row0.z * rotMat.Row0.z);
-            rotation.x = Trigonometry::Atan2(rotMat.Row0.y, xzLen);
-
-            // Use a small threshold for gimbal lock detection (1/1024)
-            static constexpr Fxp threshold = Fxp(1) >> 10;
-            if (xzLen > threshold)
-            {
-                rotation.z = Trigonometry::Atan2(rotMat.Row1.x * rotMat.Row0.z - rotMat.Row1.z * rotMat.Row0.x,
-                                               rotMat.Row2.x * rotMat.Row0.z - rotMat.Row2.z * rotMat.Row0.x);
-            }
-            else
-            {
-                rotation.z = Trigonometry::Atan2(-rotMat.Row2.x, rotMat.Row1.x);
-            }
-        }
-
-        /**
-         * @brief Creates billboard matrix with fast approximations.
-         * Ideal for particle effects and UI elements where precision isn't critical.
-         * @param position Center position of the billboard.
-         * @param cameraPos Position of the viewing camera.
-         * @param up World up vector (usually 0,1,0).
-         * @return Billboard transformation matrix.
-         */
-        static Matrix43 CreateFastBillboard(
-            const Vector3D& position,
-            const Vector3D& cameraPos,
-            const Vector3D& up = Vector3D(0, 1, 0))
-        {
-            const Vector3D look = (cameraPos - position).FastNormalize();
-            const Vector3D right = up.Cross(look).FastNormalize();
-            const Vector3D upVec = look.Cross(right);  // No need to normalize, will be perpendicular
-
+            // Construct the view matrix
             return Matrix43(
-                right,
-                upVec,
-                look,
-                position
+                right.x, right.y, right.z,
+                actualUp.x, actualUp.y, actualUp.z,
+                look.x, look.y, look.z,
+                eye.x, eye.y, eye.z
             );
         }
 
         /**
-         * @brief Creates transformation matrix using fast approximations.
-         * Ideal for non-critical real-time updates.
-         * @param translation Position offset.
-         * @param rotation Rotation angles (X,Y,Z).
-         * @param scale Scale factors (default: 1,1,1).
-         * @return Combined transformation matrix.
+         * @brief Creates transformation matrix
+         * @tparam P Precision level for calculation (Turbo not supported)
+         * @param translation Position offset
+         * @param rotation Rotation angles (X,Y,Z)
+         * @param scale Scale factors (default: 1,1,1)
+         * @return Transformation matrix
          */
-        static Matrix43 CreateFastTransform(
-            const Vector3D& translation,
-            const Vector3D& rotation,
-            const Vector3D& scale = Vector3D(1, 1, 1))
-        {
-            // Use existing rotation methods since they're already optimized
-            Matrix43 result = Matrix43::Identity();
-            result.Scale(scale);
-            result.RotateX(rotation.x);
-            result.RotateY(rotation.y);
-            result.RotateZ(rotation.z);
-            result.Translate(translation);
-            return result;
-        }
-
-        /**
-         * @brief Creates matrix from individual transforms.
-         * Applies in TRS order: Translation * Rotation * Scale
-         * @param translation Position offset.
-         * @param rotation Rotation angles (X,Y,Z).
-         * @param scale Scale factors (default: 1,1,1).
-         * @return Combined transformation matrix.
-         */
+        template<Precision P = Precision::Standard>
         static Matrix43 CreateTransform(
             const Vector3D& translation,
             const Vector3D& rotation,
             const Vector3D& scale = Vector3D(1, 1, 1))
         {
-            Matrix43 result = Matrix43::Identity();
-            result.Scale(scale);
-            result.RotateX(rotation.x);
-            result.RotateY(rotation.y);
-            result.RotateZ(rotation.z);
-            result.Translate(translation);
+            static_assert(P != Precision::Turbo, "Turbo precision is not supported for CreateTransform");
+
+            const Fxp cosX = Trigonometry::Cos(rotation.x);
+            const Fxp sinX = Trigonometry::Sin(rotation.x);
+            const Fxp cosY = Trigonometry::Cos(rotation.y);
+            const Fxp sinY = Trigonometry::Sin(rotation.y);
+            const Fxp cosZ = Trigonometry::Cos(rotation.z);
+            const Fxp sinZ = Trigonometry::Sin(rotation.z);
+
+            // Create rotation matrix
+            Matrix43 result(
+                (cosY * cosZ) * scale.x,
+                (cosY * sinZ) * scale.x,
+                (-sinY) * scale.x,
+                ((sinX * sinY * cosZ) - (cosX * sinZ)) * scale.y,
+                ((sinX * sinY * sinZ) + (cosX * cosZ)) * scale.y,
+                (sinX * cosY) * scale.y,
+                ((cosX * sinY * cosZ) + (sinX * sinZ)) * scale.z,
+                ((cosX * sinY * sinZ) - (sinX * cosZ)) * scale.z,
+                (cosX * cosY) * scale.z,
+                translation.x,
+                translation.y,
+                translation.z
+            );
+
             return result;
+        }
+
+        /**
+         * @brief Extracts scale, rotation, and translation components
+         * @tparam P Precision level for calculation (Turbo not supported)
+         * @param scale Output scale vector
+         * @param rotation Output Euler angles (X=pitch, Y=yaw, Z=roll)
+         * @param translation Output translation vector
+         */
+        template<Precision P = Precision::Standard>
+        void Decompose(
+            Vector3D& scale,
+            Vector3D& rotation,
+            Vector3D& translation) const
+        {
+            static_assert(P != Precision::Turbo, "Turbo precision is not supported for Decompose");
+
+            // Extract translation
+            translation = Row3;
+
+            // Extract scale
+            scale.x = Vector3D(Row0.x, Row0.y, Row0.z).Length<P>();
+            scale.y = Vector3D(Row1.x, Row1.y, Row1.z).Length<P>();
+            scale.z = Vector3D(Row2.x, Row2.y, Row2.z).Length<P>();
+
+            // Create rotation matrix by removing scale
+            Matrix33 rotMat(
+                Row0.x / scale.x, Row0.y / scale.x, Row0.z / scale.x,
+                Row1.x / scale.y, Row1.y / scale.y, Row1.z / scale.y,
+                Row2.x / scale.z, Row2.y / scale.z, Row2.z / scale.z
+            );
+
+            // Extract rotation angles (Euler angles in XYZ order)
+            rotation.y = Trigonometry::Asin(-rotMat.Row1.z);
+
+            // Check for gimbal lock
+            if (rotMat.Row1.z < 0.999999 && rotMat.Row1.z > -0.999999)
+            {
+                rotation.x = Trigonometry::Atan2(rotMat.Row2.z, rotMat.Row3.z);
+                rotation.z = Trigonometry::Atan2(rotMat.Row1.y, rotMat.Row1.x);
+            }
+            else
+            {
+                // Gimbal lock has occurred
+                rotation.x = 0;
+                rotation.z = Trigonometry::Atan2(-rotMat.Row2.x, rotMat.Row2.y);
+            }
         }
 
         /**
