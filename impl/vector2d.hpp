@@ -104,23 +104,83 @@ namespace SaturnMath
                 return aux1;
             }
         }
+
         /**
          * @brief Calculate the magnitude (length) of the vector.
+         * Provides standard precision, ideal for non-performance-critical calculations.
          * @return The magnitude of the vector.
          */
         constexpr Fxp Magnitude() const
         {
-            return (x * x + y * y).Sqrt();
+            return Dot(*this).Sqrt();
         }
 
         /**
-         * @brief Normalize the vector to have a length of 1.
-         * @return A new Vec2 object with the normalized vector.
+         * @brief Calculate the magnitude using fast approximation.
+         * Good for real-time calculations where precision isn't critical.
+         * @return The approximate magnitude of the vector.
+         */
+        constexpr Fxp FastMagnitude() const
+        {
+            return Dot(*this).FastSqrt();
+        }
+
+        /**
+         * @brief Calculate the magnitude using fastest approximation.
+         * Best for particle effects and non-critical calculations.
+         * Uses alpha-beta coefficient method.
+         * @return The approximate magnitude of the vector.
+         */
+        constexpr Fxp TurboMagnitude() const
+        {
+            constexpr Vector2D alphaBeta(
+                0.96043387010342,    // Alpha
+                0.39782473475533     // Beta
+            );
+
+            return Abs().Sorted().Dot(alphaBeta);
+        }
+
+        /**
+         * @brief Normalize the vector using standard precision.
+         * Ideal for important calculations requiring accuracy.
+         * @return A normalized Vec2 object.
          */
         constexpr Vector2D Normalize() const
         {
             Fxp magnitude = Magnitude();
-            return Vector2D(x / magnitude, y / magnitude);
+            if (magnitude != 0.0)
+                return Vector2D(x / magnitude, y / magnitude);
+            else
+                return Vector2D();
+        }
+
+        /**
+         * @brief Normalize the vector using fast approximation.
+         * Good for real-time calculations where precision isn't critical.
+         * @return A normalized Vec2 object.
+         */
+        constexpr Vector2D FastNormalize() const
+        {
+            Fxp magnitude = FastMagnitude();
+            if (magnitude != 0.0)
+                return Vector2D(x / magnitude, y / magnitude);
+            else
+                return Vector2D();
+        }
+
+        /**
+         * @brief Normalize the vector using fastest approximation.
+         * Best for particle effects and non-critical calculations.
+         * @return A normalized Vec2 object.
+         */
+        constexpr Vector2D TurboNormalize() const
+        {
+            Fxp magnitude = TurboMagnitude();
+            if (magnitude != 0.0)
+                return Vector2D(x / magnitude, y / magnitude);
+            else
+                return Vector2D();
         }
 
         // Arithmetic operators

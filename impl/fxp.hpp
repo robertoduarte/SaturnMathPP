@@ -6,78 +6,76 @@
 namespace SaturnMath
 {
     /**
-     * @brief A class for fixed-point arithmetic operations.
-     *
-     * This class provides a way to perform arithmetic operations on fixed-point numbers,
-     * which are numbers with a fixed number of digits after the decimal point.
-     * Fixed-point arithmetic is often used in embedded systems, game development,
-     * and other areas where floating-point operations are too expensive.
-     *
-     * Example usage:
+     * @brief Fixed-point arithmetic optimized for Saturn hardware.
+     * 
+     * Uses a 16.16 fixed-point representation where:
+     * - Upper 16 bits: Integer part
+     * - Lower 16 bits: Fractional part (1/65536 units)
+     * 
+     * Value range:
+     * - Minimum: -32768.0 (0x80000000)
+     * - Maximum: 32767.99998474 (0x7FFFFFFF)
+     * - Resolution: ~0.0000152587 (1/65536)
+     * 
+     * Performance features:
+     * - Compile-time evaluation with constexpr/consteval
+     * - Hardware-optimized multiplication using dmuls.l
+     * - Efficient division through hardware divider unit
+     * - Zero runtime floating-point operations
+     * 
+     * Example:
      * @code
-     * Fxp a(1.5);  // Create an Fxp object with the value 1.5
-     * Fxp b(2.0);  // Create an Fxp object with the value 2.0
-     * Fxp result = a + b;  // Perform addition and store the result in result
+     * Fxp a = Fxp::FromInt(5);     // 5.0 (0x00050000)
+     * Fxp b(2.5);                  // 2.5 (0x00028000)
+     * Fxp c = a * b;               // 12.5 (0x000C8000)
+     * int16_t i = c.ToInt();       // 12
      * @endcode
-     *
-     * Note: This class uses a 16.16 fixed-point representation.
+     * 
+     * @note All operations are designed for maximum efficiency on Saturn hardware.
+     *       Avoid runtime floating-point conversions in performance-critical code.
      */
     class Fxp
     {
     private:
-        int32_t value; /**< The internal value. */
+        int32_t value; /**< Raw fixed-point value in 16.16 format */
 
-        /* Division related variables */
+        /* Hardware division unit registers */
         static inline constexpr size_t cpuAddress = 0xFFFFF000UL;
-        static inline auto& dvsr = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F00UL);
-        static inline auto& dvdnth = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F10UL);
-        static inline auto& dvdntl = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F14UL);
+        static inline auto& dvsr = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F00UL);   /**< Divisor register */
+        static inline auto& dvdnth = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F10UL); /**< Dividend high register */
+        static inline auto& dvdntl = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F14UL); /**< Dividend low register */
 
         friend class Vector2D;
         friend class Vector3D;
         friend class Trigonometry;
 
-        struct Internal
-        {
-            int16_t high;
-            uint16_t low;
-            constexpr Internal(const int16_t& highVal, const uint16_t& lowVal = 0) : high(highVal), low(lowVal) {}
-            constexpr Fxp& AsFxp() { return *reinterpret_cast<Fxp*>(this); }
-        };
-
-        constexpr Internal& InternalAccess() { return *reinterpret_cast<Internal*>(value); };
-
         /**
-         * @brief Private constructor for creating Fxp objects from an int32_t value.
-         * @param inValue The int32_t value to store.
+         * @brief Private constructor for raw fixed-point values.
+         * @param inValue Raw 16.16 fixed-point value
          */
         constexpr Fxp(const int32_t& inValue) : value(inValue) {}
 
     public:
-        /**
-         * @brief Default constructor, initializes the value to 0.
-         */
+        /** @brief Default constructor. Initializes to 0.0 */
         constexpr Fxp() : value(0) {}
 
-        /**
-         * @brief Copy constructor.
-         * @param fxp The Fxp object to copy.
-         */
+        /** @brief Copy constructor */
         constexpr Fxp(const Fxp& fxp) : value(fxp.value) {}
 
         /**
-         * @brief Constructor to create an Fxp object from a floating-point value.
-         * @param f The floating-point value to convert to fixed-point.
+         * @brief Creates fixed-point from double at compile time.
+         * @param f Double value to convert
+         * @warning Only available at compile time to avoid runtime floating-point
          */
         consteval Fxp(const double& f) : value(f * 65536.0) {}
 
         /***********Static Functions************/
 
         /**
-         * @brief Determine the maximum of two Fxp objects.
-         * @param a The first Fxp object.
-         * @param b The second Fxp object.
-         * @return The maximum of the two Fxp objects.
+         * @brief Returns the larger of two fixed-point values.
+         * @param a First value
+         * @param b Second value
+         * @return max(a, b)
          */
         static constexpr Fxp Max(const Fxp& a, const Fxp& b)
         {
@@ -85,10 +83,10 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Determine the minimum of two Fxp objects.
-         * @param a The first Fxp object.
-         * @param b The second Fxp object.
-         * @return The minimum of the two Fxp objects.
+         * @brief Returns the smaller of two fixed-point values.
+         * @param a First value
+         * @param b Second value
+         * @return min(a, b)
          */
         static constexpr Fxp Min(const Fxp& a, const Fxp& b)
         {
@@ -96,24 +94,28 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Create an Fxp object from a 16-bit integer value.
-         * @param integerValue The 16-bit integer value.
-         * @return The corresponding Fxp object.
+         * @brief Creates fixed-point from integer.
+         * @param integerValue Integer value to convert
+         * @return Fixed-point value (integerValue.0)
          */
-        static constexpr Fxp FromInt(const int16_t& integerValue) { return Internal(integerValue).AsFxp(); }
+        static constexpr Fxp FromInt(const int16_t& integerValue) { return Fxp(static_cast<int32_t>(integerValue) << 16); }
 
         /**
-         * @brief Build an Fxp object from a raw 32-bit integer value.
-         * @param rawValue The raw 32-bit integer value.
-         * @return The corresponding Fxp object.
+         * @brief Creates fixed-point from raw 16.16 value.
+         * @param rawValue Raw fixed-point bits
+         * @return Fixed-point value
          */
         static constexpr Fxp BuildRaw(const int32_t& rawValue) { return Fxp(rawValue); }
 
-
         /**
-         * @brief Set the dividend and divisor for asynchronous fixed-point division.
-         * @param dividend The dividend.
-         * @param divisor The divisor.
+         * @brief Sets up hardware division unit for fixed-point division.
+         * 
+         * Prepares the Saturn's hardware divider unit for fixed-point division:
+         * result = (dividend << 16) / divisor
+         * 
+         * @param dividend Numerator
+         * @param divisor Denominator
+         * @note Division result must be retrieved with AsyncDivGet()
          */
         static void AsyncDivSet(const Fxp& dividend, const Fxp& divisor)
         {
@@ -131,16 +133,15 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Get the result of asynchronous fixed-point division.
-         * @return The quotient.
+         * @brief Retrieves result from hardware division unit.
+         * @return Fixed-point quotient from previous AsyncDivSet()
+         * @note Must be called after AsyncDivSet()
          */
         static Fxp AsyncDivGet() { return static_cast<int32_t>(dvdntl); }
 
-        /***********Member Functions************/
-
         /**
-         * @brief Truncate the fractional part of the value.
-         * @return The truncated Fxp object.
+         * @brief Removes fractional part, keeping only integer portion.
+         * @return Fixed-point value with zeroed fractional bits
          */
         constexpr Fxp TruncateFraction() const
         {
@@ -148,8 +149,15 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Calculate the square root of the value.
-         * @return The square root as an Fxp object.
+         * @brief Precise square root calculation.
+         * 
+         * Uses bit-by-bit calculation for maximum precision:
+         * - 31 iterations for full range
+         * - No approximation errors (beyond fixed-point limits)
+         * - Handles full 16.16 range correctly
+         * 
+         * @return √x in fixed-point format
+         * @note Slower but more accurate than FastSqrt()
          */
         constexpr Fxp Sqrt() const
         {
@@ -179,9 +187,19 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Faster and slightly less accurate version of Sqrt.
-         * Due to interpolation, it has a maximum error of around 6.08%.
-         * @return The square root as an Fxp object.
+         * @brief Fast approximate square root.
+         * 
+         * Uses binary search approximation:
+         * - ~6% maximum error
+         * - Special handling for x < 1.0
+         * - Much faster than precise Sqrt()
+         * 
+         * Best for:
+         * - Games (physics, vectors)
+         * - Graphics (distance calculations)
+         * - Any case where speed > accuracy
+         * 
+         * @return Approximate √x in fixed-point
          */
         constexpr Fxp FastSqrt() const
         {
@@ -219,55 +237,64 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Calculate the square of the value.
-         * @return The square as an Fxp object.
+         * @brief Squares the value (x²).
+         * @return x * x in fixed-point
+         * @note Can be evaluated at compile time
          */
         constexpr Fxp Square() const { return *this * *this; }
 
         /**
-         * @brief Calculate the absolute value of the object.
-         * @return The absolute value as an Fxp object.
+         * @brief Absolute value (|x|).
+         * @return |x| in fixed-point
+         * @note Can be evaluated at compile time
          */
         constexpr Fxp Abs() const { return value > 0 ? value : -value; }
 
         /**
-         * @brief Get the internal value.
-         * @return A reference to the internal value.
+         * @brief Gets raw 16.16 fixed-point bits.
+         * @return Internal 32-bit representation
+         * @note Can be evaluated at compile time
          */
         constexpr const int32_t& Value() const { return value; }
 
         /**
-         * @brief Convert the fixed-point value to a floating-point value.
-         * @return The floating-point representation of the value.
+         * @brief Extracts integer part.
+         * @return Integer portion of value
          */
-        consteval double ToFloat() { return value / 65536.0f; }
+        constexpr int16_t ToInt() { return static_cast<int16_t>(value >> 16); }
 
         /**
-         * @brief Convert the fixed-point value to a 16-bit integer value.
-         * @return The 16-bit integer representation of the value.
+         * @brief Converts to double.
+         * @return Double value
+         * @note Only available at compile time due to consteval
          */
-        constexpr int16_t ToInt() { return InternalAccess().high; }
+        consteval double ToFloat() { return value / 65536.0f; }
 
         /**************Operators****************/
 
         /**
-         * @brief Add and assign another Fxp object to this object.
-         * @param fxp The Fxp object to add.
-         * @return A reference to this object.
+         * @brief Fixed-point addition (a += b).
+         * @param fxp Value to add
+         * @return Reference to this
          */
         constexpr Fxp& operator+=(const Fxp& fxp) { value += fxp.value; return *this; }
 
         /**
-         * @brief Subtract and assign another Fxp object from this object.
-         * @param fxp The Fxp object to subtract.
-         * @return A reference to this object.
+         * @brief Fixed-point subtraction (a -= b).
+         * @param fxp Value to subtract
+         * @return Reference to this
          */
         constexpr Fxp& operator-=(const Fxp& fxp) { value -= fxp.value; return *this; }
 
         /**
-         * @brief Multiply and assign another Fxp object to this object.
-         * @param fxp The Fxp object to multiply.
-         * @return A reference to this object.
+         * @brief Fixed-point multiplication (a *= b).
+         * 
+         * Uses Saturn's dmuls.l instruction at runtime.
+         * For compile-time evaluation, uses double math.
+         * 
+         * @param fxp Value to multiply by
+         * @return Reference to this
+         * @note Can be evaluated at compile time
          */
         constexpr Fxp& operator*=(const Fxp& fxp)
         {
@@ -298,9 +325,9 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Multiply two Fxp objects.
-         * @param fxp The multiplier.
-         * @return The product as an Fxp object.
+         * @brief Fixed-point multiplication (a * b).
+         * @param fxp Value to multiply by
+         * @return Product as Fxp
          */
         constexpr Fxp operator*(const Fxp& fxp) const
         {
@@ -308,9 +335,13 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Divide and assign another Fxp object to this object.
-         * @param fxp The Fxp object to divide by.
-         * @return A reference to this object.
+         * @brief Fixed-point division (a /= b).
+         * 
+         * Uses Saturn's hardware divider unit at runtime for optimal performance.
+         * Falls back to double math at compile time.
+         * 
+         * @param fxp Value to divide by
+         * @return Reference to this
          */
         constexpr Fxp& operator/=(const Fxp& fxp)
         {
@@ -329,9 +360,9 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Divide two Fxp objects.
-         * @param fxp The divisor.
-         * @return The quotient as an Fxp object.
+         * @brief Fixed-point division (a / b).
+         * @param fxp Value to divide by
+         * @return Quotient as Fxp
          */
         constexpr Fxp operator/(const Fxp& fxp) const
         {
@@ -373,13 +404,6 @@ namespace SaturnMath
         constexpr bool operator>(const Fxp& fxp) const { return value > fxp.value; }
 
         /**
-         * @brief Compare two Fxp objects for greater than or equal.
-         * @param fxp The Fxp object to compare with.
-         * @return `true` if this object is greater than or equal to the other; otherwise, `false`.
-         */
-        constexpr bool operator>=(const Fxp& fxp) const { return value >= fxp.value; }
-
-        /**
          * @brief Compare two Fxp objects for less than.
          * @param fxp The Fxp object to compare with.
          * @return `true` if this object is less than the other; otherwise, `false`.
@@ -387,9 +411,16 @@ namespace SaturnMath
         constexpr bool operator<(const Fxp& fxp) const { return value < fxp.value; }
 
         /**
-         * @brief Compare two Fxp objects for less than or equal.
+         * @brief Compare two Fxp objects for greater than or equal to.
          * @param fxp The Fxp object to compare with.
-         * @return `true` if this object is less than or equal the other; otherwise, `false`.
+         * @return `true` if this object is greater than or equal to the other; otherwise, `false`.
+         */
+        constexpr bool operator>=(const Fxp& fxp) const { return value >= fxp.value; }
+
+        /**
+         * @brief Compare two Fxp objects for less than or equal to.
+         * @param fxp The Fxp object to compare with.
+         * @return `true` if this object is less than or equal to the other; otherwise, `false`.
          */
         constexpr bool operator<=(const Fxp& fxp) const { return value <= fxp.value; }
 
@@ -435,19 +466,4 @@ namespace SaturnMath
          */
         constexpr Fxp& operator<<=(const size_t& shiftAmount) { value <<= shiftAmount; return *this; }
     };
-
-
-    static inline constexpr uint32_t IntegerSqrt(uint32_t src)
-    {
-        uint32_t baseEstimation = 1;
-        uint32_t estimation = src >> 2;
-
-        while (baseEstimation < estimation)
-        {
-            estimation >>= 1;
-            baseEstimation <<= 1;
-        }
-
-        return baseEstimation + estimation;
-    }
 }

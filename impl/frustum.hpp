@@ -8,7 +8,21 @@
 namespace SaturnMath
 {
     /**
-     * @brief Represents a view frustum in 3D space.
+     * @brief View frustum for camera culling in 3D space.
+     * 
+     * Represents a truncated pyramid defined by six planes:
+     * - Near: Close clipping plane
+     * - Far: Distance clipping plane
+     * - Left/Right: Horizontal bounds
+     * - Top/Bottom: Vertical bounds
+     * 
+     * Uses a right-handed coordinate system where:
+     * - +X is right
+     * - +Y is up
+     * - -Z is forward
+     * 
+     * All plane normals point inward, so an object is inside
+     * the frustum if it's on the positive side of all planes.
      */
     class Frustum
     {
@@ -22,106 +36,121 @@ namespace SaturnMath
         static constexpr size_t PLANE_RIGHT = 5;
         static constexpr size_t PLANE_COUNT = 6;
 
-        Plane plane[PLANE_COUNT];
+        Plane planes[PLANE_COUNT];  /**< Frustum boundary planes with inward-facing normals */
 
-        Fxp nearDistance;   /**< Near clipping plane distance. */
-        Fxp farDistance;    /**< Far clipping plane distance. */
-        Fxp farWidth;       /**< Width of the far plane. */
-        Fxp farHeight;      /**< Height of the far plane. */
+        Fxp nearDist;   /**< Near clipping plane distance (always positive) */
+        Fxp farDist;    /**< Far clipping plane distance (always > nearDist) */
+        Fxp farWidth;   /**< Width of the far plane (half-width * 2) */
+        Fxp farHeight;  /**< Height of the far plane (half-height * 2) */
 
     public:
         /**
-         * @brief Constructor to initialize the frustum.
-         * @param verticalFov Vertical field of view.
-         * @param ratio Aspect ratio.
-         * @param nearDistance Near clipping plane distance.
-         * @param farDistance Far clipping plane distance.
+         * @brief Constructs a view frustum.
+         * 
+         * @param verticalFov Vertical field of view in radians (use Angle class)
+         * @param aspectRatio Width/height ratio of the viewport
+         * @param nearDist Distance to near clipping plane (must be > 0)
+         * @param farDist Distance to far clipping plane (must be > nearDist)
+         * 
+         * @note FOV is the full angle, so tan(fov/2) is used for calculations
          */
-        Frustum(const Fxp& verticalFov, const Fxp& ratio, const Fxp& nearDistance, const Fxp& farDistance)
-            : farHeight(Trigonometry::Tan(verticalFov)),
-            farWidth(farHeight* ratio),
-            nearDistance(nearDistance),
-            farDistance(farDistance)
+        Frustum(const Angle& verticalFov, const Fxp& aspectRatio, const Fxp& nearDist, const Fxp& farDist)
+            : nearDist(nearDist)
+            , farDist(farDist)
+            , farHeight(Trigonometry::Tan(verticalFov * Fxp(0.5)) * farDist)
+            , farWidth(farHeight * aspectRatio)
         {
-        }
-
-
-        /**
-         * @brief Update the frustum based on the view matrix.
-         * @param viewMatrix The 4x3 view matrix representing the camera's transformation.
-         */
-        void Update(const Mat43& viewMatrix)
-        {
-            Vector3D xAxis = viewMatrix.row0;
-            Vector3D yAxis = viewMatrix.row1;
-            Vector3D zAxis = viewMatrix.row2;
-            Vector3D position = viewMatrix.row3;
-
-            Vector3D farCentre(position + zAxis);
-            Vector3D farHalfHeight(yAxis * farHeight);
-            Vector3D farHalfWidth(yAxis * farWidth);
-
-            Vector3D farTop(farCentre + farHalfHeight);
-            Vector3D farTopLeft(farTop - farHalfWidth);
-            Vector3D farTopRight(farTop + farHalfWidth);
-
-            Vector3D farBottom(farCentre - farHalfHeight);
-            Vector3D farBottomRight(farBottom + farHalfWidth);
-            Vector3D farBottomLeft(farBottom - farHalfWidth);
-
-            plane[PLANE_NEAR] = Plane(-zAxis, position + zAxis * nearDistance);
-            plane[PLANE_FAR] = Plane(zAxis, position + zAxis * farDistance);
-            plane[PLANE_TOP] = Plane(farTopRight, position, farTopLeft);
-            plane[PLANE_BOTTOM] = Plane(farBottomLeft, position, farBottomRight);
-            plane[PLANE_LEFT] = Plane(farTopLeft, position, farBottomLeft);
-            plane[PLANE_RIGHT] = Plane(farBottomRight, position, farTopRight);
+            // Planes will be initialized in Update()
         }
 
         /**
-         * @brief Check if a point is inside the frustum.
-         * @param point The point to check.
-         * @return True if the point is inside the frustum, false otherwise.
+         * @brief Updates frustum planes based on view matrix.
+         * 
+         * Recalculates all six frustum planes using the camera's:
+         * - Position (viewMatrix.Position)
+         * - Forward direction (-viewMatrix.ZAxis)
+         * - Up direction (viewMatrix.YAxis)
+         * - Right direction (viewMatrix.XAxis)
+         * 
+         * @param viewMatrix Camera's view transformation
+         */
+        void Update(const Matrix43& viewMatrix)
+        {
+            // Calculate frustum corners at far plane
+            const Vector3D& pos = viewMatrix.Position;
+            const Vector3D farCenter = pos - viewMatrix.ZAxis * farDist;
+            const Vector3D farUp = viewMatrix.YAxis * farHeight;
+            const Vector3D farRight = viewMatrix.XAxis * farWidth;
+
+            const Vector3D farTopCenter = farCenter + farUp;
+            const Vector3D farTopLeft = farTopCenter - farRight;
+            const Vector3D farTopRight = farTopCenter + farRight;
+
+            const Vector3D farBottomCenter = farCenter - farUp;
+            const Vector3D farBottomLeft = farBottomCenter - farRight;
+            const Vector3D farBottomRight = farBottomCenter + farRight;
+
+            // Define planes with inward-facing normals
+            planes[PLANE_NEAR] = Plane(viewMatrix.ZAxis, pos - viewMatrix.ZAxis * nearDist);
+            planes[PLANE_FAR] = Plane(-viewMatrix.ZAxis, pos - viewMatrix.ZAxis * farDist);
+            planes[PLANE_TOP] = Plane(farTopLeft, pos, farTopRight);
+            planes[PLANE_BOTTOM] = Plane(farBottomRight, pos, farBottomLeft);
+            planes[PLANE_LEFT] = Plane(farBottomLeft, pos, farTopLeft);
+            planes[PLANE_RIGHT] = Plane(farTopRight, pos, farBottomRight);
+        }
+
+        /**
+         * @brief Tests if a point is inside the frustum.
+         * 
+         * A point is inside if it's on the positive side of all planes.
+         * 
+         * @param point Point to test
+         * @return true if point is inside frustum
          */
         bool Contains(const Vector3D& point) const
         {
-            for (size_t i = 0; i < PLANE_COUNT; i++)
+            for (const Plane& p : planes)
             {
-                if (plane[i].Distance(point) < 0.0)
-                    return false;
+                if (p.Distance(point) < 0.0)
+                    return false;  // Outside this plane
             }
-            return true;
+            return true;  // Inside all planes
         }
 
         /**
-       * @brief Check if an sphere is inside the frustum.
-       * @param sphere The Sphere to check.
-       * @return True if the Sphere is inside the frustum, false otherwise.
-       */
+         * @brief Tests if a sphere intersects the frustum.
+         * 
+         * A sphere intersects if it's not completely outside any plane.
+         * 
+         * @param sphere Sphere to test
+         * @return true if sphere intersects frustum
+         */
         bool Contains(const Sphere& sphere) const
         {
-            for (size_t i = 0; i < PLANE_COUNT; i++)
+            for (const Plane& p : planes)
             {
-                if (sphere.Intersects(plane[i]) == false)
-                    return false;
+                if (!sphere.Intersects(p))
+                    return false;  // Completely outside this plane
             }
-
-            return true;
+            return true;  // At least partially inside all planes
         }
 
         /**
-         * @brief Check if an axis-aligned box is inside the frustum.
-         * @param other The AABB to check.
-         * @return True if the AABB is inside the frustum, false otherwise.
+         * @brief Tests if an AABB intersects the frustum.
+         * 
+         * An AABB intersects if it's not completely outside any plane.
+         * 
+         * @param aabb Axis-aligned bounding box to test
+         * @return true if AABB intersects frustum
          */
         bool Contains(const AABB& aabb) const
         {
-            Vector3D vertexN;
-            for (size_t i = 0; i < PLANE_COUNT; i++)
+            for (const Plane& p : planes)
             {
-                if (aabb.Intersects(plane[i]) == false)
-                    return false;
+                if (!aabb.Intersects(p))
+                    return false;  // Completely outside this plane
             }
-            return true;
+            return true;  // At least partially inside all planes
         }
     };
 }

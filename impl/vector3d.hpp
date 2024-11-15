@@ -45,8 +45,7 @@ namespace SaturnMath
          */
         constexpr Vector3D& operator=(const Vector3D& vec)
         {
-            x = vec.x;
-            y = vec.y;
+            Vector2D::operator=(vec);
             z = vec.z;
             return *this;
         }
@@ -58,7 +57,7 @@ namespace SaturnMath
          */
         constexpr Vector3D Abs() const
         {
-            return Vector3D(x.Abs(), y.Abs(), z.Abs());
+            return Vector3D(Vector2D::Abs(), z.Abs());
         }
 
         /**
@@ -154,7 +153,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator*(const Fxp& fxp) const
         {
-            return Vector3D(x * fxp, y * fxp, z * fxp);
+            return Vector3D(Vector2D::operator*(fxp), z * fxp);
         }
 
         /**
@@ -164,7 +163,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator/(const Fxp& fxp) const
         {
-            return Vector3D(x / fxp, y / fxp, z / fxp);
+            return Vector3D(Vector2D::operator/(fxp), z / fxp);
         }
 
         // Vector length calculation
@@ -172,25 +171,27 @@ namespace SaturnMath
          * @brief Calculate the length of the vector represented by this Vec3 object.
          * @return The length as an Fxp value.
          */
-        constexpr Fxp Length() const
+        constexpr Fxp CalcLength() const
         {
             return Dot(*this).Sqrt();
         }
 
         /**
-         * @brief Calculate the length of the vector represented by this Vec3 object using a fast approximation.
-         * @return The length as an Fxp value.
+         * @brief Calculate the length of the vector using fast approximation.
+         * Good for real-time calculations where precision isn't critical.
+         * @return The approximate length as an Fxp value.
          */
-        constexpr Fxp FastLength() const
+        constexpr Fxp FastCalcLength() const
         {
             return Dot(*this).FastSqrt();
         }
 
         /**
-         * @brief Calculate the length of the vector represented by this Vec3 object using a fast approximation.
-         * @return The length as an Fxp value.
+         * @brief Calculate the length of the vector using fastest approximation.
+         * Best for particle effects and non-critical calculations.
+         * @return The approximate length as an Fxp value.
          */
-        constexpr Fxp TurboLength() const
+        constexpr Fxp TurboCalcLength() const
         {
             constexpr Vector3D alphaBetaGama =
                 Vector3D
@@ -205,40 +206,28 @@ namespace SaturnMath
 
         // Vector normalization
         /**
-         * @brief Normalize the vector represented by this Vec3 object.
+         * @brief Normalize the vector using standard precision.
+         * Ideal for important calculations requiring accuracy.
          * @return A normalized Vec3 object.
          */
         constexpr Vector3D Normalize() const
         {
-            Fxp length = Length();
-            if (length != 0.0F)
-                return Vector3D(length / x, length / y, length / z);
+            Fxp length = CalcLength();
+            if (length != 0.0)
+                return Vector3D(x / length, y / length, z / length);
             else
                 return Vector3D();
         }
 
-        // Vector normalization
         /**
-         * @brief Normalize the vector represented by this Vec3 object.
+         * @brief Normalize the vector using fast approximation.
+         * Uses reciprocal approximation to avoid division.
+         * Good for real-time updates where slight imprecision is acceptable.
          * @return A normalized Vec3 object.
          */
         constexpr Vector3D FastNormalize() const
         {
-            Fxp length = FastLength();
-            if (length != 0.0F)
-                return Vector3D(length / x, length / y, length / z);
-            else
-                return Vector3D();
-        }
-
-        // Vector normalization
-          /**
-           * @brief Normalize the vector represented by this Vec3 object.
-           * @return A normalized Vec3 object.
-           */
-        constexpr Vector3D TurboNormalize() const
-        {
-            Fxp length = TurboLength();
+            Fxp length = FastCalcLength();
             if (length != 0.0F)
                 return Vector3D(length / x, length / y, length / z);
             else
@@ -246,15 +235,72 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Calculate the normal vector of a triangle defined by three Vec3 vertices.
-         * @param vertexA The first vertex.
-         * @param vertexB The second vertex.
-         * @param vertexC The third vertex.
-         * @return The normal vector as an Vec3 object.
+         * @brief Normalize the vector using fastest approximation.
+         * Uses alpha/beta/gamma coefficients and no division.
+         * Best for particle effects and non-critical calculations.
+         * @return A normalized Vec3 object.
          */
-        constexpr static Vector3D CalcNormal(const Vector3D& vertexA, const Vector3D& vertexB, const Vector3D& vertexC)
+        constexpr Vector3D TurboNormalize() const
         {
-            return (vertexA - vertexB).Cross(vertexC - vertexB);
+            Fxp length = TurboCalcLength();
+            if (length != 0.0F)
+                return Vector3D(length / x, length / y, length / z);
+            else
+                return Vector3D();
+        }
+
+        /**
+         * @brief Calculate normal vector with standard precision.
+         * Ideal for static geometry and important surface calculations.
+         * @param vertexA First vertex of the triangle.
+         * @param vertexB Second vertex of the triangle.
+         * @param vertexC Third vertex of the triangle.
+         * @return Normalized normal vector.
+         */
+        static Vector3D CalcNormal(
+            const Vector3D& vertexA,
+            const Vector3D& vertexB,
+            const Vector3D& vertexC)
+        {
+            const Vector3D edge1 = vertexB - vertexA;
+            const Vector3D edge2 = vertexC - vertexA;
+            return edge1.Cross(edge2).Normalize();
+        }
+
+        /**
+         * @brief Calculate normal vector with fast approximation.
+         * Good for dynamic geometry and real-time mesh deformation.
+         * @param vertexA First vertex of the triangle.
+         * @param vertexB Second vertex of the triangle.
+         * @param vertexC Third vertex of the triangle.
+         * @return Fast-normalized normal vector.
+         */
+        static Vector3D FastCalcNormal(
+            const Vector3D& vertexA,
+            const Vector3D& vertexB,
+            const Vector3D& vertexC)
+        {
+            const Vector3D edge1 = vertexB - vertexA;
+            const Vector3D edge2 = vertexC - vertexA;
+            return edge1.Cross(edge2).FastNormalize();
+        }
+
+        /**
+         * @brief Calculate normal vector with fastest approximation.
+         * Best for particle effects or temporary visual effects.
+         * @param vertexA First vertex of the triangle.
+         * @param vertexB Second vertex of the triangle.
+         * @param vertexC Third vertex of the triangle.
+         * @return Turbo-normalized normal vector.
+         */
+        static Vector3D TurboCalcNormal(
+            const Vector3D& vertexA,
+            const Vector3D& vertexB,
+            const Vector3D& vertexC)
+        {
+            const Vector3D edge1 = vertexB - vertexA;
+            const Vector3D edge2 = vertexC - vertexA;
+            return edge1.Cross(edge2).TurboNormalize();
         }
 
         // Comparison operators
@@ -333,7 +379,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator+(const Vector3D& vec) const
         {
-            return Vector3D(x + vec.x, y + vec.y, z + vec.z);
+            return Vector3D(Vector2D::operator+(vec), z + vec.z);
         }
 
         /**
@@ -343,7 +389,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator-(const Vector3D& vec) const
         {
-            return Vector3D(x - vec.x, y - vec.y, z - vec.z);
+            return Vector3D(Vector2D::operator-(vec), z - vec.z);
         }
 
         /**
