@@ -55,6 +55,31 @@ SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints
   - Comprehensive intersection tests
   - View space utilities
 
+### Precision Control
+
+SaturnMath++ provides a template-based precision control system that allows you to balance between accuracy and performance. Each precision level is optimized for different use cases:
+
+```cpp
+using namespace SaturnMath;
+
+// Standard precision - highest accuracy
+Vector3D normal = direction.Normalize<Precision::Standard>();
+
+// Fast precision - balanced performance
+Vector3D approxNormal = direction.Normalize<Precision::Fast>();
+
+// Turbo precision - fastest calculation
+Vector3D quickNormal = direction.Normalize<Precision::Turbo>();
+```
+
+Supported operations with precision control:
+- Vector normalization and length calculations
+- Matrix decomposition and transformations
+- Square root calculations
+- Geometric calculations (normals, distances)
+
+Default precision is Standard when template parameter is not specified.
+
 ### Performance Features
 - Multiple precision levels (standard/fast/turbo) for critical operations
 - Cache-friendly data layouts
@@ -82,68 +107,55 @@ Just include the library in your Sega Saturn project:
 #include "saturn_math.hpp"
 using namespace SaturnMath;
 
-// 3D vector operations
+// 3D vector operations with different precision levels
 Vector3D position(1, 2, 3);
 Vector3D direction = Vector3D::UnitZ();  // Forward direction (0,0,1)
+
+// Standard precision for accurate results
+Vector3D normalizedDir = direction.Normalize<Precision::Standard>();
+
+// Fast precision for better performance
+float length = position.Length<Precision::Fast>();
 
 // 2D vector operations
 Vector2D screenPos = Vector2D::Zero();
 screenPos += Vector2D::Right() * 10;  // Move 10 units right
 screenPos += Vector2D::Up() * 5;      // Move 5 units up
 
-// Matrix operations
+// Matrix operations with precision control
 Matrix43 transform = Matrix43::Identity();
 transform.Translate(Vector3D::UnitY() * 5);  // Move 5 units up
 transform.Rotate(Vector3D(0, Angle::FromDegrees(90), 0));
 
+// Matrix decomposition with specified precision
+Vector3D scale, rotation, translation;
+transform.Decompose<Precision::Standard>(scale, rotation, translation);
+
 // Transform the position
 Vector3D transformed = transform * position;
-
-// Fast vector operations
-Fxp length = direction.FastCalcLength();  // Quick approximation
-Vector3D normalized = direction.TurboNormalize();  // Fastest normalization
 ```
 
-### Geometric Tests
+### Geometric Operations
 
 ```cpp
-#include "saturn_math.hpp"
-using namespace SaturnMath;
+// Create and manipulate geometric primitives
+Vector3D center(0, 0, 0);
+Vector3D size(2, 2, 2);
+AABB box(center, size);
 
-// Create geometric primitives
-AABB box(Vector3D::Zero(), 2);  // 2x2x2 box at origin
-Sphere sphere(Vector3D::One(), 1);  // Sphere at (1,1,1) with radius 1
-Plane plane(Vector3D::UnitY(), 0);  // Ground plane at Y=0
+// Calculate normals with different precision levels
+Vector3D v1(0, 0, 0), v2(1, 0, 0), v3(0, 1, 0);
+Vector3D normal = Vector3D::CalcNormal<Precision::Standard>(v1, v2, v3);
+Vector3D fastNormal = Vector3D::CalcNormal<Precision::Fast>(v1, v2, v3);
 
-// Perform intersection tests
-if (sphere.Intersects(box)) {
-    // Handle sphere-box collision
-}
-
-// Check point containment
-Vector3D point(0.5, 0.5, 0.5);
-if (box.Contains(point)) {
-    // Point is inside box
-}
-
-// Create and update view frustum
-Frustum frustum(
-    Angle::FromDegrees(60),  // 60° vertical FOV
-    16.0/9.0,               // 16:9 aspect ratio
-    0.1,                    // Near plane
-    100.0                   // Far plane
-);
-
-Matrix43 viewMatrix = Matrix43::Identity();
-frustum.Update(viewMatrix);
-
-// Check if objects are visible
-if (frustum.Contains(sphere)) {
-    // Sphere is visible
-}
+// Create view matrix with precision control
+Vector3D eye(0, 5, -10);
+Vector3D target(0, 0, 0);
+Vector3D up = Vector3D::UnitY();
+Matrix43 view = Matrix43::CreateLookAt<Precision::Standard>(eye, target, up);
 ```
 
-### Fixed-Point and Angle Math
+### Fixed-Point and Angle Operations
 
 ```cpp
 #include "saturn_math.hpp"
@@ -173,22 +185,22 @@ uint32_t sqrt = IntegerUtils::FastSqrt(value);  // Quick integer square root
 ### Optimization Levels
 - **Standard**: Full precision, suitable for static calculations
   ```cpp
-  Vector3D normal = Vector3D::CalcNormal(v1, v2, v3);
-  Fxp length = vector.CalcLength();
+  Vector3D normal = Vector3D::CalcNormal<Precision::Standard>(v1, v2, v3);
+  Fxp length = vector.Length<Precision::Standard>();
   ```
 - **Fast**: Good precision, suitable for real-time updates
   ```cpp
-  Vector3D normal = Vector3D::FastCalcNormal(v1, v2, v3);
-  Fxp length = vector.FastCalcLength();
+  Vector3D normal = Vector3D::CalcNormal<Precision::Fast>(v1, v2, v3);
+  Fxp length = vector.Length<Precision::Fast>();
   ```
 - **Turbo**: Approximate results, suitable for non-critical calculations
   ```cpp
-  Vector3D normal = Vector3D::TurboCalcNormal(v1, v2, v3);
-  Fxp length = vector.TurboCalcLength();
+  Vector3D normal = Vector3D::CalcNormal<Precision::Turbo>(v1, v2, v3);
+  Fxp length = vector.Length<Precision::Turbo>();
   ```
 
 ### Best Practices
-- Use `FastCalcLength()` and `TurboNormalize()` for non-critical calculations
+- Use `Fast` and `Turbo` precision levels for non-critical calculations
 - Prefer fixed-size containers (like `MatrixStack`) over dynamic allocation
 - Take advantage of lookup-based trig functions for better performance
 - Leverage compile-time constants with `consteval` methods
