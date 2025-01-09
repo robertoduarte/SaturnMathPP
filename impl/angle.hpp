@@ -72,7 +72,7 @@ namespace SaturnMath
          */
         static consteval Angle FromRadians(double radians)
         {
-            return Angle(static_cast<uint16_t>(Fxp(radians / (2 * RadPi)).Value));
+            return Angle(static_cast<uint16_t>(Fxp(radians / (2 * RadPi)).RawValue()));
         }
 
         /**
@@ -82,7 +82,7 @@ namespace SaturnMath
          */
         static constexpr Angle FromRadians(const Fxp& radianTurns)
         {
-            return Angle(static_cast<uint16_t>((radianTurns / (2 * RadPi)).Value));
+            return Angle(static_cast<uint16_t>((radianTurns / (2 * RadPi)).RawValue()));
         }
 
         /**
@@ -92,7 +92,7 @@ namespace SaturnMath
          */
         static consteval Angle FromDegrees(double degrees)
         {
-            return Angle(static_cast<uint16_t>(Fxp(degrees / 360).Value));
+            return Angle(static_cast<uint16_t>(Fxp(degrees / 360).RawValue()));
         }
 
         /**
@@ -102,7 +102,7 @@ namespace SaturnMath
          */
         static constexpr Angle FromDegrees(const Fxp& degreeTurns)
         {
-            return Angle(static_cast<uint16_t>((degreeTurns / 360).Value));
+            return Angle(static_cast<uint16_t>((degreeTurns / 360).RawValue()));
         }
         /** @} */
 
@@ -116,6 +116,12 @@ namespace SaturnMath
         }
 
         /**
+         * @brief Returns a const reference to the internal raw angle value.
+         * @return const reference to the internal value
+         */
+        constexpr const uint16_t& RawValue() const { return value; }
+
+        /**
          * @name Arithmetic Operations
          * Basic angle arithmetic with automatic wrap-around.
          * @{
@@ -127,7 +133,7 @@ namespace SaturnMath
          */
         constexpr Angle operator+(const Angle& other) const
         {
-            return Angle(value + other.value); // Natural 16-bit wrap-around
+            return Angle(value + other.RawValue()); // Natural 16-bit wrap-around
         }
 
         /**
@@ -137,10 +143,8 @@ namespace SaturnMath
          */
         constexpr Angle operator-(const Angle& other) const
         {
-            return Angle(value - other.value); // Natural 16-bit wrap-around
+            return Angle(value - other.RawValue()); // Natural 16-bit wrap-around
         }
         /** @} */
-
-        friend class Trigonometry;
     };
 }

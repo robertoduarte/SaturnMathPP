@@ -5,15 +5,20 @@
 
 namespace SaturnMath
 {
+    /**
+     * @brief Represents a 3x3 matrix for 3D transformations.
+     * 
+     * This class provides methods for matrix operations, including rotation,
+     * scaling, and multiplication. The matrix is represented using three row vectors:
+     * - Row0 (XAxis): Represents the right vector of the matrix.
+     * - Row1 (YAxis): Represents the up vector of the matrix.
+     * - Row2 (ZAxis): Represents the forward vector of the matrix.
+     */
     struct Matrix33
     {
-        Vector3D Row0; /**< The first row of the 3x3 matrix. */
-        Vector3D Row1; /**< The second row of the 3x3 matrix. */
-        Vector3D Row2; /**< The third row of the 3x3 matrix. */
-
-        using XAxis = Row0;
-        using YAxis = Row1;
-        using ZAxis = Row2;
+        Vector3D Row0; /**< The first row of the 3x3 matrix (also XAxis). */
+        Vector3D Row1; /**< The second row of the 3x3 matrix (also YAxis). */
+        Vector3D Row2; /**< The third row of the 3x3 matrix (also ZAxis). */
 
         /**
          * @brief Default constructor initializing a 3x3 matrix with zeros.
@@ -111,9 +116,8 @@ namespace SaturnMath
          */
         Matrix33& RotateX(const Fxp& angleX)
         {
-            // Compute sin and cos values for the angleX
-            Fxp sinValue = Trigonometry::Sin(angleX);
-            Fxp cosValue = Trigonometry::Cos(angleX);
+            // Compute sin and cos values for the angleX using SinCos
+            const auto [sinValue, cosValue] = Trigonometry::SinCos(angleX);
 
             // Update matrix elements to perform rotation around the X-axis
             const Fxp m01 = Row0.Y;
@@ -141,15 +145,14 @@ namespace SaturnMath
          * @param angle Rotation angle.
          * @return New rotation matrix.
          */
-        static constexpr Matrix33 CreateRotationX(const Fxp& angle)
+        static constexpr Matrix33 CreateRotationX(const Angle& angle)
         {
-            const Fxp s = Trigonometry::Sin(angle);
-            const Fxp c = Trigonometry::Cos(angle);
-            return Matrix33(
+            const auto [sinValue, cosValue] = Trigonometry::SinCos(angle);
+            return Matrix33{
                 Vector3D(1, 0, 0),
-                Vector3D(0, c, s),
-                Vector3D(0, -s, c)
-            );
+                Vector3D(0, cosValue, -sinValue),
+                Vector3D(0, sinValue, cosValue)
+            };
         }
 
         /**
@@ -158,7 +161,7 @@ namespace SaturnMath
          * @param angleY Rotation angle.
          * @return Reference to this matrix.
          */
-        Matrix33& RotateY(const Fxp& angleY)
+        Matrix33& RotateY(const Angle& angleY)
         {
             // Compute sin and cos values for the angleY
             Fxp sinValue = Trigonometry::Sin(angleY);
@@ -190,15 +193,14 @@ namespace SaturnMath
          * @param angle Rotation angle.
          * @return New rotation matrix.
          */
-        static constexpr Matrix33 CreateRotationY(const Fxp& angle)
+        static constexpr Matrix33 CreateRotationY(const Angle& angle)
         {
-            const Fxp s = Trigonometry::Sin(angle);
-            const Fxp c = Trigonometry::Cos(angle);
-            return Matrix33(
-                Vector3D(c, 0, -s),
+            const auto [sinValue, cosValue] = Trigonometry::SinCos(angle);
+            return Matrix33{
+                Vector3D(cosValue, 0, sinValue),
                 Vector3D(0, 1, 0),
-                Vector3D(s, 0, c)
-            );
+                Vector3D(-sinValue, 0, cosValue)
+            };
         }
 
         /**
@@ -207,11 +209,10 @@ namespace SaturnMath
          * @param angleZ Rotation angle.
          * @return Reference to this matrix.
          */
-        Matrix33& RotateZ(const Fxp& angleZ)
+        Matrix33& RotateZ(const Angle& angleZ)
         {
-            // Compute sin and cos values for the angleZ
-            Fxp sinValue = Trigonometry::Sin(angleZ);
-            Fxp cosValue = Trigonometry::Cos(angleZ);
+            // Compute sin and cos values for the angleZ using SinCos
+            const auto [sinValue, cosValue] = Trigonometry::SinCos(angleZ);
 
             // Update matrix elements to perform rotation around the Z-axis
             const Fxp m00 = Row0.X;
@@ -239,28 +240,14 @@ namespace SaturnMath
          * @param angle Rotation angle.
          * @return New rotation matrix.
          */
-        static constexpr Matrix33 CreateRotationZ(const Fxp& angle)
+        static constexpr Matrix33 CreateRotationZ(const Angle& angle)
         {
-            const Fxp s = Trigonometry::Sin(angle);
-            const Fxp c = Trigonometry::Cos(angle);
-            return Matrix33(
-                Vector3D(c, s, 0),
-                Vector3D(-s, c, 0),
+            const auto [sinValue, cosValue] = Trigonometry::SinCos(angle);
+            return Matrix33{
+                Vector3D(cosValue, -sinValue, 0),
+                Vector3D(sinValue, cosValue, 0),
                 Vector3D(0, 0, 1)
-            );
-        }
-
-        /**
-         * @brief Creates a fresh rotation matrix from Euler angles (X,Y,Z order).
-         * Combines all three rotations into a single clean transformation.
-         * @param angles Rotation angles for each axis.
-         * @return Combined rotation matrix.
-         */
-        static constexpr Matrix33 CreateRotation(const Vector3D& angles)
-        {
-            return CreateRotationZ(angles.Z) * 
-                   CreateRotationY(angles.Y) * 
-                   CreateRotationX(angles.X);
+            };
         }
 
         /**

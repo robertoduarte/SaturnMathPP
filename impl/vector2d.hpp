@@ -89,7 +89,7 @@ namespace SaturnMath
         {
             if consteval
             {
-                return x * vec.x + y * vec.y;
+                return X * vec.X + Y * vec.Y;
             }
             else
             {
@@ -111,7 +111,7 @@ namespace SaturnMath
                     : "m"(*a),
                     "m"(*b)
                     : "mach", "macl", "memory");
-                return aux1;
+                return Fxp::BuildRaw(aux1);
             }
         }
 
@@ -235,7 +235,7 @@ namespace SaturnMath
          */
         constexpr Vector2D operator+(const Vector2D& vec) const
         {
-            return Vector2D(x + vec.x, y + vec.y);
+            return Vector2D(X + vec.X, Y + vec.Y);
         }
 
         /**
@@ -245,7 +245,7 @@ namespace SaturnMath
          */
         constexpr Vector2D operator-(const Vector2D& vec) const
         {
-            return Vector2D(x - vec.x, y - vec.y);
+            return Vector2D(X - vec.X, Y - vec.Y);
         }
 
         /**
@@ -255,7 +255,7 @@ namespace SaturnMath
          */
         constexpr Vector2D operator*(const Fxp& scalar) const
         {
-            return Vector2D(x * scalar, y * scalar);
+            return Vector2D(X * scalar, Y * scalar);
         }
 
         /**
@@ -265,7 +265,7 @@ namespace SaturnMath
          */
         constexpr Vector2D operator/(const Fxp& scalar) const
         {
-            return Vector2D(x / scalar, y / scalar);
+            return Vector2D(X / scalar, Y / scalar);
         }
     };
 }

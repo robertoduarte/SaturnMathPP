@@ -13,8 +13,6 @@ namespace SaturnMath
     {
         Vector3D Row3; /**< Translation vector (position). */
 
-        using Position = Row3;
-
         /**
          * @brief Default constructor initializing to identity matrix.
          */
@@ -216,12 +214,9 @@ namespace SaturnMath
         {
             static_assert(P != Precision::Turbo, "Turbo precision is not supported for CreateTransform");
 
-            const Fxp cosX = Trigonometry::Cos(rotation.X);
-            const Fxp sinX = Trigonometry::Sin(rotation.X);
-            const Fxp cosY = Trigonometry::Cos(rotation.Y);
-            const Fxp sinY = Trigonometry::Sin(rotation.Y);
-            const Fxp cosZ = Trigonometry::Cos(rotation.Z);
-            const Fxp sinZ = Trigonometry::Sin(rotation.Z);
+            const auto [sinX, cosX] = Trigonometry::SinCos(rotation.X);
+            const auto [sinY, cosY] = Trigonometry::SinCos(rotation.Y);
+            const auto [sinZ, cosZ] = Trigonometry::SinCos(rotation.Z);
 
             // Create rotation matrix
             Matrix43 result(

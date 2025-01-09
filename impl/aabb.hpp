@@ -21,7 +21,9 @@ namespace SaturnMath
          * @param size Half-extents in each axis
          */
         constexpr AABB(const Vector3D& center, const Fxp& size)
-            : Shape(center), size(size) {}
+            : Shape(center), size(size)
+        {
+        }
 
         /**
          * @brief Creates AABB from center and half-extents.
@@ -29,7 +31,9 @@ namespace SaturnMath
          * @param halfSize Half-extents for each axis
          */
         constexpr AABB(const Vector3D& center, const Vector3D& halfSize)
-            : Shape(center), size(halfSize) {}
+            : Shape(center), size(halfSize)
+        {
+        }
 
         /**
          * @brief Creates AABB from min/max points.
@@ -61,20 +65,51 @@ namespace SaturnMath
 
         /**
          * @brief Calculate the volume of the AABB.
-         * @return The volume as an Fxp value.
+         *
+         * This function computes the volume of the Axis-Aligned Bounding Box (AABB) based on its half-extents.
+         * The volume is calculated using the formula:
+         * 
+         *     Volume = width * height * depth
+         * 
+         * Since the size represents half-extents, the actual dimensions of the AABB are:
+         * - Width = size.X * 2
+         * - Height = size.Y * 2
+         * - Depth = size.Z * 2
+         * 
+         * Therefore, the volume is computed as:
+         * 
+         *     Volume = (size.X * 2) * (size.Y * 2) * (size.Z * 2) = size.X * size.Y * size.Z * 8
+         * 
+         * @return The volume as an Fxp value, representing the total volume of the AABB.
          */
         constexpr Fxp GetVolume() const
         {
-            return 8 * size.X * size.Y * size.Z;
+            return size.X * size.Y * size.Z * 8;
         }
 
         /**
          * @brief Calculate the surface area of the AABB.
-         * @return The surface area as an Fxp value.
+         *
+         * This function computes the surface area of the Axis-Aligned Bounding Box (AABB).
+         * The surface area is calculated using the formula:
+         * 
+         *     Surface Area = 2 * (width * height + height * depth + depth * width)
+         * 
+         * Since the size represents half-extents, the actual dimensions of the AABB are:
+         * - Width = size.X * 2
+         * - Height = size.Y * 2
+         * - Depth = size.Z * 2
+         * 
+         * Therefore, the surface area is computed as:
+         * 
+         *     Surface Area = 2 * ((size.X * 2) * (size.Y * 2) + (size.Y * 2) * (size.Z * 2) + (size.Z * 2) * (size.X * 2))
+         *     = (size.X * size.Y + size.Y * size.Z + size.Z * size.X) * 2
+         * 
+         * @return The surface area as an Fxp value, representing the total surface area of the AABB.
          */
         constexpr Fxp GetSurfaceArea() const
         {
-            return 6 * size * size;
+            return (size.X * size.Y + size.Y * size.Z + size.Z * size.X) * 2;
         }
 
         /**
@@ -107,7 +142,7 @@ namespace SaturnMath
             // Clamp point to AABB bounds
             Vector3D min = GetMin();
             Vector3D max = GetMax();
-            
+
             return Vector3D(
                 Fxp::Max(min.X, Fxp::Min(point.X, max.X)),
                 Fxp::Max(min.Y, Fxp::Min(point.Y, max.Y)),
@@ -124,7 +159,7 @@ namespace SaturnMath
             // More efficient to calculate min/max once and reuse
             Vector3D min = GetMin();
             Vector3D max = GetMax();
-            
+
             return {
                 Vector3D(min.X, min.Y, min.Z), // 0: left bottom back
                 Vector3D(max.X, min.Y, min.Z), // 1: right bottom back
@@ -163,8 +198,18 @@ namespace SaturnMath
         bool ContainsPoint(const Vector3D& point) const
         {
             return (point.X >= GetMin().X && point.X <= GetMax().X) &&
-                   (point.Y >= GetMin().Y && point.Y <= GetMax().Y) &&
-                   (point.Z >= GetMin().Z && point.Z <= GetMax().Z);
+                (point.Y >= GetMin().Y && point.Y <= GetMax().Y) &&
+                (point.Z >= GetMin().Z && point.Z <= GetMax().Z);
+        }
+
+        /**
+         * @brief Check if a point is inside the AABB.
+         * @param point The point to check.
+         * @return True if the point is inside the AABB, false otherwise.
+         */
+        bool Contains(const Vector3D& point) const override
+        {
+            return ContainsPoint(point);
         }
 
         /**
@@ -174,19 +219,25 @@ namespace SaturnMath
          */
         AABB Merge(const AABB& other) const
         {
-            Vector3D min(
-                std::min(GetMin().X, other.GetMin().X),
-                std::min(GetMin().Y, other.GetMin().Y),
-                std::min(GetMin().Z, other.GetMin().Z)
+            Vector3D min = GetMin();
+            Vector3D max = GetMax();
+
+            Vector3D otherMin = other.GetMin();
+            Vector3D otherMax = other.GetMax();
+
+            Vector3D mergedMin(
+                std::min(min.X, otherMin.X),
+                std::min(min.Y, otherMin.Y),
+                std::min(min.Z, otherMin.Z)
             );
-            
-            Vector3D max(
-                std::max(GetMax().X, other.GetMax().X),
-                std::max(GetMax().Y, other.GetMax().Y),
-                std::max(GetMax().Z, other.GetMax().Z)
+
+            Vector3D mergedMax(
+                std::max(max.X, otherMax.X),
+                std::max(max.Y, otherMax.Y),
+                std::max(max.Z, otherMax.Z)
             );
-            
-            return FromMinMax(min, max);
+
+            return FromMinMax(mergedMin, mergedMax);
         }
 
         /**
@@ -196,9 +247,14 @@ namespace SaturnMath
          */
         bool ContainsAABB(const AABB& other) const
         {
-            return (other.GetMin().X >= GetMin().X && other.GetMax().X <= GetMax().X) &&
-                   (other.GetMin().Y >= GetMin().Y && other.GetMax().Y <= GetMax().Y) &&
-                   (other.GetMin().Z >= GetMin().Z && other.GetMax().Z <= GetMax().Z);
+            Vector3D min = GetMin();
+            Vector3D max = GetMax();
+            Vector3D otherMin = other.GetMin();
+            Vector3D otherMax = other.GetMax();
+
+            return (otherMin.X >= min.X && otherMax.X <= max.X) &&
+                (otherMin.Y >= min.Y && otherMax.Y <= max.Y) &&
+                (otherMin.Z >= min.Z && otherMax.Z <= max.Z);
         }
 
         /**
@@ -208,12 +264,17 @@ namespace SaturnMath
          */
         bool IntersectsAABB(const AABB& other) const
         {
-            return !(other.GetMin().X > GetMax().X || 
-                    other.GetMax().X < GetMin().X ||
-                    other.GetMin().Y > GetMax().Y ||
-                    other.GetMax().Y < GetMin().Y ||
-                    other.GetMin().Z > GetMax().Z ||
-                    other.GetMax().Z < GetMin().Z);
+            Vector3D min = GetMin();
+            Vector3D max = GetMax();
+            Vector3D otherMin = other.GetMin();
+            Vector3D otherMax = other.GetMax();
+
+            return !(otherMin.X > max.X ||
+                otherMax.X < min.X ||
+                otherMin.Y > max.Y ||
+                otherMax.Y < min.Y ||
+                otherMin.Z > max.Z ||
+                otherMax.Z < min.Z);
         }
 
         /**
@@ -223,22 +284,34 @@ namespace SaturnMath
          */
         AABB Intersection(const AABB& other) const
         {
-            if (!IntersectsAABB(other))
-                return AABB();
+            Vector3D min = GetMin();
+            Vector3D max = GetMax();
 
-            Vector3D min(
-                std::max(GetMin().X, other.GetMin().X),
-                std::max(GetMin().Y, other.GetMin().Y),
-                std::max(GetMin().Z, other.GetMin().Z)
-            );
-            
-            Vector3D max(
-                std::min(GetMax().X, other.GetMax().X),
-                std::min(GetMax().Y, other.GetMax().Y),
-                std::min(GetMax().Z, other.GetMax().Z)
-            );
-            
-            return FromMinMax(min, max);
+            Vector3D otherMin = other.GetMin();
+            Vector3D otherMax = other.GetMax();
+
+            if (!(otherMin.X > max.X ||
+                otherMax.X < min.X ||
+                otherMin.Y > max.Y ||
+                otherMax.Y < min.Y ||
+                otherMin.Z > max.Z ||
+                otherMax.Z < min.Z)) {
+
+                Vector3D intersectionMin(
+                    std::max(min.X, otherMin.X),
+                    std::max(min.Y, otherMin.Y),
+                    std::max(min.Z, otherMin.Z)
+                );
+
+                Vector3D intersectionMax(
+                    std::min(max.X, otherMax.X),
+                    std::min(max.Y, otherMax.Y),
+                    std::min(max.Z, otherMax.Z)
+                );
+
+                return FromMinMax(intersectionMin, intersectionMax);
+            }
+            return AABB();
         }
 
         /**

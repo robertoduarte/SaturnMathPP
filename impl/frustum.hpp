@@ -77,10 +77,10 @@ namespace SaturnMath
         void Update(const Matrix43& viewMatrix)
         {
             // Calculate frustum corners at far plane
-            const Vector3D& pos = viewMatrix.Position;
-            const Vector3D farCenter = pos - viewMatrix.ZAxis * farDist;
-            const Vector3D farUp = viewMatrix.YAxis * farHeight;
-            const Vector3D farRight = viewMatrix.XAxis * farWidth;
+            const Vector3D& pos = viewMatrix.Row3;
+            const Vector3D farCenter = pos - viewMatrix.Row3 * farDist;
+            const Vector3D farUp = viewMatrix.Row1 * farHeight;
+            const Vector3D farRight = viewMatrix.Row0 * farWidth;
 
             const Vector3D farTopCenter = farCenter + farUp;
             const Vector3D farTopLeft = farTopCenter - farRight;
@@ -91,8 +91,8 @@ namespace SaturnMath
             const Vector3D farBottomRight = farBottomCenter + farRight;
 
             // Define planes with inward-facing normals
-            planes[PLANE_NEAR] = Plane(viewMatrix.ZAxis, pos - viewMatrix.ZAxis * nearDist);
-            planes[PLANE_FAR] = Plane(-viewMatrix.ZAxis, pos - viewMatrix.ZAxis * farDist);
+            planes[PLANE_NEAR] = Plane(viewMatrix.Row2, pos - viewMatrix.Row2 * nearDist);
+            planes[PLANE_FAR] = Plane(-viewMatrix.Row2, pos - viewMatrix.Row2 * farDist);
             planes[PLANE_TOP] = Plane(farTopLeft, pos, farTopRight);
             planes[PLANE_BOTTOM] = Plane(farBottomRight, pos, farBottomLeft);
             planes[PLANE_LEFT] = Plane(farBottomLeft, pos, farTopLeft);

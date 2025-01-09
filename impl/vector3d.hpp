@@ -112,7 +112,7 @@ namespace SaturnMath
         {
             if consteval
             {
-                return x * vec.x + y * vec.y + z * vec.z;
+                return X * vec.X + Y * vec.Y + Z * vec.Z;
             }
             else
             {
@@ -135,7 +135,7 @@ namespace SaturnMath
                     : "m"(*a),
                     "m"(*b)
                     : "mach", "macl", "memory");
-                return aux1;
+                return Fxp::BuildRaw(aux1);
             }
         }
 
@@ -285,7 +285,7 @@ namespace SaturnMath
          */
         constexpr bool operator!=(const Vector3D& vec) const
         {
-            return x != vec.x && y != vec.y && z != vec.z;
+            return X != vec.X && Y != vec.Y && Z != vec.Z;
         }
 
         // Bitwise shift operators
@@ -296,7 +296,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator>>(const size_t& shiftAmount)
         {
-            return Vector3D(x >> shiftAmount, y >> shiftAmount, z >> shiftAmount);
+            return Vector3D(X >> shiftAmount, Y >> shiftAmount, Z >> shiftAmount);
         }
 
         /**
@@ -306,9 +306,9 @@ namespace SaturnMath
          */
         constexpr Vector3D& operator>>=(const size_t& shiftAmount)
         {
-            x >>= shiftAmount;
-            y >>= shiftAmount;
-            z >>= shiftAmount;
+            X >>= shiftAmount;
+            Y >>= shiftAmount;
+            Z >>= shiftAmount;
             return *this;
         }
 
@@ -319,7 +319,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator<<(const size_t& shiftAmount)
         {
-            return Vector3D(x << shiftAmount, y << shiftAmount, z << shiftAmount);
+            return Vector3D(X << shiftAmount, Y << shiftAmount, Z << shiftAmount);
         }
 
         /**
@@ -329,9 +329,9 @@ namespace SaturnMath
          */
         constexpr Vector3D& operator<<=(const size_t& shiftAmount)
         {
-            x <<= shiftAmount;
-            y <<= shiftAmount;
-            z <<= shiftAmount;
+            X <<= shiftAmount;
+            Y <<= shiftAmount;
+            Z <<= shiftAmount;
             return *this;
         }
 
@@ -342,7 +342,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator-() const
         {
-            return Vector3D(-x, -y, -z);
+            return Vector3D(-X, -Y, -Z);
         }
 
         // Binary operators
@@ -353,7 +353,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator+(const Vector3D& vec) const
         {
-            return Vector3D(Vector2D::operator+(vec), z + vec.z);
+            return Vector3D(Vector2D::operator+(vec), Z + vec.Z);
         }
 
         /**
@@ -363,7 +363,7 @@ namespace SaturnMath
          */
         constexpr Vector3D operator-(const Vector3D& vec) const
         {
-            return Vector3D(Vector2D::operator-(vec), z - vec.z);
+            return Vector3D(Vector2D::operator-(vec), Z - vec.Z);
         }
 
         /**
@@ -373,9 +373,9 @@ namespace SaturnMath
          */
         constexpr Vector3D operator+=(const Vector3D& vec)
         {
-            x += vec.x;
-            y += vec.y;
-            z += vec.z;
+            X += vec.X;
+            Y += vec.Y;
+            Z += vec.Z;
             return *this;
         }
 
@@ -386,9 +386,9 @@ namespace SaturnMath
          */
         constexpr Vector3D operator-=(const Vector3D& vec)
         {
-            x -= vec.x;
-            y -= vec.y;
-            z -= vec.z;
+            X -= vec.X;
+            Y -= vec.Y;
+            Z -= vec.Z;
             return *this;
         }
     };

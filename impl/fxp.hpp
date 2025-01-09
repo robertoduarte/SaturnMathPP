@@ -9,30 +9,30 @@ namespace SaturnMath
 {
     /**
      * @brief Fixed-point arithmetic optimized for Saturn hardware.
-     * 
+     *
      * Uses a 16.16 fixed-point representation where:
      * - Upper 16 bits: Integer part
      * - Lower 16 bits: Fractional part (1/65536 units)
-     * 
+     *
      * Value range:
      * - Minimum: -32768 (0x80000000)
      * - Maximum: 32767.99998474 (0x7FFFFFFF)
      * - Resolution: ~0000152587 (1/65536)
-     * 
+     *
      * Performance features:
      * - Compile-time evaluation with constexpr/consteval
      * - Hardware-optimized multiplication using dmuls.l
      * - Efficient division through hardware divider unit
      * - Zero runtime floating-point operations
-     * 
+     *
      * Example:
      * @code
-     * Fxp a = Fxp::FromInt(5);     // 5 (0x00050000)
-     * Fxp b(2.5);                  // 2.5 (0x00028000)
+     * Fxp a = 5;                   // 5    (0x00050000)
+     * Fxp b(2.5);                  // 2.5  (0x00028000)
      * Fxp c = a * b;               // 12.5 (0x000C8000)
      * int16_t i = c.ToInt();       // 12
      * @endcode
-     * 
+     *
      * @note All operations are designed for maximum efficiency on Saturn hardware.
      *       Avoid runtime floating-point conversions in performance-critical code.
      */
@@ -47,37 +47,14 @@ namespace SaturnMath
         static inline auto& dvdnth = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F10UL); /**< Dividend high register */
         static inline auto& dvdntl = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F14UL); /**< Dividend low register */
 
-        friend class Vector2D;
-        friend class Vector3D;
-        friend class Trigonometry;
-
         /**
          * @brief Private constructor for raw fixed-point values.
          * @param inValue Raw 16.16 fixed-point value
          */
-        constexpr Fxp(const int32_t& inValue) : value(inValue) {}
-
-        // Type constraints for constructors
-        template<typename T>
-        static constexpr bool IsValidFloatingPoint = std::is_same_v<T, float> || std::is_same_v<T, double>;
+        constexpr Fxp(const int32_t& inValue, const bool& /*unused*/) : value(inValue) {}
 
         template<typename T>
-        static constexpr bool IsValidInteger = std::is_same_v<T, int16_t>;
-
-        template<typename T>
-        static constexpr bool IsInvalidInteger = 
-            std::is_integral_v<T> && 
-            !std::is_same_v<T, int16_t>;
-
-        // Compile-time range check for integer literals
-        static consteval bool IsInInt16Range(auto value) {
-            return value >= INT16_MIN && value <= INT16_MAX;
-        }
-
-        // Compile-time range check for floating-point values
-        static consteval bool IsInFixedPointRange(auto value) {
-            return value >= -32768.0 && value <= 32767.99998474;
-        }
+        static constexpr bool IsInt16 = std::is_same_v<T, int16_t>;
 
     public:
         /** @brief Default constructor. Initializes to 0 */
@@ -87,46 +64,19 @@ namespace SaturnMath
         constexpr Fxp(const Fxp& fxp) : value(fxp.value) {}
 
         /**
-         * @brief Creates fixed-point from floating-point at compile time.
-         * @param f Floating-point value to convert
-         * @warning Only available at compile time to avoid runtime floating-point
-         * @throws Compile error if value is outside fixed-point range
-         */
-        template<typename T> requires IsValidFloatingPoint<T>
-        consteval Fxp(const T& f) {
-            if constexpr (!IsInFixedPointRange(f)) {
-                throw "Floating-point value out of fixed-point range";
-            }
-            value = f * 65536.0;
-        }
-
-        /**
          * @brief Creates fixed-point from 16-bit signed integer.
          * @param i Integer value to convert
          */
-        template<typename T> requires IsValidInteger<T>
-        constexpr Fxp(const T& i) : value(static_cast<int32_t>(i) << 16) {}
+        template<typename T> requires IsInt16<T>
+        constexpr Fxp(const T& value) : value(static_cast<int32_t>(value) << 16) {}
 
         /**
-         * @brief Creates fixed-point from integer literal at compile time.
-         * @param i Integer literal to convert
-         * @note Only accepts values within int16_t range (-32768 to 32767)
-         * @throws Compile error if value is outside range
+         * @brief Creates fixed-point from types other than 16-bit signed integer.
+         * @param value Value to convert
+         * @note Compile-time only
          */
-        template<typename T> requires (std::is_integral_v<T> && !IsValidInteger<T>)
-        consteval Fxp(const T& i) {
-            if constexpr (!IsInInt16Range(i)) {
-                throw "Integer literal out of int16_t range";
-            }
-            value = static_cast<int32_t>(i) << 16;
-        }
-
-        /**
-         * @brief Deleted constructor for invalid integer types.
-         * @note This prevents implicit conversion from 32-bit or unsigned integers
-         */
-        template<typename T> requires IsInvalidInteger<T>
-        Fxp(const T&) = delete;
+        template<typename T> requires (!IsInt16<T>)
+        consteval Fxp(const T& value) : value(value * 65536.0) {}
 
         /***********Static Functions************/
 
@@ -157,14 +107,14 @@ namespace SaturnMath
          * @param rawValue Raw fixed-point bits
          * @return Fixed-point value
          */
-        static constexpr Fxp BuildRaw(const int32_t& rawValue) { return Fxp(rawValue); }
+        static constexpr Fxp BuildRaw(const int32_t& rawValue) { return Fxp(rawValue, true); }
 
         /**
          * @brief Sets up hardware division unit for fixed-point division.
-         * 
+         *
          * Prepares the Saturn's hardware divider unit for fixed-point division:
          * result = (dividend << 16) / divisor
-         * 
+         *
          * @param dividend Numerator
          * @param divisor Denominator
          * @note Division result must be retrieved with AsyncDivGet()
@@ -189,7 +139,7 @@ namespace SaturnMath
          * @return Fixed-point quotient from previous AsyncDivSet()
          * @note Must be called after AsyncDivSet()
          */
-        static Fxp AsyncDivGet() { return static_cast<int32_t>(dvdntl); }
+        static Fxp AsyncDivGet() { return BuildRaw(static_cast<int32_t>(dvdntl)); }
 
         /**
          * @brief Removes fractional part, keeping only integer portion.
@@ -197,7 +147,7 @@ namespace SaturnMath
          */
         constexpr Fxp TruncateFraction() const
         {
-            return (int32_t)0xFFFF0000 & value;
+            return BuildRaw((int32_t)0xFFFF0000 & value);
         }
 
         /**
@@ -277,14 +227,14 @@ namespace SaturnMath
          * @return |x| in fixed-point
          * @note Can be evaluated at compile time
          */
-        constexpr Fxp Abs() const { return value > 0 ? value : -value; }
+        constexpr Fxp Abs() const { return BuildRaw(value > 0 ? value : -value); }
 
         /**
-         * @brief Gets raw 16.16 fixed-point bits.
-         * @return Internal 32-bit representation
+         * @brief Returns a const reference to the internal raw fixed-point value.
+         * @return const reference to the internal 32-bit representation
          * @note Can be evaluated at compile time
          */
-        constexpr const int32_t& Value() const { return value; }
+        constexpr const int32_t& RawValue() const { return value; }
 
         /**
          * @brief Extracts integer part.
@@ -317,10 +267,10 @@ namespace SaturnMath
 
         /**
          * @brief Fixed-point multiplication (a *= b).
-         * 
+         *
          * Uses Saturn's hardware multiplier unit at runtime for optimal performance.
          * Falls back to double math at compile time.
-         * 
+         *
          * @param fxp Value to multiply by
          * @return Reference to this
          */
@@ -358,10 +308,10 @@ namespace SaturnMath
 
         /**
          * @brief Fixed-point division (a /= b).
-         * 
+         *
          * Uses Saturn's hardware divider unit at runtime for optimal performance.
          * Falls back to double math at compile time.
-         * 
+         *
          * @param fxp Value to divide by
          * @return Reference to this
          */
@@ -409,14 +359,14 @@ namespace SaturnMath
          * @param fxp The Fxp object to add.
          * @return The sum as an Fxp object.
          */
-        constexpr Fxp operator+(const Fxp& fxp) const { return value + fxp.value; }
+        constexpr Fxp operator+(const Fxp& fxp) const { return BuildRaw(value + fxp.value); }
 
         /**
          * @brief Subtract another Fxp object from this object.
          * @param fxp The Fxp object to subtract.
          * @return The difference as an Fxp object.
          */
-        constexpr Fxp operator-(const Fxp& fxp) const { return value - fxp.value; }
+        constexpr Fxp operator-(const Fxp& fxp) const { return BuildRaw(value - fxp.value); }
 
         /**
          * @brief Compare two Fxp objects for greater than.
@@ -465,7 +415,7 @@ namespace SaturnMath
          * @param shiftAmount The number of bits to shift.
          * @return The result of the logical right shift as an Fxp object.
          */
-        constexpr Fxp operator>>(const size_t& shiftAmount) const { return value >> shiftAmount; }
+        constexpr Fxp operator>>(const size_t& shiftAmount) const { return BuildRaw(value >> shiftAmount); }
 
         /**
          * @brief Right shift and assign operator for logical right shift.
@@ -479,7 +429,7 @@ namespace SaturnMath
          * @param shiftAmount The number of bits to shift the internal value to the left.
          * @return A new Fxp object with the internal value left-shifted by the specified amount.
          */
-        constexpr Fxp operator<<(const size_t& shiftAmount) const { return value << shiftAmount; }
+        constexpr Fxp operator<<(const size_t& shiftAmount) const { return BuildRaw(value << shiftAmount); }
 
         /**
          * @brief In-place left shift operator for shifting the internal value by a specified number of bits.
@@ -489,3 +439,7 @@ namespace SaturnMath
         constexpr Fxp& operator<<=(const size_t& shiftAmount) { value <<= shiftAmount; return *this; }
     };
 }
+
+static constexpr SaturnMath::Fxp d = int32_t(1);
+
+// ... rest of the code remains the same ...

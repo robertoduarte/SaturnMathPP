@@ -76,108 +76,108 @@ namespace SaturnMath
 
         // Lookup tables with pre-calculated values
         static constexpr LookupCache<int32_t, 0x3FF, 15> sinTable[] = {
-            {Fxp(0.000000).value, 205556},   // Sine value for 0 degrees
-            {Fxp(0.098017).value, 203577},   // Sine value for 5.625 degrees
-            {Fxp(0.195090).value, 199637},   // Sine value for 11.25 degrees
-            {Fxp(0.290285).value, 193774},   // Sine value for 16.875 degrees
-            {Fxp(0.382683).value, 186045},   // Sine value for 22.5 degrees
-            {Fxp(0.471397).value, 176524},   // Sine value for 28.125 degrees
-            {Fxp(0.555570).value, 165303},   // Sine value for 33.75 degrees
-            {Fxp(0.634393).value, 152491},   // Sine value for 39.375 degrees
-            {Fxp(0.707107).value, 138210},   // Sine value for 45 degrees
-            {Fxp(0.773010).value, 122597},   // Sine value for 50.625 degrees
-            {Fxp(0.831470).value, 105804},   // Sine value for 56.25 degrees
-            {Fxp(0.881921).value, 87992},    // Sine value for 61.875 degrees
-            {Fxp(0.923880).value, 69333},    // Sine value for 67.5 degrees
-            {Fxp(0.956940).value, 50006},    // Sine value for 73.125 degrees
-            {Fxp(0.980785).value, 30197},    // Sine value for 78.75 degrees
-            {Fxp(0.995185).value, 10098},    // Sine value for 84.375 degrees
-            {Fxp(1.000000).value, -10098},   // Sine value for 90 degrees
-            {Fxp(0.995185).value, -30197},   // Sine value for 95.625 degrees
-            {Fxp(0.980785).value, -50006},   // Sine value for 101.25 degrees
-            {Fxp(0.956940).value, -69333},   // Sine value for 106.875 degrees
-            {Fxp(0.923880).value, -87992},   // Sine value for 112.5 degrees
-            {Fxp(0.881921).value, -105804},  // Sine value for 118.125 degrees
-            {Fxp(0.831470).value, -122597},  // Sine value for 123.75 degrees
-            {Fxp(0.773010).value, -138210},  // Sine value for 129.375 degrees
-            {Fxp(0.707107).value, -152491},  // Sine value for 135 degrees
-            {Fxp(0.634393).value, -165303},  // Sine value for 140.625 degrees
-            {Fxp(0.555570).value, -176524},  // Sine value for 146.25 degrees
-            {Fxp(0.471397).value, -186045},  // Sine value for 151.875 degrees
-            {Fxp(0.382683).value, -193774},  // Sine value for 157.5 degrees
-            {Fxp(0.290285).value, -199637},  // Sine value for 163.125 degrees
-            {Fxp(0.195090).value, -203577},  // Sine value for 168.75 degrees
-            {Fxp(0.098017).value, -205556},  // Sine value for 174.375 degrees
-            {Fxp(0.000000).value, -205556},  // Sine value for 180 degrees
-            {Fxp(-0.098017).value, -203577}, // Sine value for -174.375 degrees
-            {Fxp(-0.195090).value, -199637}, // Sine value for -168.75 degrees
-            {Fxp(-0.290285).value, -193774}, // Sine value for -163.125 degrees
-            {Fxp(-0.382683).value, -186045}, // Sine value for -157.5 degrees
-            {Fxp(-0.471397).value, -176524}, // Sine value for -151.875 degrees
-            {Fxp(-0.555570).value, -165303}, // Sine value for -146.25 degrees
-            {Fxp(-0.634393).value, -152491}, // Sine value for -140.625 degrees
-            {Fxp(-0.707107).value, -138210}, // Sine value for -135 degrees
-            {Fxp(-0.773010).value, -122597}, // Sine value for -129.375 degrees
-            {Fxp(-0.831470).value, -105804}, // Sine value for -123.75 degrees
-            {Fxp(-0.881921).value, -87992},  // Sine value for -118.125 degrees
-            {Fxp(-0.923880).value, -69333},  // Sine value for -112.5 degrees
-            {Fxp(-0.956940).value, -50006},  // Sine value for -106.875 degrees
-            {Fxp(-0.980785).value, -30197},  // Sine value for -101.25 degrees
-            {Fxp(-0.995185).value, -10098},  // Sine value for -95.625 degrees
-            {Fxp(-1.000000).value, 10098},   // Sine value for -90 degrees
-            {Fxp(-0.995185).value, 30197},   // Sine value for -84.375 degrees
-            {Fxp(-0.980785).value, 50006},   // Sine value for -78.75 degrees
-            {Fxp(-0.956940).value, 69333},   // Sine value for -73.125 degrees
-            {Fxp(-0.923880).value, 87992},   // Sine value for -67.5 degrees
-            {Fxp(-0.881921).value, 105804},  // Sine value for -61.875 degrees
-            {Fxp(-0.831470).value, 122597},  // Sine value for -56.25 degrees
-            {Fxp(-0.773010).value, 138210},  // Sine value for -50.625 degrees
-            {Fxp(-0.707107).value, 152491},  // Sine value for -45 degrees
-            {Fxp(-0.634393).value, 165303},  // Sine value for -39.375 degrees
-            {Fxp(-0.555570).value, 176524},  // Sine value for -33.75 degrees
-            {Fxp(-0.471397).value, 186045},  // Sine value for -28.125 degrees
-            {Fxp(-0.382683).value, 193774},  // Sine value for -22.5 degrees
-            {Fxp(-0.290285).value, 199637},  // Sine value for -16.875 degrees
-            {Fxp(-0.195090).value, 203577},  // Sine value for -11.25 degrees
-            {Fxp(-0.098017).value, 205556}   // Sine value for -5.625 degrees
+            {Fxp(0.000000).RawValue(), 205556},   // Sine value for 0 degrees
+            {Fxp(0.098017).RawValue(), 203577},   // Sine value for 5.625 degrees
+            {Fxp(0.195090).RawValue(), 199637},   // Sine value for 11.25 degrees
+            {Fxp(0.290285).RawValue(), 193774},   // Sine value for 16.875 degrees
+            {Fxp(0.382683).RawValue(), 186045},   // Sine value for 22.5 degrees
+            {Fxp(0.471397).RawValue(), 176524},   // Sine value for 28.125 degrees
+            {Fxp(0.555570).RawValue(), 165303},   // Sine value for 33.75 degrees
+            {Fxp(0.634393).RawValue(), 152491},   // Sine value for 39.375 degrees
+            {Fxp(0.707107).RawValue(), 138210},   // Sine value for 45 degrees
+            {Fxp(0.773010).RawValue(), 122597},   // Sine value for 50.625 degrees
+            {Fxp(0.831470).RawValue(), 105804},   // Sine value for 56.25 degrees
+            {Fxp(0.881921).RawValue(), 87992},    // Sine value for 61.875 degrees
+            {Fxp(0.923880).RawValue(), 69333},    // Sine value for 67.5 degrees
+            {Fxp(0.956940).RawValue(), 50006},    // Sine value for 73.125 degrees
+            {Fxp(0.980785).RawValue(), 30197},    // Sine value for 78.75 degrees
+            {Fxp(0.995185).RawValue(), 10098},    // Sine value for 84.375 degrees
+            {Fxp(1.000000).RawValue(), -10098},   // Sine value for 90 degrees
+            {Fxp(0.995185).RawValue(), -30197},   // Sine value for 95.625 degrees
+            {Fxp(0.980785).RawValue(), -50006},   // Sine value for 101.25 degrees
+            {Fxp(0.956940).RawValue(), -69333},   // Sine value for 106.875 degrees
+            {Fxp(0.923880).RawValue(), -87992},   // Sine value for 112.5 degrees
+            {Fxp(0.881921).RawValue(), -105804},  // Sine value for 118.125 degrees
+            {Fxp(0.831470).RawValue(), -122597},  // Sine value for 123.75 degrees
+            {Fxp(0.773010).RawValue(), -138210},  // Sine value for 129.375 degrees
+            {Fxp(0.707107).RawValue(), -152491},  // Sine value for 135 degrees
+            {Fxp(0.634393).RawValue(), -165303},  // Sine value for 140.625 degrees
+            {Fxp(0.555570).RawValue(), -176524},  // Sine value for 146.25 degrees
+            {Fxp(0.471397).RawValue(), -186045},  // Sine value for 151.875 degrees
+            {Fxp(0.382683).RawValue(), -193774},  // Sine value for 157.5 degrees
+            {Fxp(0.290285).RawValue(), -199637},  // Sine value for 163.125 degrees
+            {Fxp(0.195090).RawValue(), -203577},  // Sine value for 168.75 degrees
+            {Fxp(0.098017).RawValue(), -205556},  // Sine value for 174.375 degrees
+            {Fxp(0.000000).RawValue(), -205556},  // Sine value for 180 degrees
+            {Fxp(-0.098017).RawValue(), -203577}, // Sine value for -174.375 degrees
+            {Fxp(-0.195090).RawValue(), -199637}, // Sine value for -168.75 degrees
+            {Fxp(-0.290285).RawValue(), -193774}, // Sine value for -163.125 degrees
+            {Fxp(-0.382683).RawValue(), -186045}, // Sine value for -157.5 degrees
+            {Fxp(-0.471397).RawValue(), -176524}, // Sine value for -151.875 degrees
+            {Fxp(-0.555570).RawValue(), -165303}, // Sine value for -146.25 degrees
+            {Fxp(-0.634393).RawValue(), -152491}, // Sine value for -140.625 degrees
+            {Fxp(-0.707107).RawValue(), -138210}, // Sine value for -135 degrees
+            {Fxp(-0.773010).RawValue(), -122597}, // Sine value for -129.375 degrees
+            {Fxp(-0.831470).RawValue(), -105804}, // Sine value for -123.75 degrees
+            {Fxp(-0.881921).RawValue(), -87992},  // Sine value for -118.125 degrees
+            {Fxp(-0.923880).RawValue(), -69333},  // Sine value for -112.5 degrees
+            {Fxp(-0.956940).RawValue(), -50006},  // Sine value for -106.875 degrees
+            {Fxp(-0.980785).RawValue(), -30197},  // Sine value for -101.25 degrees
+            {Fxp(-0.995185).RawValue(), -10098},  // Sine value for -95.625 degrees
+            {Fxp(-1.000000).RawValue(), 10098},   // Sine value for -90 degrees
+            {Fxp(-0.995185).RawValue(), 30197},   // Sine value for -84.375 degrees
+            {Fxp(-0.980785).RawValue(), 50006},   // Sine value for -78.75 degrees
+            {Fxp(-0.956940).RawValue(), 69333},   // Sine value for -73.125 degrees
+            {Fxp(-0.923880).RawValue(), 87992},   // Sine value for -67.5 degrees
+            {Fxp(-0.881921).RawValue(), 105804},  // Sine value for -61.875 degrees
+            {Fxp(-0.831470).RawValue(), 122597},  // Sine value for -56.25 degrees
+            {Fxp(-0.773010).RawValue(), 138210},  // Sine value for -50.625 degrees
+            {Fxp(-0.707107).RawValue(), 152491},  // Sine value for -45 degrees
+            {Fxp(-0.634393).RawValue(), 165303},  // Sine value for -39.375 degrees
+            {Fxp(-0.555570).RawValue(), 176524},  // Sine value for -33.75 degrees
+            {Fxp(-0.471397).RawValue(), 186045},  // Sine value for -28.125 degrees
+            {Fxp(-0.382683).RawValue(), 193774},  // Sine value for -22.5 degrees
+            {Fxp(-0.290285).RawValue(), 199637},  // Sine value for -16.875 degrees
+            {Fxp(-0.195090).RawValue(), 203577},  // Sine value for -11.25 degrees
+            {Fxp(-0.098017).RawValue(), 205556}   // Sine value for -5.625 degrees
         };
 
         static constexpr LookupCache<int32_t, 0x3FF, 10> tanTable1[] = {
-            {Fxp(0.00000).value, 6454},
-            {Fxp(0.09849).value, 6581},
-            {Fxp(0.19891).value, 6844},
-            {Fxp(0.30335).value, 7265},
-            {Fxp(0.41421).value, 7883},
-            {Fxp(0.53451).value, 8760},
-            {Fxp(0.66818).value, 9994},
-            {Fxp(0.82068).value, 11751},
-            {Fxp(1.00000).value, 14319},
-            {Fxp(1.21850).value, 18225},
-            {Fxp(1.49661).value, 24527},
-            {Fxp(2.41421).value, 57825},
-            {Fxp(3.29656).value, 113428},
-            {Fxp(5.02734).value, 335926}};
+            {Fxp(0.00000).RawValue(), 6454},
+            {Fxp(0.09849).RawValue(), 6581},
+            {Fxp(0.19891).RawValue(), 6844},
+            {Fxp(0.30335).RawValue(), 7265},
+            {Fxp(0.41421).RawValue(), 7883},
+            {Fxp(0.53451).RawValue(), 8760},
+            {Fxp(0.66818).RawValue(), 9994},
+            {Fxp(0.82068).RawValue(), 11751},
+            {Fxp(1.00000).RawValue(), 14319},
+            {Fxp(1.21850).RawValue(), 18225},
+            {Fxp(1.49661).RawValue(), 24527},
+            {Fxp(2.41421).RawValue(), 57825},
+            {Fxp(3.29656).RawValue(), 113428},
+            {Fxp(5.02734).RawValue(), 335926}};
 
         static constexpr LookupCache<int32_t, 0x0FF, 8> tanTable2[] = {
-            {Fxp(10.15317).value, 223051},
-            {Fxp(13.55667).value, 445566},
-            {Fxp(20.35547).value, 1335624}};
+            {Fxp(10.15317).RawValue(), 223051},
+            {Fxp(13.55667).RawValue(), 445566},
+            {Fxp(20.35547).RawValue(), 1335624}};
 
         static constexpr LookupCache<int32_t, 0x03F, 6> tanTable3[] = {
-            {Fxp(40.73548).value, 890193},
-            {Fxp(54.31875).value, 1780251},
-            {Fxp(81.48324).value, 5340487}};
+            {Fxp(40.73548).RawValue(), 890193},
+            {Fxp(54.31875).RawValue(), 1780251},
+            {Fxp(81.48324).RawValue(), 5340487}};
 
         static constexpr LookupCache<int32_t, 0x00F, 4> tanTable4[] = {
-            {Fxp(162.97262).value, 3560269},
-            {Fxp(217.29801).value, 7120505},
-            {Fxp(325.94830).value, 21361448}};
+            {Fxp(162.97262).RawValue(), 3560269},
+            {Fxp(217.29801).RawValue(), 7120505},
+            {Fxp(325.94830).RawValue(), 21361448}};
 
         static constexpr LookupCache<int32_t, 0x003, 2> tanTable5[] = {
-            {Fxp(51.89814).value, 14240951},
-            {Fxp(69.19781).value, 28481894},
-            {Fxp(303.79704).value, 85445668},
-            {Fxp(607.59446).value, 365979601},
+            {Fxp(51.89814).RawValue(), 14240951},
+            {Fxp(69.19781).RawValue(), 28481894},
+            {Fxp(303.79704).RawValue(), 85445668},
+            {Fxp(607.59446).RawValue(), 365979601},
             {0x7FFFFFFF, 0}};
 
         static constexpr LookupCache<uint16_t, 0x7FF, 17> aTan2Table[] = {
@@ -229,9 +229,9 @@ namespace SaturnMath
          */
         static constexpr Fxp Sin(const Angle& angle)
         {
-            size_t index = angle.value >> 10;
+            size_t index = angle.RawValue() >> 10;
             auto tableValue = sinTable[index];
-            return tableValue.ExtractValue(angle.value);
+            return Fxp::BuildRaw(tableValue.ExtractValue(angle.RawValue()));
         }
 
         /**
@@ -241,9 +241,9 @@ namespace SaturnMath
          */
         static constexpr Fxp Cos(const Angle& angle)
         {
-            size_t index = (angle.value + Angle::HalfPi().value) >> 10;
+            size_t index = (angle.RawValue() + Angle::HalfPi().RawValue()) >> 10;
             auto tableValue = sinTable[index];
-            return tableValue.ExtractValue(angle.value);
+            return Fxp::BuildRaw(sinTable[index].ExtractValue(angle.RawValue()));
         }
 
         /**
@@ -258,22 +258,22 @@ namespace SaturnMath
          */
         static constexpr Fxp Tan(const Angle& angle)
         {
-            uint16_t tempAngle = angle.value;
+            uint16_t tempAngle = angle.RawValue();
 
-            if (tempAngle >= Angle::Pi().value)
-                tempAngle += Angle::Pi().value;
+            if (tempAngle >= Angle::Pi().RawValue())
+                tempAngle += Angle::Pi().RawValue();
 
-            bool secondQuarter = tempAngle >= Angle::HalfPi().value;
+            bool secondQuarter = tempAngle >= Angle::HalfPi().RawValue();
 
             if (secondQuarter)
-                tempAngle = Angle::Pi().value - tempAngle;
+                tempAngle = Angle::Pi().RawValue() - tempAngle;
 
             auto CalculateValue = [tempAngle, secondQuarter](auto lookupTable, auto upperRange)
             {
                 size_t index = (tempAngle - upperRange) >> lookupTable[0].interpolationShift;
                 auto tableValue = lookupTable[index];
                 int32_t ret = tableValue.ExtractValue(tempAngle);
-                return secondQuarter ? -ret : ret;
+                return Fxp::BuildRaw(secondQuarter ? -ret : ret);
             };
 
             if (tempAngle >= 0x3FF0) { return CalculateValue(tanTable5, 0x3FF0); }
@@ -296,18 +296,18 @@ namespace SaturnMath
         static constexpr Angle Atan2(const Fxp& y, const Fxp& x)
         {
             uint16_t result = x < 0 ? 
-                (y < 0 ? Angle::Pi().value : -Angle::Pi().value) : 0;
+                (y < 0 ? Angle::Pi().RawValue() : -Angle::Pi().RawValue()) : 0;
 
             int32_t divResult;
 
             if (x.Abs() < y.Abs())
             {
-                divResult = (x / y).value;
-                result += divResult < 0 ? -Angle::HalfPi().value : Angle::HalfPi().value;
+                divResult = (x / y).RawValue();
+                result += divResult < 0 ? -Angle::HalfPi().RawValue() : Angle::HalfPi().RawValue();
             }
             else
             {
-                divResult = -(y / x).value;
+                divResult = -(y / x).RawValue();
             }
 
             if (divResult < 0)
@@ -334,15 +334,15 @@ namespace SaturnMath
          */
         static constexpr std::pair<Fxp, Fxp> SinCos(const Angle& angle)
         {
-            size_t sinIndex = angle.value >> 10;
-            size_t cosIndex = (angle.value + Angle::HalfPi().value) >> 10;
+            size_t sinIndex = angle.RawValue() >> 10;
+            size_t cosIndex = (angle.RawValue() + Angle::HalfPi().RawValue()) >> 10;
             
             auto sinTableValue = sinTable[sinIndex];
             auto cosTableValue = sinTable[cosIndex];
             
             return {
-                sinTableValue.ExtractValue(angle.value),
-                cosTableValue.ExtractValue(angle.value)
+                sinTableValue.ExtractValue(angle.RawValue()),
+                cosTableValue.ExtractValue(angle.RawValue())
             };
         }
         /** @} */
