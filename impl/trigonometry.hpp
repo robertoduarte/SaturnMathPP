@@ -174,10 +174,10 @@ namespace SaturnMath
             {Fxp(325.94830).RawValue(), 21361448}};
 
         static constexpr LookupCache<int32_t, 0x003, 2> tanTable5[] = {
-            {Fxp(51.89814).RawValue(), 14240951},
-            {Fxp(69.19781).RawValue(), 28481894},
-            {Fxp(303.79704).RawValue(), 85445668},
-            {Fxp(607.59446).RawValue(), 365979601},
+            {Fxp(651.89814).RawValue(), 14240951},
+            {Fxp(869.19781).RawValue(), 28481894},
+            {Fxp(1303.79704).RawValue(), 85445668},
+            {Fxp(2607.59446).RawValue(), 365979601},
             {0x7FFFFFFF, 0}};
 
         static constexpr LookupCache<uint16_t, 0x7FF, 17> aTan2Table[] = {
