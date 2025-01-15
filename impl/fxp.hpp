@@ -35,17 +35,21 @@ namespace SaturnMath
      *
      * @note All operations are designed for maximum efficiency on Saturn hardware.
      *       Avoid runtime floating-point conversions in performance-critical code.
+     *
+     * @note The #pragma GCC optimize("O2") directive is used to enable optimizations that improve performance,
+     *       specifically for fixed-point arithmetic operations. It ensures that the compiler generates efficient
+     *       code that takes full advantage of the hardware capabilities, particularly in performance-critical sections.
+     *       Without this optimization, the generated code may not perform as expected, leading to slower execution.
+     *       This optimization is crucial for achieving optimal performance in the Fxp class, as it allows the compiler
+     *       to apply various optimizations, such as dead code elimination, register allocation, and instruction scheduling.
+     *       These optimizations can significantly improve the execution speed of the Fxp class, making it suitable for
+     *       performance-critical applications.
      */
+#pragma GCC optimize("O2")
     class Fxp
     {
     private:
         int32_t value; /**< Raw fixed-point value in 16.16 format */
-
-        /* Hardware division unit registers */
-        static inline constexpr size_t cpuAddress = 0xFFFFF000UL;
-        static inline auto& dvsr = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F00UL);   /**< Divisor register */
-        static inline auto& dvdnth = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F10UL); /**< Dividend high register */
-        static inline auto& dvdntl = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F14UL); /**< Dividend low register */
 
         /**
          * @brief Private constructor for raw fixed-point values.
@@ -53,30 +57,77 @@ namespace SaturnMath
          */
         constexpr Fxp(const int32_t& inValue, const bool& /*unused*/) : value(inValue) {}
 
-        template<typename T>
-        static constexpr bool IsInt16 = std::is_same_v<T, int16_t>;
+        /* Hardware division unit registers */
+        static inline constexpr size_t cpuAddress = 0xFFFFF000UL;
+        static inline auto& dvsr = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F00UL);   /**< Divisor register */
+        static inline auto& dvdnth = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F10UL); /**< Dividend high register */
+        static inline auto& dvdntl = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F14UL); /**< Dividend low register */
 
     public:
-        /** @brief Default constructor. Initializes to 0 */
+        /**
+         * @brief Default constructor for Fxp class.
+         * Initializes the fixed-point number to zero.
+         */
         constexpr Fxp() : value(0) {}
 
-        /** @brief Copy constructor */
+        /**
+         * @brief Copy constructor for Fxp class.
+         * @param fxp The Fxp object to copy.
+         */
         constexpr Fxp(const Fxp& fxp) : value(fxp.value) {}
 
         /**
-         * @brief Creates fixed-point from 16-bit signed integer.
-         * @param i Integer value to convert
+         * @brief Constructor for Fxp class from a 16-bit signed integer.
+         * @param value The integer value to convert to fixed-point.
+         *
+         * @details Accepts only int16_t values. Other types MUST be explicitly cast to int16_t.
+         * This explicit casting requirement ensures you are aware of potential performance impacts
+         * from type conversions
+         * Valid range: -32768 to 32767
+         *
+         * Runtime casting examples:
+         * @code
+         * // From char (requires upcasting)
+         * int16_t charValue = static_cast<int16_t>('A');
+         * Fxp a = charValue;
+         *
+         * // From int (requires downcasting, check value range)
+         * int16_t intValue = static_cast<int16_t>(100);
+         * Fxp b = intValue;
+         *
+         * // From int32_t (requires downcasting, check value range)
+         * int32_t largeValue = 30000;
+         * Fxp c = static_cast<int16_t>(largeValue);
+         * @endcode
+         *
+         * @warning Both upcasting and downcasting operations can impact runtime performance.
+         * @note Converts to 16.16 fixed-point format (e.g., 10 becomes 10.0).
          */
-        template<typename T> requires IsInt16<T>
-        constexpr Fxp(const T& value) : value(static_cast<int32_t>(value) << 16) {}
+        constexpr Fxp(const int16_t& value) : value(static_cast<int32_t>(value) << 16) {}
 
         /**
-         * @brief Creates fixed-point from types other than 16-bit signed integer.
-         * @param value Value to convert
-         * @note Compile-time only
+         * @brief Compile-time constructor for numeric types other than int16_t.
+         * @tparam T Numeric type (e.g., float, double, int32_t)
+         * @param value The value to convert to fixed-point
+         *
+         * @details This constructor converts any numeric type to 16.16 fixed-point format
+         * at compile time. The conversion is done by multiplying the input by 65536 (2^16)
+         * to properly align the decimal point.
+         *
+         * Example usage:
+         * @code
+         * constexpr Fxp a = 3.14159;     // From double
+         * constexpr Fxp b = 42.0f;       // From float
+         * constexpr Fxp c = 100000L;     // From long
+         * @endcode
+         *
+         * @note Only available at compile time (consteval). For runtime conversions of
+         * integer types, use explicit casting to int16_t with the runtime constructor.
+         *
+         * @warning Values outside the valid fixed-point range may cause overflow.
          */
-        template<typename T> requires (!IsInt16<T>)
-        consteval Fxp(const T& value) : value(value * 65536.0) {}
+        template<typename T> requires (!std::is_same_v<T, int16_t>)
+            consteval Fxp(const T& value) : value(value * 65536.0) {}
 
         /***********Static Functions************/
 
@@ -121,17 +172,9 @@ namespace SaturnMath
          */
         static void AsyncDivSet(const Fxp& dividend, const Fxp& divisor)
         {
-            uint32_t dividendh;
-            __asm__ volatile("swap.w %[in], %[out]\n"
-                : [out] "=&r"(dividendh)
-                : [in] "r"(dividend.value));
-            __asm__ volatile("exts.w %[in], %[out]"
-                : [out] "=&r"(dividendh)
-                : [in] "r"(dividendh));
-
-            dvdnth = dividendh;
-            dvsr = divisor.value;
-            dvdntl = dividend.value << 16;
+            dvsr = static_cast<uint32_t>(divisor.value);
+            dvdnth = static_cast<uint32_t>(dividend.value) >> 16;
+            dvdntl = static_cast<uint32_t>(dividend.value) << 16;
         }
 
         /**
@@ -147,7 +190,7 @@ namespace SaturnMath
          */
         constexpr Fxp TruncateFraction() const
         {
-            return BuildRaw((int32_t)0xFFFF0000 & value);
+            return BuildRaw(static_cast<int32_t>(0xFFFF0000) & value);
         }
 
         /**
@@ -249,6 +292,39 @@ namespace SaturnMath
          */
         consteval double ToFloat() { return value / 65536.0; }
 
+        /**
+         * @brief Clears the MAC (Multiply-and-Accumulate) registers.
+         *
+         * This static function generates inline assembly to clear both MACH and MACL registers
+         * before starting a new MAC operation sequence.
+         */
+        static void ClearMac() { __asm__ volatile("\tclrmac\n" ::: "mach", "macl"); }
+
+        /**
+         * @brief Extracts the result from MAC registers into a fixed-point value.
+         *
+         * This static function generates inline assembly to:
+         * 1. Store MACH and MACL values into temporary registers
+         * 2. Extract the final result using xtrct instruction
+         * 3. Return the result as a fixed-point value
+         *
+         * @return Fixed-point value containing the MAC operation result
+         */
+        static Fxp ExtractMac()
+        {
+            int32_t aux0, aux1;
+            __asm__ volatile(
+                "\tsts mach, %[aux0]\n"
+                "\tsts macl, %[aux1]\n"
+                "\txtrct %[aux0], %[aux1]\n"
+                : [aux0] "=&r"(aux0),
+                [aux1] "=&r"(aux1)
+                :
+                : "memory"
+                );
+            return BuildRaw(aux1);
+        }
+
         /**************Operators****************/
 
         /**
@@ -266,33 +342,23 @@ namespace SaturnMath
         constexpr Fxp& operator-=(const Fxp& fxp) { value -= fxp.value; return *this; }
 
         /**
-         * @brief Fixed-point multiplication (a *= b).
+         * @brief Multiplies the current fixed-point value by another fixed-point value (a *= b).
          *
-         * Uses Saturn's hardware multiplier unit at runtime for optimal performance.
-         * Falls back to double math at compile time.
+         * This operator performs a 64-bit multiplication of the current fixed-point value and the provided
+         * fixed-point value, followed by a right shift of 16 bits. This operation effectively scales the
+         * result to fit within the 16.16 fixed-point format, where the first 16 bits represent the integer
+         * part and the last 16 bits represent the fractional part.
          *
-         * @param fxp Value to multiply by
-         * @return Reference to this
+         * @param fxp The fixed-point value to multiply with.
+         * @return A reference to the current instance after performing the multiplication, allowing for
+         *         chaining of operations.
+         *
+         * @note This operation modifies the current instance in place. Ensure that the input values are
+         *       within the valid range to avoid overflow.
          */
         constexpr Fxp& operator*=(const Fxp& fxp)
         {
-            if consteval
-            {
-                double a = value / 65536.0;
-                double b = fxp.value / 65536.0;
-                value = (a * b) * 65536.0;
-            }
-            else
-            {
-                uint32_t mach;
-                __asm__ volatile(
-                    "\tdmuls.l %[a], %[b]\n"
-                    "\tsts mach, %[mach]\n"
-                    : [mach] "=r"(mach)
-                    : [a] "r"(value), [b] "r"(fxp.value)
-                    : "mach", "macl");
-                value = mach;
-            }
+            value = (static_cast<uint64_t>(value) * static_cast<uint64_t>(fxp.value)) >> 16;
             return *this;
         }
 
@@ -352,7 +418,7 @@ namespace SaturnMath
          * @brief Negate the value.
          * @return The negated value as an Fxp object.
          */
-        constexpr Fxp operator-() const { return -value; }
+        constexpr Fxp operator-() const { return BuildRaw(-value); }
 
         /**
          * @brief Add another Fxp object to this object.
@@ -439,7 +505,4 @@ namespace SaturnMath
         constexpr Fxp& operator<<=(const size_t& shiftAmount) { value <<= shiftAmount; return *this; }
     };
 }
-
-static constexpr SaturnMath::Fxp d = int32_t(1);
-
-// ... rest of the code remains the same ...
+#pragma GCC reset_options

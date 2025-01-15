@@ -80,10 +80,56 @@ namespace SaturnMath
             return result;
         }
 
+                /**
+         * @brief Helper function to perform assembly-level dot product calculation and accumulation
+         * @param first First vector
+         * @param second Second vector
+         * @warning This function MUST be used together with Fxp::ClearMac() and Fxp::ExtractMac().
+         * Failing to clear the MAC registers before the first DotAccumulate or extract after the
+         * last DotAccumulate will result in incorrect calculations.
+         *
+         * @note Hardware: This function uses the Saturn's MAC (Multiply and Accumulate) registers
+         * for efficient SIMD-like operations. The MAC registers are shared hardware resources,
+         * so their state must be properly managed.
+         *
+         * Required usage pattern:
+         * @code
+         * // Step 1: Always clear MAC registers before first DotAccumulate
+         * Fxp::ClearMac();
+         *
+         * // Step 2: Call DotAccumulate one or more times
+         * DotAccumulate(v1, v2);              // First dot product
+         * DotAccumulate(v3, v4);              // Optional: accumulate more dot products
+         *
+         * // Step 3: Always extract result after last DotAccumulate
+         * Fxp result = Fxp::ExtractMac();
+         * @endcode
+         */
+        static void DotAccumulate(const Vector2D& first, const Vector2D& second)
+        {
+            auto a = reinterpret_cast<const int32_t*>(&first);
+            auto b = reinterpret_cast<const int32_t*>(&second);
+            __asm__ volatile(
+                "\tmac.l @%[a]+, @%[b]+\n" // X * X
+                "\tmac.l @%[a]+, @%[b]+\n" // Y * Y
+                : [a] "+r"(a), [b] "+r"(b)
+                : "m"(*a), "m"(*b)
+                : "mach", "macl", "memory");
+        }
+
         /**
-         * @brief Calculate the dot product of two vectors.
-         * @param vec The vector to calculate the dot product with.
-         * @return The dot product of the two vectors.
+         * @brief Calculate the dot product of this object and another Vec2 object.
+         * @param vec The Vec2 object to calculate the dot product with.
+         * @return The dot product as an Fxp value.
+         * @details Calculates a single dot product between two vectors. For runtime calculations,
+         * this uses the DotAccumulate helper with proper MAC register management.
+         *
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 2);
+         * Vector2D v2(4, 5);
+         * Fxp result = v1.Dot(v2);    // Computes 1*4 + 2*5
+         * @endcode
          */
         constexpr Fxp Dot(const Vector2D& vec) const
         {
@@ -93,25 +139,53 @@ namespace SaturnMath
             }
             else
             {
-                int32_t aux0;
-                int32_t aux1;
-                auto a = reinterpret_cast<const int32_t*>(this);
-                auto b = reinterpret_cast<const int32_t*>(&vec);
+                Fxp::ClearMac();
+                DotAccumulate(*this, vec);
+                return Fxp::ExtractMac();
+            }
+        }
 
-                __asm__ volatile("\tclrmac\n"
-                    "\tmac.l @%[a]+, @%[b]+\n"
-                    "\tmac.l @%[a]+, @%[b]+\n"
-                    "\tsts mach, %[aux0]\n"
-                    "\tsts macl, %[aux1]\n"
-                    "\txtrct %[aux0], %[aux1]\n"
-                    : [a] "+r"(a),
-                    [b] "+r"(b),
-                    [aux0] "=&r"(aux0),
-                    [aux1] "=&r"(aux1)
-                    : "m"(*a),
-                    "m"(*b)
-                    : "mach", "macl", "memory");
-                return Fxp::BuildRaw(aux1);
+        /**
+         * @brief Calculate and accumulate the dot products of multiple 2D vector pairs.
+         * @param pairs Variadic parameter pack of vector pairs (e.g., {v1, v2}, {v3, v4}, ...).
+         * @return The accumulated dot product of all pairs.
+         * @details This function efficiently computes multiple dot products and accumulates their results
+         * using the Saturn's MAC registers. It's more efficient than calculating individual dot products
+         * and adding them, as it minimizes the number of MAC register operations and takes advantage
+         * of the hardware's parallel multiply-accumulate capability.
+         *
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 0), v2(1, 0);  // Unit vectors along X
+         * Vector2D v3(0, 1), v4(0, 1);  // Unit vectors along Y
+         *
+         * // Computes (v1·v2) + (v3·v4) = 1 + 1 = 2
+         * // All calculations done in parallel using Saturn's MAC registers
+         * Fxp result = Vector2D::MultiDotAccumulate(
+         *     std::pair{v1, v2},
+         *     std::pair{v3, v4}
+         * );
+         * @endcode
+         */
+        template <typename... Pairs>
+        static constexpr Fxp MultiDotAccumulate(const Pairs&... pairs)
+        {
+            if consteval
+            {
+                // Compile-time computation using fold expression
+                return (... + pairs.first.Dot(pairs.second));
+            }
+            else
+            {
+                Fxp::ClearMac();
+
+                // Loop through pairs and accumulate dot products
+                ([&](const auto& pair)
+                {
+                    DotAccumulate(pair.first, pair.second);
+                }(pairs), ...); // Unpack the variadic arguments
+
+                return Fxp::ExtractMac();
             }
         }
 
