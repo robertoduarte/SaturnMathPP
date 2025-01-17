@@ -17,8 +17,17 @@ SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints
 
 ### Core Components
 - **Fixed-Point Arithmetic**: High-performance `Fxp` class with precise fixed-point operations
+  - Power function for integer exponents
+  - Value clamping between bounds
+  - Comprehensive arithmetic operations
 - **Angle Handling**: Type-safe `Angle` class for angular calculations
-- **Integer Math**: Efficient integer operations via `IntegerUtils`
+  - Raw value construction and access
+  - Scalar multiplication and division
+  - Automatic wrap-around handling
+- **Euler Angles**: Type-safe representation of 3D rotations
+  - Intrinsic Tait-Bryan angles (pitch-yaw-roll)
+  - X-Y-Z rotation order
+  - Zero-initialization support
 
 ### Vectors and Matrices
 - **2D Vectors**: `Vector2D` class with optimized operations
@@ -31,9 +40,14 @@ SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints
   - Template-based precision control for geometric operations
 - **Matrix Operations**: Efficient `Matrix33` and `Matrix43` implementations
   - Common transformations (scale, rotate, translate)
-  - Optimized multiplication
+  - Optimized multiplication with detailed documentation
   - Identity/zero matrix constants
-  - Precision-controlled decomposition and view matrix creation
+  - Row-based layout with clear geometric meaning
+  - Orthonormal basis in right-handed coordinate system
+  - Billboard matrix creation
+  - Look-at matrix for camera positioning
+  - Transform decomposition into scale/rotation/translation
+  - EulerAngles support for rotations
 - **Matrix Stack**: Fixed-size stack for transform hierarchies
   - No dynamic allocation
   - Depth checking
@@ -57,6 +71,17 @@ SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints
   - Fast plane extraction from matrices
   - Comprehensive intersection tests
   - View space utilities
+
+### Trigonometry
+- **Basic Functions**: Efficient implementations using lookup tables
+  - Sine, cosine, and tangent
+  - Arctangent2 with full quadrant support
+- **Draft Functions**: Work-in-progress implementations
+  - Inverse trigonometric (asin, acos)
+  - Hyperbolic functions (sinh, cosh, tanh)
+- **Interpolation**: Smooth angle transitions
+  - Spherical linear interpolation (SLerp)
+  - Automatic shortest-path selection
 
 ## Installation
 
@@ -82,11 +107,15 @@ using namespace SaturnMath;
 Vector3D position(1, 2, 3);
 Vector3D direction = Vector3D::UnitZ();  // Forward direction (0,0,1)
 
-// Standard precision for accurate results
-Vector3D normalizedDir = direction.Normalize<Precision::Standard>();
+// Standard precision - highest accuracy
+Vector3D normal = direction.Normalize<Precision::Standard>();  // Explicit
+Vector3D same = direction.Normalize();                        // Implicit (defaults to Standard)
 
-// Fast precision for better performance
-float length = position.Length<Precision::Fast>();
+// Fast precision - balanced performance
+Vector3D approxNormal = direction.Normalize<Precision::Fast>();
+
+// Turbo precision - fastest calculation
+Vector3D quickNormal = direction.Normalize<Precision::Turbo>();
 
 // 2D vector operations
 Vector2D screenPos = Vector2D::Zero();
@@ -138,17 +167,44 @@ Fxp b(2.5);                // 2.5 (0x00028000)
 Fxp c = a * b;             // 12.5 (0x000C8000)
 int16_t i = c.ToInt();     // 12
 
+// Power and clamping operations
+Fxp squared = a.Pow(2);    // 25
+Fxp clamped = b.Clamp(0, 2); // 2
+
 // Angle calculations
 Angle rotation = Angle::FromDegrees(45);
 Fxp sine = Sin(rotation);
 Fxp cosine = Cos(rotation);
 
-// Efficient simultaneous calculation
-auto [sin, cos] = SinCos(rotation);
+// Example of angle arithmetic
+Angle doubled = rotation * Fxp(2);    // Double the angle
+Angle halved = rotation / Fxp(2);     // Half the angle
 
-// Integer math utilities
-uint32_t value = 100;
-uint32_t sqrt = IntegerUtils::Sqrt<Precision::Fast>(value);  // Quick square root calculation
+// Euler angles for 3D rotation
+EulerAngles orientation(
+    Angle::FromDegrees(30),  // Pitch
+    Angle::FromDegrees(45),  // Yaw
+    Angle::FromDegrees(0)    // Roll
+);
+
+// Create transformation matrix from Euler angles
+Matrix43 transform = Matrix43::CreateTransform(
+    Vector3D(1, 2, 3),      // Translation
+    orientation,             // Rotation
+    Vector3D(1, 1, 1)       // Scale
+);
+
+// Create billboard matrix
+Matrix43 billboard = Matrix43::CreateBillboard(
+    Vector3D(0, 0, 0),      // Billboard position
+    Vector3D(0, 0, 5),      // Camera position
+    Vector3D::UnitY()       // Up vector
+);
+
+// Smooth angle interpolation
+Angle start = Angle::Zero();
+Angle end = Angle::HalfPi();
+Angle interpolated = Trigonometry::SLerp(start, end, Fxp(0.5));
 ```
 
 ## Performance Considerations
