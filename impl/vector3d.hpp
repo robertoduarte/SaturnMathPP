@@ -289,13 +289,27 @@ namespace SaturnMath
 
         // Scalar multiplication and division
         /**
+         * @brief Compound multiplication assignment operator.
+         * @param scalar The scalar value to multiply by.
+         * @return Reference to the modified Vec3 object.
+         */
+        constexpr Vector3D& operator*=(const Fxp& scalar)
+        {
+            Vector2D::operator*=(scalar);
+            Z *= scalar;
+            return *this;
+        }
+
+        /**
          * @brief Multiply each coordinate by a scalar value.
-         * @param fxp The scalar value to multiply by.
+         * @param scalar The scalar value to multiply by.
          * @return The resulting Vec3 object.
          */
-        constexpr Vector3D operator*(const Fxp& fxp) const
+        constexpr Vector3D operator*(const Fxp& scalar) const
         {
-            return Vector3D(Vector2D::operator*(fxp), Z * fxp);
+            Vector3D result(*this);
+            result *= scalar;
+            return result;
         }
 
         /**

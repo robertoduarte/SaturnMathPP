@@ -14,42 +14,88 @@ namespace SaturnMath
         Vector3D Row3; /**< Translation vector (position). */
 
         /**
-         * @brief Default constructor initializing to identity matrix.
+         * @brief Default constructor initializing to a zero matrix.
+         *
+         * This constructor initializes the matrix to a zero matrix, which means all elements are set to zero.
+         * This is often used as a starting point for transformations before any operations are applied.
+         *
+         * @details The zero matrix for a 4x3 matrix is represented as:
+         *
+         *     | 0 0 0 |
+         *     | 0 0 0 |
+         *     | 0 0 0 |
+         *     | 0 0 0 |
+         *
+         * @note This constructor is typically used when no transformation is required, and the matrix should
+         * represent the default state.
          */
         constexpr Matrix43() : Matrix33(), Row3() {}
 
         /**
          * @brief Creates transformation from orientation and position.
-         * @param up Up vector for orientation.
-         * @param direction Forward vector for orientation.
-         * @param position Translation vector.
+         *
+         * This constructor initializes a 4x3 matrix using an up vector, a direction vector, and a position vector.
+         * The resulting matrix represents a transformation that combines rotation (defined by the up and direction
+         * vectors) and translation (defined by the position vector).
+         *
+         * @param up The up vector for orientation, defining the vertical direction of the transformation.
+         * @param direction The forward vector for orientation, defining the direction the transformation is facing.
+         * @param position The translation vector that defines the position of the transformation in world space.
+         *
+         * @note Ensure that the up and direction vectors are orthogonal to avoid unexpected transformations.
          */
         constexpr Matrix43(const Vector3D& up, const Vector3D& direction, const Vector3D& position)
-            : Matrix33(up, direction), Row3(position) {}
+            : Matrix33(up, direction), Row3(position)
+        {
+        }
 
         /**
          * @brief Combines rotation matrix with translation.
-         * @param rotation Base 3x3 rotation/scale matrix.
-         * @param translation Translation vector.
+         * 
+         * This constructor initializes a 4x3 matrix using a base 3x3 rotation/scale matrix and a translation vector. 
+         * The resulting matrix represents a transformation that combines the specified rotation and translation.
+         * 
+         * @param rotation The base 3x3 rotation/scale matrix that defines the rotation component of the transformation.
+         * @param translation The translation vector that defines the position of the transformation in world space.
+         * 
+         * @note This constructor is useful for creating transformation matrices that include both rotation and translation.
          */
         constexpr Matrix43(const Matrix33& rotation, const Vector3D& translation)
-            : Matrix33(rotation), Row3(translation) {}
+            : Matrix33(rotation), Row3(translation)
+        {
+        }
 
         /**
          * @brief Creates matrix from individual row vectors.
-         * @param row0 Right vector.
-         * @param row1 Up vector.
-         * @param row2 Forward vector.
-         * @param row3 Translation vector.
+         * 
+         * This constructor initializes a 4x3 matrix using individual row vectors. Each row vector defines a direction 
+         * in world space, allowing for flexible matrix creation based on specific row definitions.
+         * 
+         * @param row0 The right vector, representing the first row of the matrix.
+         * @param row1 The up vector, representing the second row of the matrix.
+         * @param row2 The forward vector, representing the third row of the matrix.
+         * @param row3 The translation vector, representing the position of the transformation in world space.
+         * 
+         * @note This constructor is useful when the individual row vectors are known and need to be combined into a matrix.
          */
         constexpr Matrix43(const Vector3D& row0, const Vector3D& row1, const Vector3D& row2, const Vector3D& row3)
-            : Matrix33(row0, row1, row2), Row3(row3) {}
+            : Matrix33(row0, row1, row2), Row3(row3)
+        {
+        }
 
         /**
          * @brief Modifies current matrix by adding translation.
-         * Ideal for continuous movement and animation.
-         * @param translation Translation vector to add.
-         * @return Reference to this matrix.
+         * 
+         * This method updates the current matrix by adding a translation vector to the existing translation component. 
+         * This is particularly useful for continuous movement and animation, allowing for incremental updates to the position.
+         * 
+         * @param translation The translation vector to add to the current transformation.
+         * 
+         * @return Reference to this matrix, allowing for method chaining.
+         * 
+         * @example
+         * Matrix43 matrix;
+         * matrix.Translate(Vector3D(1, 0, 0)); // Moves the matrix by (1, 0, 0)
          */
         Matrix43& Translate(const Vector3D& translation)
         {
@@ -59,30 +105,47 @@ namespace SaturnMath
 
         /**
          * @brief Multiplies this matrix by another, combining transformations.
-         * @param other Matrix to multiply with.
-         * @return Reference to this matrix.
+         * 
+         * This operator overload allows for the multiplication of this matrix by another transformation matrix, 
+         * effectively combining the transformations. The result is a new matrix that represents the combined 
+         * effect of both transformations.
+         * 
+         * @param other The matrix to multiply with.
+         * 
+         * @return Reference to this matrix after multiplication, allowing for method chaining.
+         * 
+         * @example
+         * Matrix43 result = matrix1 * matrix2; // Combines transformations of matrix1 and matrix2
          */
         Matrix43& operator*=(const Matrix43& other)
         {
             const Vector3D oldRow3 = Row3;
-            
+
             // Multiply 3x3 part
             Matrix33::operator*=(other);
-            
+
             // Transform and add translation
             Row3 = oldRow3 + Vector3D(
                 Row0.Dot(other.Row3),
                 Row1.Dot(other.Row3),
                 Row2.Dot(other.Row3)
             );
-            
+
             return *this;
         }
 
         /**
          * @brief Creates new matrix as product of this and other.
-         * @param other Matrix to multiply with.
-         * @return Resulting transformation matrix.
+         * 
+         * This operator overload creates a new matrix that is the result of multiplying this matrix by another. 
+         * The resulting matrix represents the combined transformations of both matrices, without modifying the original.
+         * 
+         * @param other The matrix to multiply with.
+         * 
+         * @return A new Matrix43 object that is the product of this matrix and the other matrix.
+         * 
+         * @example
+         * Matrix43 result = matrix1 * matrix2; // Creates a new matrix as the product of matrix1 and matrix2
          */
         Matrix43 operator*(const Matrix43& other) const
         {
@@ -92,10 +155,56 @@ namespace SaturnMath
         }
 
         /**
+         * @brief Multiplies this matrix by another 3x3 matrix.
+         * 
+         * This operator overload allows for the multiplication of this matrix by a 3x3 matrix, modifying only the 
+         * rotation part of this matrix. The translation component remains unchanged.
+         * 
+         * @param other The 3x3 matrix to multiply with.
+         * 
+         * @return Reference to this matrix after multiplication, allowing for method chaining.
+         * 
+         * @example
+         * matrix *= rotationMatrix; // Updates the matrix with the rotation from rotationMatrix
+         */
+        Matrix43& operator*=(const Matrix33& other)
+        {
+            Matrix33::operator*=(other);
+            return *this;
+        }
+
+        /**
+         * @brief Creates new matrix as product of this and another 3x3 matrix.
+         * 
+         * This operator overload creates a new matrix that is the result of multiplying this matrix by a 3x3 matrix. 
+         * The resulting matrix modifies only the rotation part of this matrix, while the translation component remains unchanged.
+         * 
+         * @param other The 3x3 matrix to multiply with.
+         * 
+         * @return A new Matrix43 object that is the product of this matrix and the 3x3 matrix.
+         * 
+         * @example
+         * Matrix43 result = matrix * rotationMatrix; // Creates a new matrix as the product of matrix and rotationMatrix
+         */
+        Matrix43 operator*(const Matrix33& other) const
+        {
+            Matrix43 result(*this);
+            result *= other;
+            return result;
+        }
+
+        /**
          * @brief Transforms a point by this matrix.
-         * Applies both rotation and translation.
-         * @param point Point to transform.
-         * @return Transformed point.
+         * 
+         * This method applies both rotation and translation to a given point in world space, transforming it 
+         * to the corresponding point in the camera's local space.
+         * 
+         * @param point The point to transform, represented as a Vector3D.
+         * 
+         * @return The transformed point as a Vector3D.
+         * 
+         * @example
+         * Vector3D transformedPoint = matrix.TransformPoint(Vector3D(1, 2, 3)); // Transforms the point (1, 2, 3)
          */
         Vector3D TransformPoint(const Vector3D& point) const
         {
@@ -108,9 +217,16 @@ namespace SaturnMath
 
         /**
          * @brief Transforms a vector by this matrix.
-         * Applies only rotation, ignores translation.
-         * @param vector Vector to transform.
-         * @return Transformed vector.
+         * 
+         * This method applies only the rotation component of the matrix to a given vector, ignoring any translation. 
+         * This is useful for transforming direction vectors without affecting their position.
+         * 
+         * @param vector The vector to transform, represented as a Vector3D.
+         * 
+         * @return The transformed vector as a Vector3D.
+         * 
+         * @example
+         * Vector3D transformedVector = matrix.TransformVector(Vector3D(1, 0, 0)); // Transforms the vector (1, 0, 0)
          */
         Vector3D TransformVector(const Vector3D& vector) const
         {
@@ -121,8 +237,16 @@ namespace SaturnMath
 
         /**
          * @brief Creates translation matrix.
-         * @param translation Desired translation vector.
-         * @return New translation matrix.
+         * 
+         * This static method creates a 4x3 matrix that represents a translation transformation. 
+         * The resulting matrix can be used to translate points in world space by the specified translation vector.
+         * 
+         * @param translation The desired translation vector, represented as a Vector3D.
+         * 
+         * @return A new Matrix43 object representing the translation transformation.
+         * 
+         * @example
+         * Matrix43 translationMatrix = Matrix43::CreateTranslation(Vector3D(5, 0, 0)); // Translates by (5, 0, 0)
          */
         static constexpr Matrix43 CreateTranslation(const Vector3D& translation)
         {
@@ -135,12 +259,27 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Create a billboard matrix that always faces the camera
-         * @tparam P Precision level for calculation
-         * @param position The position of the billboard
-         * @param cameraPosition The position of the camera
-         * @param up The up vector (usually Vector3D::UnitY())
-         * @return The billboard matrix
+         * @brief Create a billboard matrix that always faces the camera.
+         * 
+         * This static method generates a billboard matrix that ensures an object always faces the camera. 
+         * The resulting matrix can be used for rendering objects like sprites that should always face the camera.
+         * 
+         * @tparam P Precision level for calculation, allowing users to choose the desired precision for the calculations.
+         * 
+         * @param position The position of the billboard in world coordinates.
+         * @param cameraPosition The position of the camera in world coordinates.
+         * @param up The up vector (usually Vector3D::UnitY()), defining the vertical orientation of the billboard.
+         * 
+         * @return The billboard matrix that transforms points from world space to the billboard's local space.
+         * 
+         * @example
+         * Matrix43 billboardMatrix = Matrix43::CreateBillboard(
+         *     Vector3D(0, 0, 0),   // Billboard position
+         *     Vector3D(0, 0, 5),   // Camera position
+         *     Vector3D(0, 1, 0)    // Up vector
+         * );
+         * 
+         * @note Ensure that the up vector is not collinear with the look vector to avoid undefined behavior.
          */
         template<Precision P = Precision::Standard>
         static Matrix43 CreateBillboard(
@@ -150,10 +289,10 @@ namespace SaturnMath
         {
             // Calculate the look vector from billboard to camera
             Vector3D look = (cameraPosition - position).Normalize<P>();
-            
+
             // Calculate right vector as cross product of up and look
             Vector3D right = up.Cross(look).Normalize<P>();
-            
+
             // Calculate actual up vector as cross product of look and right
             Vector3D actualUp = look.Cross(right);
 
@@ -167,12 +306,29 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Create a look-at matrix for camera positioning
-         * @tparam P Precision level for calculation
-         * @param eye The position of the camera
-         * @param target The point to look at
-         * @param up The up vector (usually Vector3D::UnitY())
-         * @return The look-at matrix
+         * @brief Creates a look-at matrix for positioning a camera in 3D space.
+         *
+         * This function generates a view matrix that can be used to position a camera
+         * looking at a specific target point from a given eye position, with an up vector
+         * to define the camera's vertical orientation.
+         *
+         * @tparam P The precision level for calculations, defaulting to Standard.
+         * @param eye The position of the camera in world coordinates.
+         * @param target The point in world space that the camera is looking at.
+         * @param up The up vector, which defines the camera's vertical direction (default is Vector3D::UnitY()).
+         * @return A Matrix43 representing the look-at transformation.
+         *
+         * @note This function assumes that the up vector is not collinear with the look vector.
+         *
+         * @example
+         * Matrix43 viewMatrix = Matrix43::CreateLookAt(
+         *     Vector3D(0.0f, 0.0f, 5.0f),  // Eye position
+         *     Vector3D(0.0f, 0.0f, 0.0f),  // Target position
+         *     Vector3D::UnitY()            // Up vector
+         * );
+         *
+         * @details This function is used to create a view matrix that can be used to position a camera in 3D space.
+         * The resulting matrix can be used to transform points from world space to the camera's local space.
          */
         template<Precision P = Precision::Standard>
         static Matrix43 CreateLookAt(
@@ -182,10 +338,10 @@ namespace SaturnMath
         {
             // Calculate the look vector
             Vector3D look = (target - eye).Normalize<P>();
-            
+
             // Calculate right vector as cross product of up and look
             Vector3D right = up.Cross(look).Normalize<P>();
-            
+
             // Calculate actual up vector as cross product of look and right
             Vector3D actualUp = look.Cross(right);
 
@@ -193,56 +349,66 @@ namespace SaturnMath
             return Matrix43(
                 right.X, right.Y, right.Z,
                 actualUp.X, actualUp.Y, actualUp.Z,
-                look.X, look.Y, look.Z,
+                -look.X, -look.Y, -look.Z,
                 eye.X, eye.Y, eye.Z
             );
         }
 
         /**
-         * @brief Creates transformation matrix
-         * @tparam P Precision level for calculation (Turbo not supported)
-         * @param translation Position offset
-         * @param rotation Rotation angles (X,Y,Z)
-         * @param scale Scale factors (default: 1,1,1)
-         * @return Transformation matrix
+         * @brief Creates transformation matrix.
+         * 
+         * This static method generates a transformation matrix that combines translation, rotation, and scale. 
+         * The resulting matrix can be used to transform points in world space by applying the specified translation, 
+         * rotation angles, and scale factors.
+         * 
+         * @tparam P Precision level for calculation, allowing users to choose the desired precision for the calculations.
+         * 
+         * @param translation The position offset as a Vector3D.
+         * @param rotation The rotation as EulerAngles (pitch, yaw, roll).
+         * @param scale The scale factors as a Vector3D (default: 1, 1, 1).
+         * 
+         * @return A new Matrix43 object representing the combined transformation.
+         * 
+         * @example
+         * Matrix43 transformMatrix = Matrix43::CreateTransform(
+         *     Vector3D(1, 2, 3),                                  // Translation
+         *     EulerAngles(Angle::Zero(), Angle::HalfPi(), Angle::Zero()),  // 90° rotation around Y axis
+         *     Vector3D(2, 2, 2)                                   // Scale
+         * );
          */
-        template<Precision P = Precision::Standard>
         static Matrix43 CreateTransform(
             const Vector3D& translation,
-            const Vector3D& rotation,
+            const EulerAngles& rotation,
             const Vector3D& scale = Vector3D(1, 1, 1))
         {
-            static_assert(P != Precision::Turbo, "Turbo precision is not supported for CreateTransform");
+            // Create rotation matrix from Euler angles
+            Matrix33 rotationMatrix = Matrix33::CreateRotation(rotation.pitch, rotation.yaw, rotation.roll);
 
-            const auto [sinX, cosX] = Trigonometry::SinCos(rotation.X);
-            const auto [sinY, cosY] = Trigonometry::SinCos(rotation.Y);
-            const auto [sinZ, cosZ] = Trigonometry::SinCos(rotation.Z);
+            // Create the transformation matrix using the rotation matrix and translation
+            Matrix43 result(rotationMatrix, translation);
 
-            // Create rotation matrix
-            Matrix43 result(
-                (cosY * cosZ) * scale.X,
-                (cosY * sinZ) * scale.X,
-                (-sinY) * scale.X,
-                ((sinX * sinY * cosZ) - (cosX * sinZ)) * scale.Y,
-                ((sinX * sinY * sinZ) + (cosX * cosZ)) * scale.Y,
-                (sinX * cosY) * scale.Y,
-                ((cosX * sinY * cosZ) + (sinX * sinZ)) * scale.Z,
-                ((cosX * sinY * sinZ) - (sinX * cosZ)) * scale.Z,
-                (cosX * cosY) * scale.Z,
-                translation.X,
-                translation.Y,
-                translation.Z
-            );
+            // Apply scaling
+            result.Row0 *= scale.X;
+            result.Row1 *= scale.Y;
+            result.Row2 *= scale.Z;
 
             return result;
         }
 
         /**
-         * @brief Extracts scale, rotation, and translation components
-         * @tparam P Precision level for calculation (Turbo not supported)
-         * @param scale Output scale vector
-         * @param rotation Output Euler angles (X=pitch, Y=yaw, Z=roll)
-         * @param translation Output translation vector
+         * @brief Extracts scale, rotation, and translation components.
+         * 
+         * This method decomposes the transformation matrix into its constituent components: scale, rotation, 
+         * and translation. The extracted values can be used for further processing or analysis of the transformation.
+         * 
+         * @tparam P Precision level for calculation, allowing users to choose the desired precision for the calculations.
+         * 
+         * @param scale Output parameter for the scale vector.
+         * @param rotation Output parameter for the rotation angles (X=pitch, Y=yaw, Z=roll).
+         * @param translation Output parameter for the translation vector.
+         * 
+         * @note The method assumes that the input matrix is a valid transformation matrix. Ensure that the matrix 
+         * has not been skewed or sheared, as this may affect the accuracy of the extracted values.
          */
         template<Precision P = Precision::Standard>
         void Decompose(
@@ -250,8 +416,6 @@ namespace SaturnMath
             Vector3D& rotation,
             Vector3D& translation) const
         {
-            static_assert(P != Precision::Turbo, "Turbo precision is not supported for Decompose");
-
             // Extract translation
             translation = Row3;
 
@@ -286,7 +450,15 @@ namespace SaturnMath
 
         /**
          * @brief Creates identity matrix.
-         * @return Identity transformation matrix.
+         * 
+         * This static method generates a 4x3 identity matrix, which is a special type of matrix that does not 
+         * change the value of any vector when multiplied by it. The identity matrix is often used as a starting 
+         * point for transformations or to reset a transformation.
+         * 
+         * @return A new Matrix43 object representing the identity transformation.
+         * 
+         * @example
+         * Matrix43 identityMatrix = Matrix43::Identity(); // Creates an identity matrix
          */
         static consteval Matrix43 Identity()
         {
@@ -300,10 +472,18 @@ namespace SaturnMath
 
         /**
          * @brief Creates a translation matrix.
-         * @param x X translation
-         * @param y Y translation
-         * @param z Z translation
-         * @return Translation matrix
+         * 
+         * This static method generates a 4x3 translation matrix that represents a transformation that moves 
+         * points in world space by the specified translation vector.
+         * 
+         * @param x The X translation component.
+         * @param y The Y translation component.
+         * @param z The Z translation component.
+         * 
+         * @return A new Matrix43 object representing the translation transformation.
+         * 
+         * @example
+         * Matrix43 translationMatrix = Matrix43::Translation(5, 0, 0); // Translates by (5, 0, 0)
          */
         static constexpr Matrix43 Translation(const Fxp& x, const Fxp& y, const Fxp& z)
         {
@@ -317,8 +497,16 @@ namespace SaturnMath
 
         /**
          * @brief Creates a uniform scale matrix.
-         * @param scale Scale factor for all axes
-         * @return Scale matrix
+         * 
+         * This static method generates a 4x3 scale matrix that represents a transformation that scales 
+         * points uniformly along all axes by the specified scale factor.
+         * 
+         * @param scale The scale factor for all axes.
+         * 
+         * @return A new Matrix43 object representing the uniform scale transformation.
+         * 
+         * @example
+         * Matrix43 scaleMatrix = Matrix43::Scale(2); // Scales by a factor of 2
          */
         static constexpr Matrix43 Scale(const Fxp& scale)
         {
@@ -332,10 +520,18 @@ namespace SaturnMath
 
         /**
          * @brief Creates a non-uniform scale matrix.
-         * @param x X scale factor
-         * @param y Y scale factor
-         * @param z Z scale factor
-         * @return Scale matrix
+         * 
+         * This static method generates a 4x3 scale matrix that represents a transformation that scales 
+         * points by different factors along each axis, allowing for non-uniform scaling.
+         * 
+         * @param x The X scale factor.
+         * @param y The Y scale factor.
+         * @param z The Z scale factor.
+         * 
+         * @return A new Matrix43 object representing the non-uniform scale transformation.
+         * 
+         * @example
+         * Matrix43 nonUniformScaleMatrix = Matrix43::Scale(2, 1, 0.5); // Scales by (2, 1, 0.5)
          */
         static constexpr Matrix43 Scale(const Fxp& x, const Fxp& y, const Fxp& z)
         {

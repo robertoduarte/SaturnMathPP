@@ -97,11 +97,13 @@ namespace SaturnMath
 
         /**
          * @brief Rotate top matrix.
-         * @param rotation Rotation angles (X,Y,Z).
+         * @param angleX Angle of rotation around X axis.
+         * @param angleY Angle of rotation around Y axis.
+         * @param angleZ Angle of rotation around Z axis.
          */
-        void RotateTop(const Vector3D& rotation)
+        void RotateTop(const Angle& angleX, const Angle& angleY, const Angle& angleZ)
         {
-            stack[currentDepth] = stack[currentDepth] * Matrix33::CreateRotation(rotation);
+            stack[currentDepth] = stack[currentDepth] * Matrix33::CreateRotation(angleX, angleY, angleZ);
         }
 
         /**

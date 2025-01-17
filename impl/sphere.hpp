@@ -46,38 +46,47 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Tests if point is inside sphere.
+         * @brief Tests if a point is inside the sphere.
+         * 
+         * @tparam P Precision level for calculation (default is Precision::Standard)
          * @param point Point to test
-         * @return true if point is inside or on surface
+         * @return true if the point is inside or on the surface of the sphere
          */
+        template<Precision P = Precision::Standard>
         constexpr bool Contains(const Vector3D& point) const
         {
-            return (point - position).LengthSquared() <= radius * radius;
+            return (point - position).Length<P>().Square() <= radius.Square();
         }
 
         /**
          * @brief Tests intersection with another sphere.
+         * 
+         * @tparam P Precision level for calculation (default is Precision::Standard)
          * @param other Sphere to test against
          * @return true if spheres overlap
          */
+        template<Precision P = Precision::Standard>
         constexpr bool Intersects(const Sphere& other) const
         {
             Fxp radiusSum = radius + other.radius;
-            return (other.position - position).LengthSquared() <= radiusSum * radiusSum;
+            return (other.position - position).Length<P>().Square() <= radiusSum.Square();
         }
 
         /**
          * @brief Tests intersection with AABB.
+         * 
+         * @tparam P Precision level for calculation (default is Precision::Standard)
          * @param box Box to test against
          * @return true if sphere and box overlap
          */
+        template<Precision P = Precision::Standard>
         bool Intersects(const AABB& box) const
         {
             // Find closest point on box to sphere center
             Vector3D closest = box.GetClosestPoint(position);
             
             // Test if this point is within sphere radius
-            return (closest - position).LengthSquared() <= radius * radius;
+            return (closest - position).Length<P>().Square() <= radius.Square();
         }
 
         /**

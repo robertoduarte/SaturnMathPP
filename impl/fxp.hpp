@@ -325,6 +325,51 @@ namespace SaturnMath
             return BuildRaw(aux1);
         }
 
+        /**
+         * @brief Power function for fixed-point numbers.
+         * 
+         * Calculates this value raised to the power of exponent.
+         * Uses repeated multiplication for integer exponents.
+         * 
+         * @param exponent The power to raise this value to
+         * @return The result of this^exponent
+         * 
+         * @note Only supports non-negative integer exponents for efficiency
+         */
+        constexpr Fxp Pow(const Fxp& exponent) const
+        {
+            // Handle special cases
+            if (exponent == 0) return 1;
+            if (exponent == 1) return *this;
+            
+            // Convert to integer for efficient calculation
+            int32_t intExp = exponent.RawValue() >> 16;
+            Fxp result(1);
+            Fxp base = *this;
+            
+            while (intExp > 0)
+            {
+                if (intExp & 1)
+                    result = result * base;
+                base = base * base;
+                intExp >>= 1;
+            }
+            
+            return result;
+        }
+
+        /**
+         * @brief Clamps this value between minimum and maximum bounds.
+         * 
+         * @param min Minimum allowed value
+         * @param max Maximum allowed value
+         * @return Clamped value
+         */
+        constexpr Fxp Clamp(const Fxp& min, const Fxp& max) const
+        {
+            return (*this < min) ? min : ((*this > max) ? max : *this);
+        }
+
         /**************Operators****************/
 
         /**
@@ -504,5 +549,7 @@ namespace SaturnMath
          */
         constexpr Fxp& operator<<=(const size_t& shiftAmount) { value <<= shiftAmount; return *this; }
     };
+
+    static constexpr auto test = Fxp(0.3).Pow(3).ToFloat();
 }
 #pragma GCC reset_options

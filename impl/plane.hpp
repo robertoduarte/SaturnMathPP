@@ -55,7 +55,7 @@ namespace SaturnMath
          */
         Plane(const Vector3D& a, const Vector3D& b, const Vector3D& c)
         {
-            normal = Vector3D::Cross(b - a, c - a).Normalized();
+            normal = (b - a).Cross(c - a).Normalize();
             d = -normal.Dot(a);  // Negative because we want normal·X + d = 0
         }
 

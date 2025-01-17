@@ -67,10 +67,10 @@ namespace SaturnMath
          * @brief Updates frustum planes based on view matrix.
          * 
          * Recalculates all six frustum planes using the camera's:
-         * - Position (viewMatrix.Position)
-         * - Forward direction (-viewMatrix.ZAxis)
-         * - Up direction (viewMatrix.YAxis)
-         * - Right direction (viewMatrix.XAxis)
+         * - Position (viewMatrix.Row3)
+         * - Forward direction (-viewMatrix.Row2)
+         * - Up direction (viewMatrix.Row1)
+         * - Right direction (viewMatrix.Row0)
          * 
          * @param viewMatrix Camera's view transformation
          */

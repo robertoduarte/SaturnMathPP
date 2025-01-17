@@ -303,6 +303,30 @@ namespace SaturnMath
 
         // Arithmetic operators
         /**
+         * @brief Compound multiplication assignment operator.
+         * @param scalar The scalar value to multiply by.
+         * @return Reference to the modified Vec2 object.
+         */
+        constexpr Vector2D& operator*=(const Fxp& scalar)
+        {
+            X *= scalar;
+            Y *= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Scaling operator.
+         * @param scalar The scalar to multiply with.
+         * @return The result of the scaling.
+         */
+        constexpr Vector2D operator*(const Fxp& scalar) const
+        {
+            Vector2D result(*this);
+            result *= scalar;
+            return result;
+        }
+
+        /**
          * @brief Addition operator.
          * @param vec The vector to add.
          * @return The result of the addition.
@@ -320,16 +344,6 @@ namespace SaturnMath
         constexpr Vector2D operator-(const Vector2D& vec) const
         {
             return Vector2D(X - vec.X, Y - vec.Y);
-        }
-
-        /**
-         * @brief Scaling operator.
-         * @param scalar The scalar to multiply with.
-         * @return The result of the scaling.
-         */
-        constexpr Vector2D operator*(const Fxp& scalar) const
-        {
-            return Vector2D(X * scalar, Y * scalar);
         }
 
         /**
