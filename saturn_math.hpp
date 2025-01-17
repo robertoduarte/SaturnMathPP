@@ -16,7 +16,13 @@
 
 // Math utility headers
 #include "impl/trigonometry.hpp"
-#include "impl/integer_utils.hpp"
+
+// Additional utility and precision headers
+#include "impl/utils.hpp"
+#include "impl/interpolation.hpp"
+#include "impl/angle.hpp"
+#include "impl/sort_order.hpp"
+#include "impl/precision.hpp"
 
 // Other headers
 #include "impl/frustum.hpp"
