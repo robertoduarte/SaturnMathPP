@@ -24,7 +24,7 @@ namespace SaturnMath
         Fxp d;          /**< Signed distance from origin to plane */
 
         /** @brief Default constructor. Creates XY plane at origin. */
-        constexpr Plane() : normal(Vector3D::UnitZ()), d(0) {}
+        constexpr Plane() : normal(Vector3D::UnitZ()), d((int16_t)0) {}
 
         /**
          * @brief Creates plane from normal and distance.

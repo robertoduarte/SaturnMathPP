@@ -36,7 +36,7 @@ namespace SaturnMath
      * @note All operations are designed for maximum efficiency on Saturn hardware.
      *       Avoid runtime floating-point conversions in performance-critical code.
      *
-     * @note The #pragma GCC optimize("O2") directive is used to enable optimizations that improve performance,
+     * @note The \#pragma GCC optimize("O2") directive is used to enable optimizations that improve performance,
      *       specifically for fixed-point arithmetic operations. It ensures that the compiler generates efficient
      *       code that takes full advantage of the hardware capabilities, particularly in performance-critical sections.
      *       Without this optimization, the generated code may not perform as expected, leading to slower execution.
@@ -283,14 +283,21 @@ namespace SaturnMath
          * @brief Extracts integer part.
          * @return Integer portion of value
          */
-        constexpr int16_t ToInt() { return static_cast<int16_t>(value >> 16); }
+        constexpr int16_t ToInt() const { return static_cast<int16_t>(value >> 16); }
+
+        /**
+         * @brief Converts to float.
+         * @return Float value
+         * @note Only available at compile time due to consteval
+         */
+        consteval float ToFloat() const { return value / 65536.0f; }
 
         /**
          * @brief Converts to double.
          * @return Double value
          * @note Only available at compile time due to consteval
          */
-        consteval double ToFloat() { return value / 65536.0; }
+        consteval double ToDouble() const { return value / 65536.0; }
 
         /**
          * @brief Clears the MAC (Multiply-and-Accumulate) registers.
@@ -454,7 +461,6 @@ namespace SaturnMath
 
         /**
          * @brief Copy assignment operator.
-         * @param fxp The Fxp object to copy.
          * @return A reference to this object.
          */
         constexpr Fxp& operator=(const Fxp&) = default;
@@ -549,7 +555,5 @@ namespace SaturnMath
          */
         constexpr Fxp& operator<<=(const size_t& shiftAmount) { value <<= shiftAmount; return *this; }
     };
-
-    static constexpr auto test = Fxp(0.3).Pow(3).ToFloat();
 }
 #pragma GCC reset_options

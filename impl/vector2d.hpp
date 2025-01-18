@@ -315,6 +315,42 @@ namespace SaturnMath
         }
 
         /**
+         * @brief Division operator.
+         * @param scalar The scalar to divide by.
+         * @return The result of the division.
+         */
+        constexpr Vector2D operator/=(const Fxp& scalar)
+        {
+            X /= scalar;
+            Y /= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Addition operator.
+         * @param vec The vector to add.
+         * @return The result of the addition.
+         */
+        constexpr Vector2D operator+=(const Vector2D& vec)
+        {
+            X += vec.X;
+            Y += vec.Y;
+            return *this;
+        }
+
+        /**
+         * @brief Subtraction operator.
+         * @param vec The vector to subtract.
+         * @return The result of the subtraction.
+         */
+        constexpr Vector2D operator-=(const Vector2D& vec)
+        {
+            X -= vec.X;
+            Y -= vec.Y;
+            return *this;
+        }
+
+        /**
          * @brief Scaling operator.
          * @param scalar The scalar to multiply with.
          * @return The result of the scaling.
@@ -354,6 +390,82 @@ namespace SaturnMath
         constexpr Vector2D operator/(const Fxp& scalar) const
         {
             return Vector2D(X / scalar, Y / scalar);
+        }
+        
+        // Unary operators
+        /**
+         * @brief Unary negation operator.
+         * @return A new Vec3 object with negated coordinates.
+         */
+        constexpr Vector2D operator-() const
+        {
+            return Vector2D(-X, -Y);
+        }
+
+        // Comparison operators
+        /**
+         * @brief Check if two Vec3 objects are not equal.
+         * @param vec The Vec3 object to compare.
+         * @return True if not equal, false otherwise.
+         */
+        constexpr bool operator!=(const Vector2D& vec) const
+        {
+            return X != vec.X && Y != vec.Y;
+        }
+
+        /**
+         * @brief Check if two Vec3 objects are not equal.
+         * @param vec The Vec3 object to compare.
+         * @return True if not equal, false otherwise.
+         */
+        constexpr bool operator==(const Vector2D& vec) const
+        {
+            return X == vec.X && Y == vec.Y;
+        }
+
+        // Bitwise shift operators
+        /**
+         * @brief Bitwise right shift operator.
+         * @param shiftAmount The number of positions to shift.
+         * @return The resulting Vec3 object.
+         */
+        constexpr Vector2D operator>>(const size_t& shiftAmount)
+        {
+            return Vector3D(X >> shiftAmount, Y >> shiftAmount);
+        }
+
+        /**
+         * @brief Bitwise right shift assignment operator.
+         * @param shiftAmount The number of positions to shift.
+         * @return Reference to the modified Vec3 object.
+         */
+        constexpr Vector2D& operator>>=(const size_t& shiftAmount)
+        {
+            X >>= shiftAmount;
+            Y >>= shiftAmount;
+            return *this;
+        }
+
+        /**
+         * @brief Bitwise left shift operator.
+         * @param shiftAmount The number of positions to shift.
+         * @return The resulting Vec3 object.
+         */
+        constexpr Vector2D operator<<(const size_t& shiftAmount)
+        {
+            return Vector2D(X << shiftAmount, Y << shiftAmount);
+        }
+
+        /**
+         * @brief Bitwise left shift assignment operator.
+         * @param shiftAmount The number of positions to shift.
+         * @return Reference to the modified Vec3 object.
+         */
+        constexpr Vector2D& operator<<=(const size_t& shiftAmount)
+        {
+            X <<= shiftAmount;
+            Y <<= shiftAmount;
+            return *this;
         }
     };
 }

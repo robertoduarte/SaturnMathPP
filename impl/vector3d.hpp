@@ -301,6 +301,18 @@ namespace SaturnMath
         }
 
         /**
+         * @brief Divide each coordinate by a scalar value.
+         * @param fxp The scalar value to divide by.
+         * @return The resulting Vec3 object.
+         */
+        constexpr Vector3D operator/=(const Fxp& fxp)
+        {
+            Vector2D::operator*=(fxp);
+            Z *= fxp;
+            return *this;
+        }
+
+        /**
          * @brief Multiply each coordinate by a scalar value.
          * @param scalar The scalar value to multiply by.
          * @return The resulting Vec3 object.
@@ -377,6 +389,16 @@ namespace SaturnMath
         constexpr bool operator!=(const Vector3D& vec) const
         {
             return X != vec.X && Y != vec.Y && Z != vec.Z;
+        }
+
+        /**
+         * @brief Check if two Vec3 objects are not equal.
+         * @param vec The Vec3 object to compare.
+         * @return True if not equal, false otherwise.
+         */
+        constexpr bool operator==(const Vector3D& vec) const
+        {
+            return X == vec.X && Y == vec.Y && Z == vec.Z;
         }
 
         // Bitwise shift operators
@@ -481,22 +503,6 @@ namespace SaturnMath
             Y -= vec.Y;
             Z -= vec.Z;
             return *this;
-        }
-
-        void test()
-        {
-            static constexpr Vector3D v1(1, 0, 0), v2(1, 0, 0);  // Unit vectors along X
-            static constexpr Vector3D v3(0, 1, 0), v4(0, 1, 0);  // Unit vectors along Y
-            static constexpr Vector3D v5(0, 0, 1), v6(0, 0, 1);  // Unit vectors along Z
-
-
-            // Computes (v1·v2) + (v3·v4) + (v5·v6) = 1 + 1 + 1 = 3
-            // All calculations done in parallel using Saturn's MAC registers
-            static constexpr auto result = Vector3D::MultiDotAccumulate(
-                std::pair{ v1, v2 },
-                std::pair{ v3, v4 },
-                std::pair{ v5, v6 }
-            ).ToFloat();
         }
     };
 }
