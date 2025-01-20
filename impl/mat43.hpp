@@ -443,12 +443,12 @@ namespace SaturnMath
             );
 
             // Extract rotation angles (Euler angles in XYZ order)
-            rotation.Y = Trigonometry::Asin(-rotMat.Row1.Z);
+            rotation.Y = Trigonometry::Asin(-rotMat.Row2.Z);
 
             // Check for gimbal lock
-            if (rotMat.Row1.Z < 0.999999 && rotMat.Row1.Z > -0.999999)
+            if (rotMat.Row2.Z < 0.999999 && rotMat.Row2.Z > -0.999999)
             {
-                rotation.X = Trigonometry::Atan2(rotMat.Row2.Z, rotMat.Row3.z);
+                rotation.X = Trigonometry::Atan2(rotMat.Row2.Z, rotMat.Row2.Z);
                 rotation.Z = Trigonometry::Atan2(rotMat.Row1.Y, rotMat.Row1.X);
             }
             else
@@ -556,6 +556,25 @@ namespace SaturnMath
                 Vector3D(0, 0, z),
                 Vector3D(0, 0, 0)
             );
+        }
+
+        /**
+         * @brief Creates a uniform scale matrix from a Vector3D.
+         * 
+         * This static method generates a 4x3 scale matrix that represents a transformation that scales 
+         * points uniformly along all axes by the specified scale factors from a Vector3D.
+         * 
+         * @param scale The Vector3D containing scale factors for all axes.
+         * 
+         * @return A new Matrix43 object representing the uniform scale transformation.
+         * 
+         * @code {.cpp}
+         * Matrix43 scaleMatrix = Matrix43::Scale(Vector3D(2, 2, 2)); // Scales by a factor of 2
+         * @endcode
+         */
+        static constexpr Matrix43 Scale(const Vector3D& scale)
+        {
+            return Scale(Fxp(scale.X), Fxp(scale.Y), Fxp(scale.Z));
         }
     };
 }

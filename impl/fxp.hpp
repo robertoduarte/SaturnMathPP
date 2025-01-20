@@ -220,7 +220,7 @@ namespace SaturnMath
                 }
 
                 root >>= 8;
-                return static_cast<int32_t>(root);
+                return BuildRaw(root);
             }
             else // Precision::Fast or Precision::Turbo
             {

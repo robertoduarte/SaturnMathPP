@@ -246,7 +246,7 @@ namespace SaturnMath
                     0.38928148272372454, // Beta
                     0.2987061876143797   // Gamma
                 );
-                return Abs().Sort<SortOrder::Descending>().Dot(alphaBetaGamma);
+                return alphaBetaGamma.Dot(Abs().Sort<SortOrder::Descending>());
             }
             else
             {

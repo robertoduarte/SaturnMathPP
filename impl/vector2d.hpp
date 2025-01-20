@@ -431,7 +431,7 @@ namespace SaturnMath
          */
         constexpr Vector2D operator>>(const size_t& shiftAmount)
         {
-            return Vector3D(X >> shiftAmount, Y >> shiftAmount);
+            return Vector2D(X >> shiftAmount, Y >> shiftAmount);
         }
 
         /**

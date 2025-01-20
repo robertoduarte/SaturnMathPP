@@ -4,7 +4,6 @@
 #include "angle.hpp"
 #include <type_traits>
 #include <utility>
-#include <stdexcept>
 
 namespace SaturnMath
 {
@@ -234,25 +233,7 @@ namespace SaturnMath
          * - Covers practical range for most applications
          * - Memory efficient by serving both sinh and cosh functions
          */
-        static constexpr LookupCache<uint16_t, 0x7FF, 11> sinhTable[] = {
-            {0, 0},          // sinh(0) = 0
-            {4096, 4198},    // sinh(0.25) ≈ 0.2526
-            {8192, 8599},    // sinh(0.5) ≈ 0.5211
-            {12288, 13271},  // sinh(0.75) ≈ 0.8687
-            {16384, 18288},  // sinh(1.0) ≈ 1.1752
-            {20480, 23815},  // sinh(1.25) ≈ 1.6019
-            {24576, 29996},  // sinh(1.5) ≈ 2.1293
-            {28672, 36978},  // sinh(1.75) ≈ 2.7622
-            {32768, 44900},  // sinh(2.0) ≈ 3.6269
-            {36864, 54000},  // sinh(2.25) ≈ 4.7017
-            {40960, 64500},  // sinh(2.5) ≈ 6.0502
-            {45056, 76600},  // sinh(2.75) ≈ 7.7097
-            {49152, 90500},  // sinh(3.0) ≈ 10.0179
-            {53248, 106400}, // sinh(3.25) ≈ 12.8482
-            {57344, 124500}, // sinh(3.5) ≈ 16.5425
-            {61440, 144900}, // sinh(3.75) ≈ 21.1910
-            {65535, 167800}, // sinh(4.0) ≈ 27.2899
-            {0x4000, 0} };    // End marker
+        static constexpr LookupCache<uint16_t, 0x7FF, 11> sinhTable[] = {/* Todo: Add proper table values */};    // End marker
 
     public:
         /**
@@ -601,41 +582,4 @@ namespace SaturnMath
         }
         /** @} */
     };
-
-    /**
-     * @name Free Function Wrappers
-     * Convenient free function wrappers for trigonometric operations.
-     * @{
-     */
-
-    /** @copydoc Trigonometry::Sin */
-    inline constexpr Fxp Sin(const Angle& angle) { return Trigonometry::Sin(angle); }
-
-    /** @copydoc Trigonometry::Cos */
-    inline constexpr Fxp Cos(const Angle& angle) { return Trigonometry::Cos(angle); }
-
-    /** @copydoc Trigonometry::Tan */
-    inline constexpr Fxp Tan(const Angle& angle) { return Trigonometry::Tan(angle); }
-
-    /** @copydoc Trigonometry::Atan2 */
-    inline constexpr Angle Atan2(const Fxp& y, const Fxp& x) { return Trigonometry::Atan2(y, x); }
-
-    /** @copydoc Trigonometry::Asin */
-    inline constexpr Angle Asin(const Fxp& value) { return Trigonometry::Asin(value); }
-
-    /** @copydoc Trigonometry::Acos */
-    inline constexpr Angle Acos(const Fxp& value) { return Trigonometry::Acos(value); }
-
-    /** @copydoc Trigonometry::Sinh */
-    inline constexpr Fxp Sinh(const Fxp& value) { return Trigonometry::Sinh(value); }
-
-    /** @copydoc Trigonometry::Cosh */
-    inline constexpr Fxp Cosh(const Fxp& value) { return Trigonometry::Cosh(value); }
-
-    /** @copydoc Trigonometry::Tanh */
-    inline constexpr Fxp Tanh(const Fxp& value) { return Trigonometry::Tanh(value); }
-
-
-    static constexpr auto test = Asin(0.2);
-    /** @} */
 }
