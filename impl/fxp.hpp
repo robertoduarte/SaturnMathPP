@@ -334,13 +334,13 @@ namespace SaturnMath
 
         /**
          * @brief Power function for fixed-point numbers.
-         * 
+         *
          * Calculates this value raised to the power of exponent.
          * Uses repeated multiplication for integer exponents.
-         * 
+         *
          * @param exponent The power to raise this value to
          * @return The result of this^exponent
-         * 
+         *
          * @note Only supports non-negative integer exponents for efficiency
          */
         constexpr Fxp Pow(const Fxp& exponent) const
@@ -348,12 +348,12 @@ namespace SaturnMath
             // Handle special cases
             if (exponent == 0) return 1;
             if (exponent == 1) return *this;
-            
+
             // Convert to integer for efficient calculation
             int32_t intExp = exponent.RawValue() >> 16;
             Fxp result(1);
             Fxp base = *this;
-            
+
             while (intExp > 0)
             {
                 if (intExp & 1)
@@ -361,13 +361,13 @@ namespace SaturnMath
                 base = base * base;
                 intExp >>= 1;
             }
-            
+
             return result;
         }
 
         /**
          * @brief Clamps this value between minimum and maximum bounds.
-         * 
+         *
          * @param min Minimum allowed value
          * @param max Maximum allowed value
          * @return Clamped value
@@ -425,7 +425,58 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Fixed-point division (a /= b).
+         * @brief Multiplies the current fixed-point value by an integer (a *= b).
+         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @param value The integer value to multiply with.
+         * @return A reference to this object after performing the multiplication,
+         *         allowing for chaining of operations.
+         *
+         * @note This operation modifies the current instance in place. Ensure that
+         *       the input value is within the valid range to avoid overflow.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Fxp& operator*=(const T& value)
+        {
+            value *= value;
+            return *this;
+        }
+
+        /**
+         * @brief Multiplies the current fixed-point value by an integer (a * b).
+         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @param value The integer value to multiply with.
+         * @return The product as a new Fxp object.
+         *
+         * @note This operation does not modify the current instance. It returns a new
+         *       Fxp object representing the result of the multiplication.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Fxp operator*(const T& value) const
+        {
+            return BuildRaw(value * this->value);
+        }
+
+        /**
+         * @brief Multiplies an integer by a fixed-point value (lhs * rhs).
+         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @param lhs The integer value to multiply.
+         * @param rhs The fixed-point value to multiply with.
+         * @return The product as a new Fxp object.
+         *
+         * @note This operation does not modify the current instance. It returns a new
+         *       Fxp object representing the result of the multiplication.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr friend Fxp operator*(T lhs, const Fxp& rhs)
+        {
+            return rhs * lhs;
+        }
+
+        /**
+         * @brief Divides the current fixed-point value by another fixed-point value (a /= b).
          *
          * Uses Saturn's hardware divider unit at runtime for optimal performance.
          * Falls back to double math at compile time.
@@ -450,13 +501,61 @@ namespace SaturnMath
         }
 
         /**
-         * @brief Fixed-point division (a / b).
+         * @brief Divides the current fixed-point value by another fixed-point value (a / b).
          * @param fxp Value to divide by
          * @return Quotient as Fxp
          */
         constexpr Fxp operator/(const Fxp& fxp) const
         {
             return Fxp(*this) /= fxp;
+        }
+
+        /**
+         * @brief Divides the current fixed-point value by an integer (a /= b).
+         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @param value The integer value to divide by.
+         * @return A reference to this object after performing the division,
+         *         allowing for chaining of operations.
+         *
+         * @note This operation modifies the current instance in place. Ensure that
+         *       the input value is non-zero to avoid division by zero errors.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Fxp& operator/=(const T& value)
+        {
+            value /= value;
+            return *this;
+        }
+
+        /**
+         * @brief Divides the current fixed-point value by an integer (a / b).
+         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @param value The integer value to divide by.
+         * @return The quotient as a new Fxp object.
+         *
+         * @note This operation does not modify the current instance. It returns a new
+         *       Fxp object representing the result of the division.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Fxp operator/(const T& value) const
+        {
+            return BuildRaw(this->value / value);
+        }
+
+        /**
+         * @brief Divides an integer by a fixed-point value (lhs / rhs).
+         * @param lhs The integer value to divide.
+         * @param rhs The fixed-point value to divide by.
+         * @return The quotient as a new Fxp object.
+         *
+         * @note This operation does not modify the current instance. It returns a new
+         *       Fxp object representing the result of the division.
+         */
+        constexpr friend Fxp operator/(const int16_t& lhs, const Fxp& rhs)
+        {
+            return Fxp(lhs) / rhs;
         }
 
         /**
