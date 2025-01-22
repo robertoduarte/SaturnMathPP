@@ -5,6 +5,7 @@
 
 namespace SaturnMath
 {
+    using namespace SaturnMath::Types;
     /**
      * @brief Class containing interpolation and easing functions optimized for fixed-point arithmetic.
      *
