@@ -2,7 +2,7 @@
 
 #include "mat33.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief 4x3 matrix optimized for 3D transformations.

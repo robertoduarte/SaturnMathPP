@@ -7,6 +7,7 @@
 
 namespace SaturnMath
 {
+    using namespace SaturnMath::Types;
     /**
      * @brief Core trigonometric functionality using fixed-point arithmetic
      *

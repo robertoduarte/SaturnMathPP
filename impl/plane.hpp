@@ -2,7 +2,7 @@
 
 #include "vector3d.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief Infinite plane in 3D space defined by normal and distance.

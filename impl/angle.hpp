@@ -3,7 +3,7 @@
 #include "fxp.hpp"
 #include <numbers>
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief Efficient 16-bit angle representation optimized for Saturn hardware.

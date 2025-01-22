@@ -4,7 +4,7 @@
 #include "plane.hpp"
 #include "aabb.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief Perfect sphere defined by center and radius.

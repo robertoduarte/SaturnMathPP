@@ -3,7 +3,7 @@
 #include "vector3d.hpp"
 #include "trigonometry.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief 3x3 matrix for 3D transformations and rotations.

@@ -5,7 +5,7 @@
 #include <concepts>
 #include "precision.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief Fixed-point arithmetic optimized for Saturn hardware.

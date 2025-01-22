@@ -5,7 +5,7 @@
 #include "precision.hpp"
 #include "sort_order.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief A struct for three-dimensional fixed-point vector arithmetic operations.

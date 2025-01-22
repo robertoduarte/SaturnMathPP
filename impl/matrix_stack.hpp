@@ -2,7 +2,7 @@
 
 #include "mat43.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     class MatrixStack
     {
