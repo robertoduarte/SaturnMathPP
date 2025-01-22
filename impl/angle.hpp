@@ -145,7 +145,7 @@ namespace SaturnMath::Types
           */
         constexpr Angle operator+(const Angle& other) const
         {
-            return Angle(value + other.RawValue()); // Natural 16-bit wrap-around
+            return Angle(value + other.value); // Natural 16-bit wrap-around
         }
 
         /**
@@ -155,7 +155,7 @@ namespace SaturnMath::Types
          */
         constexpr Angle operator-(const Angle& other) const
         {
-            return Angle(value - other.RawValue()); // Natural 16-bit wrap-around
+            return Angle(value - other.value); // Natural 16-bit wrap-around
         }
 
         /**
@@ -203,6 +203,30 @@ namespace SaturnMath::Types
         {
             return Angle((ToFxp() / fxp).RawValue());
         }
+        /**
+         * @brief Adds two angles.
+         * @param other Angle to add
+         * @return Reference to the modified Angle object
+         * @note Automatically wraps around the result
+         */
+        constexpr Angle& operator+=(const Angle& other)
+        {
+            value += other.value; // Natural 16-bit wrap-around
+            return *this;
+        }
+
+        /**
+         * @brief Subtracts two angles.
+         * @param other Angle to subtract
+         * @return Reference to the modified Angle object
+         * @note Automatically wraps around the result
+         */
+        constexpr Angle& operator-=(const Angle& other)
+        {
+            value -= other.value; // Natural 16-bit wrap-around
+            return *this;
+        }
+
         /** @} */
     };
 
