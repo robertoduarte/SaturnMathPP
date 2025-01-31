@@ -19,6 +19,7 @@
 
 // Additional utility and precision headers
 #include <impl/utils.hpp>
+#include <impl/random.hpp>
 #include <impl/interpolation.hpp>
 #include <impl/angle.hpp>
 #include <impl/sort_order.hpp>
