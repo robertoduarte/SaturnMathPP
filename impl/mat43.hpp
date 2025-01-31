@@ -2,7 +2,7 @@
 
 #include "mat33.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief 4x3 matrix optimized for 3D transformations.
@@ -93,9 +93,10 @@ namespace SaturnMath
          * 
          * @return Reference to this matrix, allowing for method chaining.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 matrix;
          * matrix.Translate(Vector3D(1, 0, 0)); // Moves the matrix by (1, 0, 0)
+         * @endcode 
          */
         Matrix43& Translate(const Vector3D& translation)
         {
@@ -114,8 +115,9 @@ namespace SaturnMath
          * 
          * @return Reference to this matrix after multiplication, allowing for method chaining.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 result = matrix1 * matrix2; // Combines transformations of matrix1 and matrix2
+         * @endcode 
          */
         Matrix43& operator*=(const Matrix43& other)
         {
@@ -144,8 +146,9 @@ namespace SaturnMath
          * 
          * @return A new Matrix43 object that is the product of this matrix and the other matrix.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 result = matrix1 * matrix2; // Creates a new matrix as the product of matrix1 and matrix2
+         * @endcode 
          */
         Matrix43 operator*(const Matrix43& other) const
         {
@@ -164,8 +167,9 @@ namespace SaturnMath
          * 
          * @return Reference to this matrix after multiplication, allowing for method chaining.
          * 
-         * @example
+         * @code {.cpp}
          * matrix *= rotationMatrix; // Updates the matrix with the rotation from rotationMatrix
+         * @endcode 
          */
         Matrix43& operator*=(const Matrix33& other)
         {
@@ -183,8 +187,9 @@ namespace SaturnMath
          * 
          * @return A new Matrix43 object that is the product of this matrix and the 3x3 matrix.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 result = matrix * rotationMatrix; // Creates a new matrix as the product of matrix and rotationMatrix
+         * @endcode 
          */
         Matrix43 operator*(const Matrix33& other) const
         {
@@ -203,8 +208,9 @@ namespace SaturnMath
          * 
          * @return The transformed point as a Vector3D.
          * 
-         * @example
+         * @code {.cpp}
          * Vector3D transformedPoint = matrix.TransformPoint(Vector3D(1, 2, 3)); // Transforms the point (1, 2, 3)
+         * @endcode 
          */
         Vector3D TransformPoint(const Vector3D& point) const
         {
@@ -225,8 +231,9 @@ namespace SaturnMath
          * 
          * @return The transformed vector as a Vector3D.
          * 
-         * @example
+         * @code {.cpp}
          * Vector3D transformedVector = matrix.TransformVector(Vector3D(1, 0, 0)); // Transforms the vector (1, 0, 0)
+         * @endcode 
          */
         Vector3D TransformVector(const Vector3D& vector) const
         {
@@ -245,8 +252,9 @@ namespace SaturnMath
          * 
          * @return A new Matrix43 object representing the translation transformation.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 translationMatrix = Matrix43::CreateTranslation(Vector3D(5, 0, 0)); // Translates by (5, 0, 0)
+         * @endcode 
          */
         static constexpr Matrix43 CreateTranslation(const Vector3D& translation)
         {
@@ -272,12 +280,13 @@ namespace SaturnMath
          * 
          * @return The billboard matrix that transforms points from world space to the billboard's local space.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 billboardMatrix = Matrix43::CreateBillboard(
          *     Vector3D(0, 0, 0),   // Billboard position
          *     Vector3D(0, 0, 5),   // Camera position
          *     Vector3D(0, 1, 0)    // Up vector
          * );
+         * @endcode 
          * 
          * @note Ensure that the up vector is not collinear with the look vector to avoid undefined behavior.
          */
@@ -320,13 +329,14 @@ namespace SaturnMath
          *
          * @note This function assumes that the up vector is not collinear with the look vector.
          *
-         * @example
+         * @code {.cpp}
          * Matrix43 viewMatrix = Matrix43::CreateLookAt(
          *     Vector3D(0.0f, 0.0f, 5.0f),  // Eye position
          *     Vector3D(0.0f, 0.0f, 0.0f),  // Target position
          *     Vector3D::UnitY()            // Up vector
          * );
-         *
+         * @endcode 
+         * 
          * @details This function is used to create a view matrix that can be used to position a camera in 3D space.
          * The resulting matrix can be used to transform points from world space to the camera's local space.
          */
@@ -369,12 +379,13 @@ namespace SaturnMath
          * 
          * @return A new Matrix43 object representing the combined transformation.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 transformMatrix = Matrix43::CreateTransform(
          *     Vector3D(1, 2, 3),                                  // Translation
          *     EulerAngles(Angle::Zero(), Angle::HalfPi(), Angle::Zero()),  // 90° rotation around Y axis
          *     Vector3D(2, 2, 2)                                   // Scale
          * );
+         * @endcode 
          */
         static Matrix43 CreateTransform(
             const Vector3D& translation,
@@ -432,12 +443,12 @@ namespace SaturnMath
             );
 
             // Extract rotation angles (Euler angles in XYZ order)
-            rotation.Y = Trigonometry::Asin(-rotMat.Row1.Z);
+            rotation.Y = Trigonometry::Asin(-rotMat.Row2.Z);
 
             // Check for gimbal lock
-            if (rotMat.Row1.Z < 0.999999 && rotMat.Row1.Z > -0.999999)
+            if (rotMat.Row2.Z < 0.999999 && rotMat.Row2.Z > -0.999999)
             {
-                rotation.X = Trigonometry::Atan2(rotMat.Row2.Z, rotMat.Row3.z);
+                rotation.X = Trigonometry::Atan2(rotMat.Row2.Z, rotMat.Row2.Z);
                 rotation.Z = Trigonometry::Atan2(rotMat.Row1.Y, rotMat.Row1.X);
             }
             else
@@ -457,8 +468,9 @@ namespace SaturnMath
          * 
          * @return A new Matrix43 object representing the identity transformation.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 identityMatrix = Matrix43::Identity(); // Creates an identity matrix
+         * @endcode 
          */
         static consteval Matrix43 Identity()
         {
@@ -482,8 +494,9 @@ namespace SaturnMath
          * 
          * @return A new Matrix43 object representing the translation transformation.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 translationMatrix = Matrix43::Translation(5, 0, 0); // Translates by (5, 0, 0)
+         * @endcode 
          */
         static constexpr Matrix43 Translation(const Fxp& x, const Fxp& y, const Fxp& z)
         {
@@ -505,8 +518,9 @@ namespace SaturnMath
          * 
          * @return A new Matrix43 object representing the uniform scale transformation.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 scaleMatrix = Matrix43::Scale(2); // Scales by a factor of 2
+         * @endcode
          */
         static constexpr Matrix43 Scale(const Fxp& scale)
         {
@@ -530,8 +544,9 @@ namespace SaturnMath
          * 
          * @return A new Matrix43 object representing the non-uniform scale transformation.
          * 
-         * @example
+         * @code {.cpp}
          * Matrix43 nonUniformScaleMatrix = Matrix43::Scale(2, 1, 0.5); // Scales by (2, 1, 0.5)
+         * @endcode 
          */
         static constexpr Matrix43 Scale(const Fxp& x, const Fxp& y, const Fxp& z)
         {
@@ -541,6 +556,25 @@ namespace SaturnMath
                 Vector3D(0, 0, z),
                 Vector3D(0, 0, 0)
             );
+        }
+
+        /**
+         * @brief Creates a uniform scale matrix from a Vector3D.
+         * 
+         * This static method generates a 4x3 scale matrix that represents a transformation that scales 
+         * points uniformly along all axes by the specified scale factors from a Vector3D.
+         * 
+         * @param scale The Vector3D containing scale factors for all axes.
+         * 
+         * @return A new Matrix43 object representing the uniform scale transformation.
+         * 
+         * @code {.cpp}
+         * Matrix43 scaleMatrix = Matrix43::Scale(Vector3D(2, 2, 2)); // Scales by a factor of 2
+         * @endcode
+         */
+        static constexpr Matrix43 Scale(const Vector3D& scale)
+        {
+            return Scale(Fxp(scale.X), Fxp(scale.Y), Fxp(scale.Z));
         }
     };
 }

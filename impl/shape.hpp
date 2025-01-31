@@ -3,7 +3,7 @@
 #include "vector3d.hpp"
 #include "plane.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief Base class for geometric shapes.
