@@ -227,6 +227,16 @@ namespace SaturnMath::Types
             return *this;
         }
 
+        /**
+         * @brief Negates the angle, effectively adding half a turn (180 degrees).
+         *
+         * This operator allows for intuitive manipulation of angles by providing a way to obtain the angle that is directly opposite to the current angle.
+         * @return New Angle object representing the negated angle.
+         */
+        constexpr Angle operator-() const
+        {
+            return Angle(value + halfPi); // Add half a turn
+        }
         /** @} */
     };
 

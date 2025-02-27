@@ -497,17 +497,35 @@ namespace SaturnMath::Types
         /**
          * @brief Binary addition operator.
          * @param vec The Vec3 object to add.
-         * @return The sum as an Vec3 object.
+         * @return The sum as a Vec3 object.
          */
         constexpr Vector3D operator+(const Vector3D& vec) const
         {
-            return Vector3D(Vector2D::operator+(vec), Z + vec.Z);
+            return Vector3D(X + vec.X, Y + vec.Y, Z + vec.Z);
+        }
+
+        /**
+         * @brief Binary addition operator for adding a Vector2D to a Vector3D.
+         * @param vec The Vec2 object to add.
+         * @return The sum as a Vec3 object.
+         */
+        constexpr Vector3D operator+(const Vector2D& vec) const {
+            return Vector3D(X + vec.X, Y + vec.Y, Z);
+        }
+
+        /**
+         * @brief Binary addition operator for adding an Fxp to a Vector3D.
+         * @param scalar The Fxp value to add.
+         * @return The resulting Vector3D object.
+         */
+        constexpr Vector3D operator+(const Fxp& scalar) const {
+            return Vector3D(X + scalar, Y + scalar, Z + scalar);
         }
 
         /**
          * @brief Binary subtraction operator.
          * @param vec The Vec3 object to subtract.
-         * @return The difference as an Vec3 object.
+         * @return The difference as a Vec3 object.
          */
         constexpr Vector3D operator-(const Vector3D& vec) const
         {
