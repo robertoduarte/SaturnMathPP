@@ -80,7 +80,7 @@ namespace SaturnMath::Types
             return result;
         }
 
-                /**
+        /**
          * @brief Helper function to perform assembly-level dot product calculation and accumulation
          * @param first First vector
          * @param second Second vector
@@ -213,6 +213,24 @@ namespace SaturnMath::Types
         }
 
         /**
+         * @brief Calculate the squared length of the vector.
+         * @return The squared length as an Fxp value.
+         * @details Useful for comparisons where the actual length is not needed.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 2);
+         * Vector2D v2(4, 6);
+         * if (v1.LengthSquared() < v2.LengthSquared()) {
+         *     // v1 is shorter than v2
+         * }
+         * @endcode
+         */
+        constexpr Fxp LengthSquared() const {
+            return Dot(*this);
+        }
+
+        /**
          * @brief Normalize the vector
          * @tparam P Precision level for calculation
          * @return Normalized vector
@@ -224,6 +242,23 @@ namespace SaturnMath::Types
             if (length != 0)
                 return Vector2D(X / length, Y / length);
             return Vector2D();
+        }
+
+        /**
+         * @brief Calculate the Euclidean distance from this vector to another vector.
+         * @param other The other vector to calculate the distance to.
+         * @return The distance as an Fxp value.
+         * @details Computes the distance using the formula: sqrt((X - other.X)^2 + (Y - other.Y)^2).
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 2);
+         * Vector2D v2(4, 6);
+         * Fxp distance = v1.DistanceTo(v2); // Computes distance between (1, 2) and (4, 6)
+         * @endcode
+         */
+        constexpr Fxp DistanceTo(const Vector2D& other) const {
+            return (*this - other).Length();
         }
 
         // Unit vectors and directional methods

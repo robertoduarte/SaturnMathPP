@@ -420,15 +420,15 @@ namespace SaturnMath
          */
         static constexpr Angle Atan2(const Fxp& y, const Fxp& x)
         {
-            uint16_t result = x < 0 ?
-                (y < 0 ? Angle::Pi().RawValue() : -Angle::Pi().RawValue()) : 0;
+            uint16_t result = x < 0.0 ?
+                (y < 0.0 ? Angle::Pi().RawValue() : -Angle::Pi().RawValue()) : 0;
 
             int32_t divResult;
 
             if (x.Abs() < y.Abs())
             {
                 divResult = (x / y).RawValue();
-                result += divResult < 0 ? -Angle::HalfPi().RawValue() : Angle::HalfPi().RawValue();
+                result += divResult < 0.0 ? -Angle::HalfPi().RawValue() : Angle::HalfPi().RawValue();
             }
             else
             {

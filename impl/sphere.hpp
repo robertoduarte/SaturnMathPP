@@ -47,29 +47,23 @@ namespace SaturnMath::Types
 
         /**
          * @brief Tests if a point is inside the sphere.
-         * 
-         * @tparam P Precision level for calculation (default is Precision::Standard)
-         * @param point Point to test
-         * @return true if the point is inside or on the surface of the sphere
+         * @param point Point to test.
+         * @return true if the point is inside or on the surface of the sphere.
          */
-        template<Precision P = Precision::Standard>
-        constexpr bool Contains(const Vector3D& point) const
-        {
-            return (point - position).Length<P>().Square() <= radius.Square();
+        bool Contains(const Vector3D& point) const {
+            Fxp distanceSquared = (point - GetPosition()).LengthSquared();
+            return distanceSquared <= radius * radius;
         }
 
         /**
          * @brief Tests intersection with another sphere.
-         * 
-         * @tparam P Precision level for calculation (default is Precision::Standard)
-         * @param other Sphere to test against
-         * @return true if spheres overlap
+         * @param other Sphere to test against.
+         * @return true if spheres overlap.
          */
-        template<Precision P = Precision::Standard>
-        constexpr bool Intersects(const Sphere& other) const
-        {
-            Fxp radiusSum = radius + other.radius;
-            return (other.position - position).Length<P>().Square() <= radiusSum.Square();
+        bool Intersects(const Sphere& other) const {
+            Fxp distanceSquared = (GetPosition() - other.GetPosition()).LengthSquared();
+            Fxp sumOfRadii = radius + other.GetRadius();
+            return distanceSquared <= sumOfRadii * sumOfRadii;
         }
 
         /**

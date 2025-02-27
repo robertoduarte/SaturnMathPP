@@ -39,10 +39,28 @@ Provides mathematical operations and utilities:
   - Power function for integer exponents
   - Value clamping between bounds
   - Comprehensive arithmetic operations
+  - Flexible value conversion:
+    ```cpp
+    // Compile-time conversion (preferred)
+    constexpr Fxp a = 3.14159;   // Exact conversion at compile-time
+
+    // Integer conversion with range checking
+    Fxp b = Fxp::Convert(100);   // Checks if value fits in int16_t range
+
+    // Floating-point conversion (will warn about performance)
+    Fxp c = Fxp::Convert(3.14f); // Warning: heavy operation
+    Fxp d = Fxp::Convert(2.5);   // Warning: heavy operation
+
+    // Manual casting (advanced users only)
+    Fxp e = static_cast<int32_t>(someValue << 16); // No warnings, but risks overflow
+    ```
+  - **Manual Casting**: For advanced users who understand the risks of precision loss or overflow, manual casting is allowed. However, use the `Convert` function for safer conversions.
+
 - **Angle Handling**: Type-safe `Angle` class for angular calculations
   - Raw value construction and access
   - Scalar multiplication and division
   - Automatic wrap-around handling
+
 - **Euler Angles**: Type-safe representation of 3D rotations
   - Intrinsic Tait-Bryan angles (pitch-yaw-roll)
   - X-Y-Z rotation order
@@ -189,10 +207,10 @@ bool isVisible = viewFrustum.Contains(box);
 using namespace SaturnMath::Types;
 
 // Fixed-point arithmetic
-Fxp a(5);                   // 5 (0x00050000)
-Fxp b(2.5);                // 2.5 (0x00028000)
-Fxp c = a * b;             // 12.5 (0x000C8000)
-int16_t i = c.ToInt();     // 12
+Fxp a(5);                     // 5 (0x00050000)
+Fxp b(2.5);                   // 2.5 (0x00028000)
+Fxp c = a * b;                // 12.5 (0x000C8000)
+int16_t i = c.As<int16_t>();  // 12
 
 // Power and clamping operations
 Fxp squared = a.Pow(2);    // 25

@@ -601,9 +601,9 @@ namespace SaturnMath::Types
         bool TryInverse(Matrix33& out) const
         {
             const Fxp det = Determinant();
-            if (det == 0) return false;
+            if (det == 0.0) return false;
 
-            const Fxp invDet = Fxp(1) / det;
+            const Fxp invDet = 1.0 / det;
 
             // Calculate cofactors and adjugate matrix
             out.Row0.X = (Row1.Y * Row2.Z - Row1.Z * Row2.Y) * invDet;
