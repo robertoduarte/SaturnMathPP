@@ -231,6 +231,24 @@ namespace SaturnMath::Types
         }
 
         /**
+         * @brief Calculate the squared length of the vector.
+         * @return The squared length as an Fxp value.
+         * @details Useful for comparisons where the actual length is not needed.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v1(1, 2, 3);
+         * Vector3D v2(4, 6, 8);
+         * if (v1.LengthSquared() < v2.LengthSquared()) {
+         *     // v1 is shorter than v2
+         * }
+         * @endcode
+         */
+        constexpr Fxp LengthSquared() const {
+            return Dot(*this);
+        }
+
+        /**
          * @brief Calculate the length of the vector
          * @tparam P Precision level for calculation
          * @return Length of the vector
@@ -285,6 +303,23 @@ namespace SaturnMath::Types
             const Vector3D edge1 = vertexB - vertexA;
             const Vector3D edge2 = vertexC - vertexA;
             return edge1.Cross(edge2).Normalize<P>();
+        }
+
+        /**
+         * @brief Calculate the Euclidean distance from this vector to another vector.
+         * @param other The other vector to calculate the distance to.
+         * @return The distance as an Fxp value.
+         * @details Computes the distance using the formula: sqrt((X - other.X)^2 + (Y - other.Y)^2 + (Z - other.Z)^2).
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v1(1, 2, 3);
+         * Vector3D v2(4, 6, 8);
+         * Fxp distance = v1.DistanceTo(v2); // Computes distance between (1, 2, 3) and (4, 6, 8)
+         * @endcode
+         */
+        constexpr Fxp DistanceTo(const Vector3D& other) const {
+            return (*this - other).Length();
         }
 
         // Scalar multiplication and division

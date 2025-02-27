@@ -1,23 +1,28 @@
 #pragma once
 #include <stdint.h>
+#include <type_traits>
+#include <cmath>
 
 namespace SaturnMath
 {
     /** @brief Pseudo-Random number generator
      * @note This generator uses Xorshift (see https://en.wikipedia.org/wiki/Xorshift)
+     * @tparam T Integral type for random number generation
      */
+    template<typename T>
     class Random
     {
     private:
+        static_assert(std::is_integral_v<T>, "T must be an integral type");
 
         /** @brief Pseudo-Random number generator seed
          */
-        uint32_t startState;
+        T startState;
 
         /** @brief Get next pseudo-random number
          * @return Generated number
          */
-        uint32_t GetNextPeriod()
+        T GetNextPeriod()
         {
             this->startState ^= this->startState << 13;
             this->startState ^= this->startState >> 17;
@@ -30,7 +35,7 @@ namespace SaturnMath
         /** @brief Construct a new pseudo-random number generator
          * @param seed Starting seed
          */
-        Random(uint32_t seed)
+        Random(T seed)
         {
             this->startState = seed;
         }
@@ -42,7 +47,7 @@ namespace SaturnMath
         /** @brief Get next pseudo-random number
          * @return Generated number in a full range
          */
-        uint32_t GetNumber()
+        T GetNumber()
         {
             return this->GetNextPeriod();
         }
@@ -52,10 +57,10 @@ namespace SaturnMath
          * @param to Inclusive end of the range
          * @return Generated number in a range
          */
-        int32_t GetNumber(int32_t from, int32_t to)
+        T GetNumber(T from, T to)
         {
-            uint32_t number = this->GetNumber();
-            return from + (number % Math::Abs(to - from));
+            T number = this->GetNumber();
+            return from + (number % std::abs(to - from));
         }
     };
 }

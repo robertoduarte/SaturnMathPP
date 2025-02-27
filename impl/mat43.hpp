@@ -240,6 +240,40 @@ namespace SaturnMath::Types
             return Matrix33::operator*(vector);
         }
 
+        /**
+         * @brief Inverts the matrix.
+         *
+         * For orthogonal matrices (e.g., pure rotation matrices), the inverse is the transpose.
+         * This method computes the inverse by transposing the rotation part and negating the translation.
+         *
+         * @return The inverted matrix.
+         *
+         * @note This method assumes the matrix is orthogonal. For non-orthogonal matrices,
+         * this will not produce the correct inverse.
+         *
+         * @code {.cpp}
+         * Matrix43 transform = Matrix43::CreateTranslation(Vector3D(1, 2, 3));
+         * Matrix43 inverse = transform.Invert(); // Computes the inverse of the transformation matrix
+         * @endcode
+         */
+        Matrix43 Invert() const {
+            Matrix43 result;
+
+            // Invert the 3x3 rotation part (transpose for orthogonal matrices)
+            result.Row0 = Vector3D(Row0.X, Row1.X, Row2.X);
+            result.Row1 = Vector3D(Row0.Y, Row1.Y, Row2.Y);
+            result.Row2 = Vector3D(Row0.Z, Row1.Z, Row2.Z);
+
+            // Invert the translation part
+            result.Row3 = -Vector3D(
+                result.Row0.Dot(Row3),
+                result.Row1.Dot(Row3),
+                result.Row2.Dot(Row3)
+            );
+
+            return result;
+        }
+
         // Static creation methods
 
         /**

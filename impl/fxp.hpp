@@ -30,7 +30,7 @@ namespace SaturnMath::Types
      * Fxp a = 5;                   // 5    (0x00050000)
      * Fxp b(2.5);                  // 2.5  (0x00028000)
      * Fxp c = a * b;               // 12.5 (0x000C8000)
-     * int16_t i = c.ToInt();       // 12
+     * int16_t i = c.As<int16_t>(); // 12
      * @endcode
      *
      * @note All operations are designed for maximum efficiency on Saturn hardware.
@@ -80,28 +80,22 @@ namespace SaturnMath::Types
          * @brief Constructor for Fxp class from a 16-bit signed integer.
          * @param value The integer value to convert to fixed-point.
          *
-         * @details Accepts only int16_t values. Other types MUST be explicitly cast to int16_t.
-         * This explicit casting requirement ensures you are aware of potential performance impacts
-         * from type conversions
-         * Valid range: -32768 to 32767
-         *
-         * Runtime casting examples:
+         * @details This is the primary runtime constructor for integer values.
+         * For runtime conversion from other numeric types, use Convert():
          * @code
-         * // From char (requires upcasting)
-         * int16_t charValue = static_cast<int16_t>('A');
-         * Fxp a = charValue;
-         *
-         * // From int (requires downcasting, check value range)
-         * int16_t intValue = static_cast<int16_t>(100);
-         * Fxp b = intValue;
-         *
-         * // From int32_t (requires downcasting, check value range)
-         * int32_t largeValue = 30000;
-         * Fxp c = static_cast<int16_t>(largeValue);
+         * // Convert with compile-time range validation
+         * Fxp a = Fxp::Convert(someValue);     // Warns at compile-time if value exceeds int16_t range
          * @endcode
          *
-         * @warning Both upcasting and downcasting operations can impact runtime performance.
          * @note Converts to 16.16 fixed-point format (e.g., 10 becomes 10.0).
+         *
+         * @warning For advanced users who understand the risks of precision loss or overflow,
+         * manual casting is allowed. However, use the [Convert](cci:1://file:///c:/Git/SaturnRingLib/modules/SaturnMathPP/impl/fxp.hpp:133:8-164:111) function for safer conversions.
+         *
+         * @code
+         * // Manual casting (advanced users only)
+         * Fxp b = static_cast<int32_t>(someValue << 16); // No warnings, but risks overflow
+         * @endcode
          */
         constexpr Fxp(const int16_t& value) : value(static_cast<int32_t>(value) << 16) {}
 
@@ -110,24 +104,73 @@ namespace SaturnMath::Types
          * @tparam T Numeric type (e.g., float, double, int32_t)
          * @param value The value to convert to fixed-point
          *
-         * @details This constructor converts any numeric type to 16.16 fixed-point format
-         * at compile time. The conversion is done by multiplying the input by 65536 (2^16)
-         * to properly align the decimal point.
-         *
-         * Example usage:
+         * @details This constructor is only available at compile time. For runtime
+         * conversions, use Convert():
          * @code
-         * constexpr Fxp a = 3.14159;     // From double
-         * constexpr Fxp b = 42.0f;       // From float
-         * constexpr Fxp c = 100000L;     // From long
+         * // Compile-time conversion (preferred when possible)
+         * constexpr Fxp a = 3.14159;     // Exact conversion at compile-time
+         * 
+         * // Runtime conversion
+         * Fxp b = Fxp::Convert(someFloat);    // Will warn about floating-point performance
          * @endcode
          *
-         * @note Only available at compile time (consteval). For runtime conversions of
-         * integer types, use explicit casting to int16_t with the runtime constructor.
-         *
+         * @note Only available at compile time (consteval). 
          * @warning Values outside the valid fixed-point range may cause overflow.
          */
         template<typename T> requires (!std::is_same_v<T, int16_t>)
             consteval Fxp(const T& value) : value(value * 65536.0) {}
+
+        /**
+         * @brief Convert integral type to fixed-point with compile-time range validation.
+         * @tparam T Integral type (e.g., int, int32_t)
+         * @param value The value to convert
+         * @return Fixed-point value
+         * 
+         * @details Converts an integral value to 16.16 fixed-point format with compile-time validation.
+         * Using int16_t{value} ensures the value fits within the valid range (-32768 to 32767).
+         * The compiler will warn if the value is outside this range.
+         * 
+         * Example:
+         * @code
+         * auto a = Fxp::Convert(5);      // OK: 5 fits in int16_t
+         * auto b = Fxp::Convert(50000);  // Warning: value exceeds int16_t range
+         * @endcode
+         */
+        template <std::integral T>
+        static constexpr Fxp Convert(const T &value) { return BuildRaw(static_cast<int32_t>(int16_t{value}) << 16); }
+
+        /**
+         * @brief Convert floating-point to fixed-point with performance warning.
+         * @tparam T Floating-point type (float, double)
+         * @param value The value to convert
+         * @return Fixed-point value
+         * 
+         * @details Converts a floating-point value to 16.16 fixed-point format.
+         * This operation involves floating-point multiplication which is relatively expensive
+         * on Saturn hardware. The compiler will emit a warning when this function is used
+         * to help identify potential performance bottlenecks.
+         * 
+         * For better performance:
+         * - Use integral types when possible
+         * - Perform conversions at compile time with constexpr
+         * - Cache converted values instead of converting in tight loops
+         * 
+         * Example:
+         * @code
+         * // Preferred: Compile-time conversion
+         * constexpr Fxp a = 3.14159;  // Conversion done at compile time
+         * 
+         * // Runtime conversion (will trigger warning)
+         * float f = get_value();
+         * Fxp b = Fxp::Convert(f);    // Warning: heavy operation
+         * @endcode
+         * 
+         * @warning Converting from floating-point is a heavy operation.
+         * Avoid in performance-critical code paths.
+         */
+        template <std::floating_point T>
+        [[gnu::warning("Converting from floating-point is a heavy operation - avoid in performance-critical code")]]
+        static constexpr Fxp Convert(const T &value){ return BuildRaw(static_cast<int32_t>(value * 65536.0)); }
 
         /***********Static Functions************/
 
@@ -280,24 +323,38 @@ namespace SaturnMath::Types
         constexpr const int32_t& RawValue() const { return value; }
 
         /**
-         * @brief Extracts integer part.
-         * @return Integer portion of value
+         * @brief Converts to the specified integer type.
+         * @tparam T The target integer type
+         * @return Value as the specified type
+         * 
+         * Example:
+         * @code
+         * Fxp x = 3.14_fxp;
+         * auto i = x.As<int16_t>();  // Convert to int
+         * @endcode
          */
-        constexpr int16_t ToInt() const { return static_cast<int16_t>(value >> 16); }
+        template<typename T> requires std::integral<T>
+        constexpr T As() const {
+            return static_cast<T>(value >> 16);
+        }
 
         /**
-         * @brief Converts to float.
-         * @return Float value
-         * @note Only available at compile time due to consteval
+         * @brief Converts to the specified floating-point type.
+         * @tparam T The target floating-point type (float or double)
+         * @return Value as the specified type
+         * 
+         * Example:
+         * @code
+         * Fxp x = 3.14_fxp;
+         * auto f = x.As<float>();    // Convert to float (heavy operation)
+         * auto d = x.As<double>();   // Convert to double (heavy operation)
+         * @endcode
          */
-        consteval float ToFloat() const { return value / 65536.0f; }
-
-        /**
-         * @brief Converts to double.
-         * @return Double value
-         * @note Only available at compile time due to consteval
-         */
-        consteval double ToDouble() const { return value / 65536.0; }
+        template<typename T> requires std::floating_point<T>
+        [[gnu::warning("Converting to floating-point is a heavy operation - avoid in performance-critical code")]]
+        constexpr T As() const {
+            return value / T{65536.0};
+        }
 
         /**
          * @brief Clears the MAC (Multiply-and-Accumulate) registers.
