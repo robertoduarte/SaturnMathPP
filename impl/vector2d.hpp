@@ -4,7 +4,7 @@
 #include "precision.hpp"
 #include "sort_order.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief A struct for two-dimensional fixed-point vector arithmetic operations.
@@ -80,7 +80,7 @@ namespace SaturnMath
             return result;
         }
 
-                /**
+        /**
          * @brief Helper function to perform assembly-level dot product calculation and accumulation
          * @param first First vector
          * @param second Second vector
@@ -213,6 +213,24 @@ namespace SaturnMath
         }
 
         /**
+         * @brief Calculate the squared length of the vector.
+         * @return The squared length as an Fxp value.
+         * @details Useful for comparisons where the actual length is not needed.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 2);
+         * Vector2D v2(4, 6);
+         * if (v1.LengthSquared() < v2.LengthSquared()) {
+         *     // v1 is shorter than v2
+         * }
+         * @endcode
+         */
+        constexpr Fxp LengthSquared() const {
+            return Dot(*this);
+        }
+
+        /**
          * @brief Normalize the vector
          * @tparam P Precision level for calculation
          * @return Normalized vector
@@ -224,6 +242,23 @@ namespace SaturnMath
             if (length != 0)
                 return Vector2D(X / length, Y / length);
             return Vector2D();
+        }
+
+        /**
+         * @brief Calculate the Euclidean distance from this vector to another vector.
+         * @param other The other vector to calculate the distance to.
+         * @return The distance as an Fxp value.
+         * @details Computes the distance using the formula: sqrt((X - other.X)^2 + (Y - other.Y)^2).
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 2);
+         * Vector2D v2(4, 6);
+         * Fxp distance = v1.DistanceTo(v2); // Computes distance between (1, 2) and (4, 6)
+         * @endcode
+         */
+        constexpr Fxp DistanceTo(const Vector2D& other) const {
+            return (*this - other).Length();
         }
 
         // Unit vectors and directional methods
@@ -315,6 +350,42 @@ namespace SaturnMath
         }
 
         /**
+         * @brief Division operator.
+         * @param scalar The scalar to divide by.
+         * @return The result of the division.
+         */
+        constexpr Vector2D operator/=(const Fxp& scalar)
+        {
+            X /= scalar;
+            Y /= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Addition operator.
+         * @param vec The vector to add.
+         * @return The result of the addition.
+         */
+        constexpr Vector2D operator+=(const Vector2D& vec)
+        {
+            X += vec.X;
+            Y += vec.Y;
+            return *this;
+        }
+
+        /**
+         * @brief Subtraction operator.
+         * @param vec The vector to subtract.
+         * @return The result of the subtraction.
+         */
+        constexpr Vector2D operator-=(const Vector2D& vec)
+        {
+            X -= vec.X;
+            Y -= vec.Y;
+            return *this;
+        }
+
+        /**
          * @brief Scaling operator.
          * @param scalar The scalar to multiply with.
          * @return The result of the scaling.
@@ -354,6 +425,82 @@ namespace SaturnMath
         constexpr Vector2D operator/(const Fxp& scalar) const
         {
             return Vector2D(X / scalar, Y / scalar);
+        }
+        
+        // Unary operators
+        /**
+         * @brief Unary negation operator.
+         * @return A new Vec3 object with negated coordinates.
+         */
+        constexpr Vector2D operator-() const
+        {
+            return Vector2D(-X, -Y);
+        }
+
+        // Comparison operators
+        /**
+         * @brief Check if two Vec3 objects are not equal.
+         * @param vec The Vec3 object to compare.
+         * @return True if not equal, false otherwise.
+         */
+        constexpr bool operator!=(const Vector2D& vec) const
+        {
+            return X != vec.X && Y != vec.Y;
+        }
+
+        /**
+         * @brief Check if two Vec3 objects are not equal.
+         * @param vec The Vec3 object to compare.
+         * @return True if not equal, false otherwise.
+         */
+        constexpr bool operator==(const Vector2D& vec) const
+        {
+            return X == vec.X && Y == vec.Y;
+        }
+
+        // Bitwise shift operators
+        /**
+         * @brief Bitwise right shift operator.
+         * @param shiftAmount The number of positions to shift.
+         * @return The resulting Vec3 object.
+         */
+        constexpr Vector2D operator>>(const size_t& shiftAmount)
+        {
+            return Vector2D(X >> shiftAmount, Y >> shiftAmount);
+        }
+
+        /**
+         * @brief Bitwise right shift assignment operator.
+         * @param shiftAmount The number of positions to shift.
+         * @return Reference to the modified Vec3 object.
+         */
+        constexpr Vector2D& operator>>=(const size_t& shiftAmount)
+        {
+            X >>= shiftAmount;
+            Y >>= shiftAmount;
+            return *this;
+        }
+
+        /**
+         * @brief Bitwise left shift operator.
+         * @param shiftAmount The number of positions to shift.
+         * @return The resulting Vec3 object.
+         */
+        constexpr Vector2D operator<<(const size_t& shiftAmount)
+        {
+            return Vector2D(X << shiftAmount, Y << shiftAmount);
+        }
+
+        /**
+         * @brief Bitwise left shift assignment operator.
+         * @param shiftAmount The number of positions to shift.
+         * @return Reference to the modified Vec3 object.
+         */
+        constexpr Vector2D& operator<<=(const size_t& shiftAmount)
+        {
+            X <<= shiftAmount;
+            Y <<= shiftAmount;
+            return *this;
         }
     };
 }

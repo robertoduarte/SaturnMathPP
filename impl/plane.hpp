@@ -2,7 +2,7 @@
 
 #include "vector3d.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief Infinite plane in 3D space defined by normal and distance.
@@ -24,7 +24,7 @@ namespace SaturnMath
         Fxp d;          /**< Signed distance from origin to plane */
 
         /** @brief Default constructor. Creates XY plane at origin. */
-        constexpr Plane() : normal(Vector3D::UnitZ()), d(0) {}
+        constexpr Plane() : normal(Vector3D::UnitZ()), d((int16_t)0) {}
 
         /**
          * @brief Creates plane from normal and distance.
@@ -55,7 +55,8 @@ namespace SaturnMath
          */
         Plane(const Vector3D& a, const Vector3D& b, const Vector3D& c)
         {
-            normal = (b - a).Cross(c - a).Normalize();
+            Vector3D cross = (b - a).Cross(c - a);
+            normal = cross.Normalize();
             d = -normal.Dot(a);  // Negative because we want normal·X + d = 0
         }
 
@@ -91,7 +92,7 @@ namespace SaturnMath
          * 
          * @return Reference to this plane
          */
-        Plane& Normalize()
+        constexpr Plane& Normalize()
         {
             Fxp len = normal.Length();
             if (len > 0)

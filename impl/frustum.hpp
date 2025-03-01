@@ -5,7 +5,7 @@
 #include "aabb.hpp"
 #include "sphere.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief View frustum for camera culling in 3D space.

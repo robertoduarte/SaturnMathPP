@@ -3,7 +3,7 @@
 #include "vector3d.hpp"
 #include "trigonometry.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief 3x3 matrix for 3D transformations and rotations.
@@ -56,11 +56,12 @@ namespace SaturnMath
          *
          * @note Ensure that up and direction vectors are not collinear to avoid undefined behavior.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 rotation = Matrix33(
          *     Vector3D(0, 1, 0),    // Up vector
          *     Vector3D(0, 0, 1)     // Direction vector
          * );
+         * @endcode 
          */
         constexpr Matrix33(const Vector3D& up, const Vector3D& direction) : Row0(up.Cross(direction)), Row1(up), Row2(direction) {}
 
@@ -76,12 +77,13 @@ namespace SaturnMath
          *
          * @note For proper rotation matrices, ensure the row vectors are orthonormal.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 matrix = Matrix33(
          *     Vector3D(1, 0, 0),    // Right vector
          *     Vector3D(0, 1, 0),    // Up vector
          *     Vector3D(0, 0, 1)     // Forward vector
          * );
+         * @endcode 
          */
         constexpr Matrix33(const Vector3D& row0In, const Vector3D& row1In, const Vector3D& row2In) : Row0(row0In), Row1(row1In), Row2(row2In) {}
 
@@ -97,10 +99,11 @@ namespace SaturnMath
          *
          * @note Matrix multiplication is not commutative, meaning A * B ≠ B * A.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 matA = Matrix33::CreateRotationX(Angle::FromDegrees(90));
          * Matrix33 matB = Matrix33::CreateRotationY(Angle::FromDegrees(45));
          * matA *= matB; // Combines rotations, first X then Y
+         * @endcode 
          */
         Matrix33& operator*=(const Matrix33& other)
         {
@@ -130,8 +133,9 @@ namespace SaturnMath
          *
          * @note This is equivalent to creating a copy of this matrix and using operator*=.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 combined = rotationMatrix * scaleMatrix;
+         * @endcode 
          */
         Matrix33 operator*(const Matrix33& other) const
         {
@@ -154,10 +158,11 @@ namespace SaturnMath
          *
          * @note For a rotation matrix, the length of the input vector is preserved.
          *
-         * @example
+         * @code {.cpp}
          * Vector3D direction(0, 0, 1);
          * Matrix33 rotation = Matrix33::CreateRotationY(Angle::FromDegrees(90));
          * Vector3D rotated = rotation * direction; // Rotates the vector 90° around Y axis
+         * @endcode 
          */
         Vector3D operator*(const Vector3D& v) const 
         { 
@@ -180,9 +185,10 @@ namespace SaturnMath
          * @note For orthogonal matrices (like pure rotation matrices), 
          * the transpose is equal to the inverse.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 mat = Matrix33::CreateRotationX(Angle::FromDegrees(45));
          * mat.Transpose(); // Transposes the matrix in-place
+         * @endcode 
          */
         Matrix33& Transpose()
         {
@@ -221,9 +227,10 @@ namespace SaturnMath
          * @note This is ideal for continuous transformations like animation
          * as it modifies the existing matrix rather than creating a new one.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 transform = Matrix33::Identity();
          * transform.RotateX(Angle::FromDegrees(45)); // Rotate 45° around X
+         * @endcode 
          */
         Matrix33& RotateX(const Angle& angleX)
         {
@@ -266,9 +273,10 @@ namespace SaturnMath
          * @param angle Rotation angle around X-axis.
          * @return A new rotation matrix.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 rotation = Matrix33::CreateRotationX(Angle::FromDegrees(90));
          * Vector3D rotated = rotation * Vector3D(0, 1, 0); // Rotates (0,1,0) to (0,0,1)
+         * @endcode 
          */
         static constexpr Matrix33 CreateRotationX(const Angle& angle)
         {
@@ -298,9 +306,10 @@ namespace SaturnMath
          * @note This is ideal for continuous transformations like animation
          * as it modifies the existing matrix rather than creating a new one.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 transform = Matrix33::Identity();
          * transform.RotateY(Angle::FromDegrees(45)); // Rotate 45° around Y
+         * @endcode 
          */
         Matrix33& RotateY(const Angle& angleY)
         {
@@ -341,9 +350,10 @@ namespace SaturnMath
          * @param angle Rotation angle around Y-axis.
          * @return A new rotation matrix.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 rotation = Matrix33::CreateRotationY(Angle::FromDegrees(90));
          * Vector3D rotated = rotation * Vector3D(1, 0, 0); // Rotates (1,0,0) to (0,0,-1)
+         * @endcode 
          */
         static constexpr Matrix33 CreateRotationY(const Angle& angle)
         {
@@ -374,9 +384,10 @@ namespace SaturnMath
          * @note This is ideal for continuous transformations like animation
          * as it modifies the existing matrix rather than creating a new one.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 transform = Matrix33::Identity();
          * transform.RotateZ(Angle::FromDegrees(45)); // Rotate 45° around Z
+         * @endcode 
          */
         Matrix33& RotateZ(const Angle& angleZ)
         {
@@ -417,9 +428,10 @@ namespace SaturnMath
          * @param angle Rotation angle around Z-axis.
          * @return A new rotation matrix.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 rotation = Matrix33::CreateRotationZ(Angle::FromDegrees(90));
          * Vector3D rotated = rotation * Vector3D(1, 0, 0); // Rotates (1,0,0) to (0,1,0)
+         * @endcode 
          */
         static constexpr Matrix33 CreateRotationZ(const Angle& angle)
         {
@@ -454,12 +466,13 @@ namespace SaturnMath
          * @note The order of rotations matters. Changing the order will result
          * in a different final orientation.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 rotation = Matrix33::CreateRotation(
          *     Angle::FromDegrees(30),  // X rotation (pitch)
          *     Angle::FromDegrees(45),  // Y rotation (yaw)
          *     Angle::FromDegrees(60)   // Z rotation (roll)
          * );
+         * @endcode 
          */
         static constexpr Matrix33 CreateRotation(const Angle& angleX, const Angle& angleY, const Angle& angleZ)
         {
@@ -505,9 +518,10 @@ namespace SaturnMath
          * @note This operation affects both the orientation and scale of the transformation.
          * For pure scaling, use CreateScale instead.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 transform = Matrix33::Identity();
          * transform.Scale(Vector3D(2, 1, 0.5)); // Scale x by 2, y by 1, z by 0.5
+         * @endcode 
          */
         Matrix33& Scale(const Vector3D& scale)
         {
@@ -544,9 +558,10 @@ namespace SaturnMath
          * - det = 1 for pure rotation matrices
          * - |det| represents the scale factor of the transformation
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 rotation = Matrix33::CreateRotationX(Angle::FromDegrees(90));
          * Fxp det = rotation.Determinant(); // Should be close to 1
+         * @endcode 
          */
         constexpr Fxp Determinant() const
         {
@@ -575,19 +590,20 @@ namespace SaturnMath
          * @note For orthogonal matrices (like pure rotation matrices),
          * the inverse is equal to the transpose.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 transform = Matrix33::CreateRotationY(Angle::FromDegrees(45));
          * Matrix33 inverse;
          * if (transform.TryInverse(inverse)) {
          *     // inverse * transform ≈ Identity
          * }
+         * @endcode 
          */
         bool TryInverse(Matrix33& out) const
         {
             const Fxp det = Determinant();
-            if (det == 0) return false;
+            if (det == 0.0) return false;
 
-            const Fxp invDet = Fxp(1) / det;
+            const Fxp invDet = 1.0 / det;
 
             // Calculate cofactors and adjugate matrix
             out.Row0.X = (Row1.Y * Row2.Z - Row1.Z * Row2.Y) * invDet;
@@ -622,9 +638,10 @@ namespace SaturnMath
          * @note Unlike the Scale() method, this creates a fresh matrix
          * that only represents scaling, without affecting rotation.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 scaleMatrix = Matrix33::CreateScale(Vector3D(2, 2, 2)); // Uniform scale by 2
          * Vector3D scaled = scaleMatrix * Vector3D(1, 1, 1); // Results in (2, 2, 2)
+         * @endcode 
          */
         static constexpr Matrix33 CreateScale(const Vector3D& scale)
         {
@@ -653,10 +670,11 @@ namespace SaturnMath
          *
          * @return The 3x3 identity matrix.
          *
-         * @example
+         * @code {.cpp}
          * Matrix33 identity = Matrix33::Identity();
          * Vector3D v(1, 2, 3);
          * Vector3D result = identity * v; // Same as v
+         * @endcode 
          */
         static consteval Matrix33 Identity()
         {

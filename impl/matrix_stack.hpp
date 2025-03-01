@@ -1,9 +1,8 @@
 #pragma once
 
 #include "mat43.hpp"
-#include <stdexcept>
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     class MatrixStack
     {

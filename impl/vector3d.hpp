@@ -5,7 +5,7 @@
 #include "precision.hpp"
 #include "sort_order.hpp"
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief A struct for three-dimensional fixed-point vector arithmetic operations.
@@ -231,6 +231,24 @@ namespace SaturnMath
         }
 
         /**
+         * @brief Calculate the squared length of the vector.
+         * @return The squared length as an Fxp value.
+         * @details Useful for comparisons where the actual length is not needed.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v1(1, 2, 3);
+         * Vector3D v2(4, 6, 8);
+         * if (v1.LengthSquared() < v2.LengthSquared()) {
+         *     // v1 is shorter than v2
+         * }
+         * @endcode
+         */
+        constexpr Fxp LengthSquared() const {
+            return Dot(*this);
+        }
+
+        /**
          * @brief Calculate the length of the vector
          * @tparam P Precision level for calculation
          * @return Length of the vector
@@ -246,7 +264,7 @@ namespace SaturnMath
                     0.38928148272372454, // Beta
                     0.2987061876143797   // Gamma
                 );
-                return Abs().Sort<SortOrder::Descending>().Dot(alphaBetaGamma);
+                return alphaBetaGamma.Dot(Abs().Sort<SortOrder::Descending>());
             }
             else
             {
@@ -287,6 +305,23 @@ namespace SaturnMath
             return edge1.Cross(edge2).Normalize<P>();
         }
 
+        /**
+         * @brief Calculate the Euclidean distance from this vector to another vector.
+         * @param other The other vector to calculate the distance to.
+         * @return The distance as an Fxp value.
+         * @details Computes the distance using the formula: sqrt((X - other.X)^2 + (Y - other.Y)^2 + (Z - other.Z)^2).
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v1(1, 2, 3);
+         * Vector3D v2(4, 6, 8);
+         * Fxp distance = v1.DistanceTo(v2); // Computes distance between (1, 2, 3) and (4, 6, 8)
+         * @endcode
+         */
+        constexpr Fxp DistanceTo(const Vector3D& other) const {
+            return (*this - other).Length();
+        }
+
         // Scalar multiplication and division
         /**
          * @brief Compound multiplication assignment operator.
@@ -297,6 +332,18 @@ namespace SaturnMath
         {
             Vector2D::operator*=(scalar);
             Z *= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Divide each coordinate by a scalar value.
+         * @param fxp The scalar value to divide by.
+         * @return The resulting Vec3 object.
+         */
+        constexpr Vector3D operator/=(const Fxp& fxp)
+        {
+            Vector2D::operator*=(fxp);
+            Z *= fxp;
             return *this;
         }
 
@@ -379,6 +426,16 @@ namespace SaturnMath
             return X != vec.X && Y != vec.Y && Z != vec.Z;
         }
 
+        /**
+         * @brief Check if two Vec3 objects are not equal.
+         * @param vec The Vec3 object to compare.
+         * @return True if not equal, false otherwise.
+         */
+        constexpr bool operator==(const Vector3D& vec) const
+        {
+            return X == vec.X && Y == vec.Y && Z == vec.Z;
+        }
+
         // Bitwise shift operators
         /**
          * @brief Bitwise right shift operator.
@@ -440,17 +497,35 @@ namespace SaturnMath
         /**
          * @brief Binary addition operator.
          * @param vec The Vec3 object to add.
-         * @return The sum as an Vec3 object.
+         * @return The sum as a Vec3 object.
          */
         constexpr Vector3D operator+(const Vector3D& vec) const
         {
-            return Vector3D(Vector2D::operator+(vec), Z + vec.Z);
+            return Vector3D(X + vec.X, Y + vec.Y, Z + vec.Z);
+        }
+
+        /**
+         * @brief Binary addition operator for adding a Vector2D to a Vector3D.
+         * @param vec The Vec2 object to add.
+         * @return The sum as a Vec3 object.
+         */
+        constexpr Vector3D operator+(const Vector2D& vec) const {
+            return Vector3D(X + vec.X, Y + vec.Y, Z);
+        }
+
+        /**
+         * @brief Binary addition operator for adding an Fxp to a Vector3D.
+         * @param scalar The Fxp value to add.
+         * @return The resulting Vector3D object.
+         */
+        constexpr Vector3D operator+(const Fxp& scalar) const {
+            return Vector3D(X + scalar, Y + scalar, Z + scalar);
         }
 
         /**
          * @brief Binary subtraction operator.
          * @param vec The Vec3 object to subtract.
-         * @return The difference as an Vec3 object.
+         * @return The difference as a Vec3 object.
          */
         constexpr Vector3D operator-(const Vector3D& vec) const
         {
@@ -481,22 +556,6 @@ namespace SaturnMath
             Y -= vec.Y;
             Z -= vec.Z;
             return *this;
-        }
-
-        void test()
-        {
-            static constexpr Vector3D v1(1, 0, 0), v2(1, 0, 0);  // Unit vectors along X
-            static constexpr Vector3D v3(0, 1, 0), v4(0, 1, 0);  // Unit vectors along Y
-            static constexpr Vector3D v5(0, 0, 1), v6(0, 0, 1);  // Unit vectors along Z
-
-
-            // Computes (v1·v2) + (v3·v4) + (v5·v6) = 1 + 1 + 1 = 3
-            // All calculations done in parallel using Saturn's MAC registers
-            static constexpr auto result = Vector3D::MultiDotAccumulate(
-                std::pair{ v1, v2 },
-                std::pair{ v3, v4 },
-                std::pair{ v5, v6 }
-            ).ToFloat();
         }
     };
 }

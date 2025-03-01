@@ -13,6 +13,25 @@ SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints
 - Compile-time optimizations with constexpr/consteval
 - Zero dynamic memory allocation
 
+## Architecture
+
+SaturnMath++ is organized into two main namespaces:
+
+### SaturnMath::Types
+Contains all fundamental mathematical types and structures:
+- Vector arithmetic (`Vector2D`, `Vector3D`)
+- Matrix operations (`Mat33`, `Matrix43`)
+- Geometric primitives (`AABB`, `Sphere`, `Plane`, `Frustum`)
+- Fixed-point numbers (`Fxp`)
+- Angle representation optimized for Saturn hardware
+
+### SaturnMath
+Provides mathematical operations and utilities:
+- Trigonometric functions
+- Interpolation methods
+- Integer-specific optimizations
+- Template-based utility functions for common operations (Min, Max, Abs, Clamp)
+
 ## Features
 
 ### Core Components
@@ -20,10 +39,28 @@ SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints
   - Power function for integer exponents
   - Value clamping between bounds
   - Comprehensive arithmetic operations
+  - Flexible value conversion:
+    ```cpp
+    // Compile-time conversion (preferred)
+    constexpr Fxp a = 3.14159;   // Exact conversion at compile-time
+
+    // Integer conversion with range checking
+    Fxp b = Fxp::Convert(100);   // Checks if value fits in int16_t range
+
+    // Floating-point conversion (will warn about performance)
+    Fxp c = Fxp::Convert(3.14f); // Warning: heavy operation
+    Fxp d = Fxp::Convert(2.5);   // Warning: heavy operation
+
+    // Manual casting (advanced users only)
+    Fxp e = static_cast<int32_t>(someValue << 16); // No warnings, but risks overflow
+    ```
+  - **Manual Casting**: For advanced users who understand the risks of precision loss or overflow, manual casting is allowed. However, use the `Convert` function for safer conversions.
+
 - **Angle Handling**: Type-safe `Angle` class for angular calculations
   - Raw value construction and access
   - Scalar multiplication and division
   - Automatic wrap-around handling
+
 - **Euler Angles**: Type-safe representation of 3D rotations
   - Intrinsic Tait-Bryan angles (pitch-yaw-roll)
   - X-Y-Z rotation order
@@ -101,7 +138,7 @@ Just include the library in your Sega Saturn project:
 
 ```cpp
 #include "saturn_math.hpp"
-using namespace SaturnMath;
+using namespace SaturnMath::Types;
 
 // 3D vector operations with different precision levels
 Vector3D position(1, 2, 3);
@@ -148,24 +185,32 @@ Vector3D v1(0, 0, 0), v2(1, 0, 0), v3(0, 1, 0);
 Vector3D normal = Vector3D::CalcNormal<Precision::Standard>(v1, v2, v3);
 Vector3D fastNormal = Vector3D::CalcNormal<Precision::Fast>(v1, v2, v3);
 
+// Collision detection
+Sphere sphere(center, 2.0_fxp);
+bool collision = box.Intersects(sphere);
+
 // Create view matrix with precision control
 Vector3D eye(0, 5, -10);
 Vector3D target(0, 0, 0);
 Vector3D up = Vector3D::UnitY();
 Matrix43 view = Matrix43::CreateLookAt<Precision::Standard>(eye, target, up);
+
+// Frustum culling
+Frustum viewFrustum;
+bool isVisible = viewFrustum.Contains(box);
 ```
 
 ### Fixed-Point and Angle Operations
 
 ```cpp
 #include "saturn_math.hpp"
-using namespace SaturnMath;
+using namespace SaturnMath::Types;
 
 // Fixed-point arithmetic
-Fxp a(5);                   // 5 (0x00050000)
-Fxp b(2.5);                // 2.5 (0x00028000)
-Fxp c = a * b;             // 12.5 (0x000C8000)
-int16_t i = c.ToInt();     // 12
+Fxp a(5);                     // 5 (0x00050000)
+Fxp b(2.5);                   // 2.5 (0x00028000)
+Fxp c = a * b;                // 12.5 (0x000C8000)
+int16_t i = c.As<int16_t>();  // 12
 
 // Power and clamping operations
 Fxp squared = a.Pow(2);    // 25
@@ -173,21 +218,21 @@ Fxp clamped = b.Clamp(0, 2); // 2
 
 // Angle calculations
 Angle rotation = Angle::FromDegrees(45);
-Fxp sine = Sin(rotation);
-Fxp cosine = Cos(rotation);
+Fxp sine = SaturnMath::Sin(rotation);
+Fxp cosine = SaturnMath::Cos(rotation);
 
 // Example of angle arithmetic
 Angle doubled = rotation * Fxp(2);    // Double the angle
 Angle halved = rotation / Fxp(2);     // Half the angle
 
 // Euler angles for 3D rotation
-EulerAngles orientation(
+Vector3D orientation(
     Angle::FromDegrees(30),  // Pitch
     Angle::FromDegrees(45),  // Yaw
     Angle::FromDegrees(0)    // Roll
 );
 
-// Create transformation matrix from Euler angles
+// Create transformation matrix from angles
 Matrix43 transform = Matrix43::CreateTransform(
     Vector3D(1, 2, 3),      // Translation
     orientation,             // Rotation
@@ -204,7 +249,13 @@ Matrix43 billboard = Matrix43::CreateBillboard(
 // Smooth angle interpolation
 Angle start = Angle::Zero();
 Angle end = Angle::HalfPi();
-Angle interpolated = Trigonometry::SLerp(start, end, Fxp(0.5));
+Angle interpolated = SaturnMath::Interpolation::SLerp(start, end, Fxp(0.5));
+
+// Utility functions
+using namespace SaturnMath;
+auto maxVal = Max(5_fxp, 3_fxp);
+auto absVal = Abs(-5_fxp);
+auto clampedVal = Clamp(7_fxp, 0_fxp, 5_fxp);
 ```
 
 ## Performance Considerations

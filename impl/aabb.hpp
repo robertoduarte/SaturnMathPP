@@ -5,7 +5,7 @@
 #include "shape.hpp"
 #include <array>
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     class AABB : public Shape
     {

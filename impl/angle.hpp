@@ -3,7 +3,7 @@
 #include "fxp.hpp"
 #include <numbers>
 
-namespace SaturnMath
+namespace SaturnMath::Types
 {
     /**
      * @brief Efficient 16-bit angle representation optimized for Saturn hardware.
@@ -145,7 +145,7 @@ namespace SaturnMath
           */
         constexpr Angle operator+(const Angle& other) const
         {
-            return Angle(value + other.RawValue()); // Natural 16-bit wrap-around
+            return Angle(value + other.value); // Natural 16-bit wrap-around
         }
 
         /**
@@ -155,7 +155,7 @@ namespace SaturnMath
          */
         constexpr Angle operator-(const Angle& other) const
         {
-            return Angle(value - other.RawValue()); // Natural 16-bit wrap-around
+            return Angle(value - other.value); // Natural 16-bit wrap-around
         }
 
         /**
@@ -202,6 +202,40 @@ namespace SaturnMath
         constexpr Angle operator/(const Fxp& fxp) const
         {
             return Angle((ToFxp() / fxp).RawValue());
+        }
+        /**
+         * @brief Adds two angles.
+         * @param other Angle to add
+         * @return Reference to the modified Angle object
+         * @note Automatically wraps around the result
+         */
+        constexpr Angle& operator+=(const Angle& other)
+        {
+            value += other.value; // Natural 16-bit wrap-around
+            return *this;
+        }
+
+        /**
+         * @brief Subtracts two angles.
+         * @param other Angle to subtract
+         * @return Reference to the modified Angle object
+         * @note Automatically wraps around the result
+         */
+        constexpr Angle& operator-=(const Angle& other)
+        {
+            value -= other.value; // Natural 16-bit wrap-around
+            return *this;
+        }
+
+        /**
+         * @brief Negates the angle, effectively adding half a turn (180 degrees).
+         *
+         * This operator allows for intuitive manipulation of angles by providing a way to obtain the angle that is directly opposite to the current angle.
+         * @return New Angle object representing the negated angle.
+         */
+        constexpr Angle operator-() const
+        {
+            return Angle(value + halfPi); // Add half a turn
         }
         /** @} */
     };
