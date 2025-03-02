@@ -27,10 +27,17 @@ namespace SaturnMath::Types
      *
      * Example:
      * @code
-     * Fxp a = 5;                   // 5    (0x00050000)
-     * Fxp b(2.5);                  // 2.5  (0x00028000)
-     * Fxp c = a * b;               // 12.5 (0x000C8000)
-     * int16_t i = c.As<int16_t>(); // 12
+     * // Compile-time conversion (preferred)
+     * constexpr Fxp a = 5;              // 5    (0x00050000)
+     * constexpr Fxp b = 2.5f;           // 2.5  (0x00028000)
+     * 
+     * // Runtime conversion
+     * Fxp c = Fxp::Convert(someInt);    // With range checking
+     * Fxp d = Fxp::Convert(someFloat);  // With performance warning
+     * 
+     * // Arithmetic operations
+     * Fxp result = a * b;               // 12.5 (0x000C8000)
+     * int16_t i = result.As<int16_t>(); // 12
      * @endcode
      *
      * @note All operations are designed for maximum efficiency on Saturn hardware.
@@ -130,6 +137,9 @@ namespace SaturnMath::Types
          * Using int16_t{value} ensures the value fits within the valid range (-32768 to 32767).
          * The compiler will warn if the value is outside this range.
          * 
+         * This is a RUNTIME conversion method. For compile-time conversion, prefer using
+         * the Fxp constructor directly with constexpr when possible.
+         * 
          * Example:
          * @code
          * auto a = Fxp::Convert(5);      // OK: 5 fits in int16_t
@@ -137,7 +147,7 @@ namespace SaturnMath::Types
          * @endcode
          */
         template <std::integral T>
-        static constexpr Fxp Convert(const T &value) { return BuildRaw(static_cast<int32_t>(int16_t{value}) << 16); }
+        static Fxp Convert(const T &value) { return BuildRaw(static_cast<int32_t>(int16_t{value}) << 16); }
 
         /**
          * @brief Convert floating-point to fixed-point with performance warning.
@@ -149,6 +159,9 @@ namespace SaturnMath::Types
          * This operation involves floating-point multiplication which is relatively expensive
          * on Saturn hardware. The compiler will emit a warning when this function is used
          * to help identify potential performance bottlenecks.
+         * 
+         * This is a RUNTIME conversion method. For compile-time conversion, prefer using
+         * the Fxp constructor directly with constexpr when possible.
          * 
          * For better performance:
          * - Use integral types when possible
@@ -170,7 +183,7 @@ namespace SaturnMath::Types
          */
         template <std::floating_point T>
         [[gnu::warning("Converting from floating-point is a heavy operation - avoid in performance-critical code")]]
-        static constexpr Fxp Convert(const T &value){ return BuildRaw(static_cast<int32_t>(value * 65536.0)); }
+        static Fxp Convert(const T &value){ return BuildRaw(static_cast<int32_t>(value * 65536.0)); }
 
         /***********Static Functions************/
 

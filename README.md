@@ -2,16 +2,26 @@
 <img src="https://github.com/robertoduarte/SaturnMathPP/blob/main/documentation/resources/smpp_sqrt_pi_logo.svg" >
 </p>
 
-# SaturnMath++ (C++23)
-SaturnMath++ is a C++23 library dedicated to Sega Saturn hardware, offering essential mathematical operations tailored for fixed-point arithmetic and geometric calculations.
+# SaturnMath++
+
+<p align="center">
+  <img src="https://img.shields.io/badge/C%2B%2B-23-blue" alt="C++23">
+  <img src="https://img.shields.io/badge/Platform-Sega%20Saturn-yellow" alt="Platform">
+</p>
+
+SaturnMath++ is a high-performance mathematical library specifically engineered for Sega Saturn game development. It provides a comprehensive suite of fixed-point arithmetic operations, vector/matrix transformations, and geometric calculations optimized for the Saturn's SH-2 processors.
+
 ## Overview
 
-SaturnMath++ is designed specifically for the Sega Saturn's hardware constraints and capabilities:
-- Uses fixed-point arithmetic instead of floating-point
-- Optimized for SH-2's 32-bit operations
-- Cache-friendly data layouts
-- Compile-time optimizations with constexpr/consteval
-- Zero dynamic memory allocation
+Developed with the Saturn's unique hardware architecture in mind, SaturnMath++ addresses the platform's key constraints while maximizing performance:
+
+- **Fixed-Point Precision**: Replaces costly floating-point operations with optimized 16.16 fixed-point arithmetic
+- **Hardware-Aware Design**: Takes advantage of the SH-2's 32-bit operations and instruction set
+- **Performance-First Philosophy**: Offers multiple precision levels to balance accuracy and speed
+- **Modern C++ Features**: Leverages C++23 capabilities for compile-time optimizations
+- **Zero Overhead**: No dynamic memory allocation, minimal branching, and cache-friendly data structures
+
+Whether you're developing a 3D racing game, a 2D sprite-based platformer, or a complex simulation, SaturnMath++ provides the mathematical foundation you need without sacrificing precious CPU cycles.
 
 ## Architecture
 
@@ -42,19 +52,26 @@ Provides mathematical operations and utilities:
   - Flexible value conversion:
     ```cpp
     // Compile-time conversion (preferred)
-    constexpr Fxp a = 3.14159;   // Exact conversion at compile-time
+    constexpr Fxp a = 3.14159f;   // Exact conversion at compile-time (float)
+    constexpr Fxp b = 42;         // Integer conversion at compile-time (int16_t)
 
-    // Integer conversion with range checking
-    Fxp b = Fxp::Convert(100);   // Checks if value fits in int16_t range
+    // Runtime conversion with safety checks
+    int32_t someInt = GetRuntimeValue();
+    Fxp c = Fxp::Convert(someInt);   // Range checking (converts to int16_t first)
 
-    // Floating-point conversion (will warn about performance)
-    Fxp c = Fxp::Convert(3.14f); // Warning: heavy operation
-    Fxp d = Fxp::Convert(2.5);   // Warning: heavy operation
+    // Runtime floating-point conversion (with performance warning)
+    float someFloat = GetRuntimeFloat();
+    Fxp d = Fxp::Convert(someFloat); // Warning: heavy operation on Saturn hardware
 
-    // Manual casting (advanced users only)
-    Fxp e = static_cast<int32_t>(someValue << 16); // No warnings, but risks overflow
+    // Converting back to other types
+    int16_t i = a.As<int16_t>();     // To integer
+    float f = a.As<float>();         // To float (with performance warning)
     ```
-  - **Manual Casting**: For advanced users who understand the risks of precision loss or overflow, manual casting is allowed. However, use the `Convert` function for safer conversions.
+  - **Advanced Usage**: For experts who understand the 16.16 fixed-point format, direct raw value manipulation is available:
+    ```cpp
+    // Create from raw 16.16 value (for advanced users only)
+    Fxp raw = Fxp::BuildRaw(0x00010000);  // 1.0 in 16.16 format
+    ```
 
 - **Angle Handling**: Type-safe `Angle` class for angular calculations
   - Raw value construction and access
@@ -207,14 +224,29 @@ bool isVisible = viewFrustum.Contains(box);
 using namespace SaturnMath::Types;
 
 // Fixed-point arithmetic
-Fxp a(5);                     // 5 (0x00050000)
-Fxp b(2.5);                   // 2.5 (0x00028000)
+Fxp a(5);                     // Create from int16_t (works at compile-time or runtime)
+Fxp b(2.5f);                  // Create from float (compile-time only)
 Fxp c = a * b;                // 12.5 (0x000C8000)
-int16_t i = c.As<int16_t>();  // 12
+int16_t i = c.As<int16_t>();  // Convert back to int16_t
 
 // Power and clamping operations
 Fxp squared = a.Pow(2);    // 25
 Fxp clamped = b.Clamp(0, 2); // 2
+
+// Fixed-point conversion methods
+// 1. COMPILE-TIME construction (preferred when values are known at compile time)
+constexpr Fxp compile_time = 3.14159f;         // Exact conversion at compile-time (float)
+constexpr Fxp compile_time_int = 42;           // Integer conversion at compile-time (int16_t)
+
+// 2. RUNTIME conversion with static Convert() (for values not known at compile time)
+int32_t runtime_int = 12345;
+float runtime_float = 67.89f;
+Fxp int_conversion = Fxp::Convert(runtime_int);   // With range checking
+Fxp float_conversion = Fxp::Convert(runtime_float); // Warning: heavy operation
+
+// 3. Converting FROM Fxp back to other types
+int16_t as_int = compile_time.As<int16_t>();    // Convert to int16_t
+float as_float = compile_time.As<float>();      // Convert to float (warning: heavy)
 
 // Angle calculations
 Angle rotation = Angle::FromDegrees(45);
