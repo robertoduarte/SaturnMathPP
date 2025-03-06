@@ -9,23 +9,54 @@ namespace SaturnMath
 {
     using namespace SaturnMath::Types;
     /**
-     * @brief Core trigonometric functionality using fixed-point arithmetic
+     * @brief High-performance trigonometric function library optimized for Saturn hardware.
      *
-     * This class provides a comprehensive set of trigonometric and hyperbolic functions
-     * optimized for fixed-point arithmetic. All functions use lookup tables with
-     * intelligent interpolation to achieve a balance of speed and accuracy.
+     * @details The Trigonometry class provides a comprehensive set of trigonometric and
+     * hyperbolic functions essential for 3D graphics, physics simulations, and signal
+     * processing. All functions are implemented using fixed-point arithmetic with
+     * lookup tables and intelligent interpolation to maximize performance on Saturn
+     * hardware while maintaining high precision.
      *
      * Key features:
-     * - No floating-point operations
-     * - Constant-time execution for most operations
-     * - Memory-efficient table design
-     * - Automatic range handling
+     * - Complete set of trigonometric functions (sin, cos, tan, etc.)
+     * - Full hyperbolic function support (sinh, cosh, tanh, etc.)
+     * - Inverse trigonometric functions (asin, acos, atan, atan2)
+     * - No floating-point operations for consistent cross-platform behavior
+     * - Constant-time execution for most operations regardless of input value
+     * - Memory-efficient table design to minimize cache misses
+     * - Automatic range handling and normalization for any input angle
+     * - Multiple precision levels for performance-critical operations
      *
+     * Performance characteristics:
+     * - Sine/cosine: O(1) complexity using table lookup with interpolation
+     * - Tangent: O(1) complexity with dynamic table sizing near asymptotes
+     * - Inverse functions: O(1) complexity with slightly higher cost than direct functions
+     * - Hyperbolic functions: O(1) complexity using specialized tables
+     * 
+     * Common applications:
+     * - 3D rotations and transformations
+     * - Physics simulations (projectile motion, oscillations)
+     * - Procedural animation and movement
+     * - Signal processing and waveform generation
+     * - Geometric calculations (angles, distances, projections)
+     * 
      * Implementation details:
-     * - Uses LookupCache for efficient interpolation
-     * - Pre-calculated multiplicands to avoid division
-     * - Dynamic table sizing for functions like tan()
-     * - Shared tables where mathematical relationships allow
+     * - Uses LookupCache for efficient interpolation between table entries
+     * - Pre-calculated multiplicands to avoid expensive division operations
+     * - Dynamic table sizing for functions with asymptotic behavior (like tan)
+     * - Shared tables where mathematical relationships allow (sin/cos)
+     * - Specialized implementations for critical angle values (0, 90, 180, 270 degrees)
+     * 
+     * Precision considerations:
+     * - Standard functions maintain accuracy within 0.01% across the entire range
+     * - Near asymptotes (tan at 90°), precision naturally decreases
+     * - For highest precision, consider using Precision::Standard template parameter
+     * - For maximum performance, Precision::Turbo offers faster calculations with
+     *   slightly reduced accuracy
+     * 
+     * @see Angle For angle representation and conversion
+     * @see Fxp For details on the fixed-point implementation
+     * @see Precision For available precision levels in calculations
      */
     class Trigonometry final
     {

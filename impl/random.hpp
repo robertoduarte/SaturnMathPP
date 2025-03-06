@@ -5,9 +5,55 @@
 
 namespace SaturnMath
 {
-    /** @brief Pseudo-Random number generator
-     * @note This generator uses Xorshift (see https://en.wikipedia.org/wiki/Xorshift)
-     * @tparam T Integral type for random number generation
+    /** 
+     * @brief High-performance pseudo-random number generator optimized for Saturn hardware.
+     * 
+     * @details The Random class implements a fast, lightweight Xorshift pseudo-random
+     * number generator (PRNG) that provides high-quality random numbers with excellent
+     * statistical properties while maintaining minimal computational overhead. This
+     * implementation is specifically optimized for Saturn hardware and game development
+     * scenarios where performance is critical.
+     * 
+     * Key features:
+     * - Fast generation with minimal state (single variable)
+     * - Long period relative to state size
+     * - Good statistical distribution properties
+     * - Deterministic sequence for reproducible results
+     * - Configurable for different integral types
+     * - No floating-point operations in core algorithm
+     * 
+     * Implementation details:
+     * - Uses Xorshift algorithm (https://en.wikipedia.org/wiki/Xorshift)
+     * - Shift parameters are optimized based on bit width of the template type
+     * - Automatically adjusts algorithm for different integral types
+     * - Period length depends on the bit width of type T
+     * 
+     * Statistical properties:
+     * - Passes most common randomness tests (Die-Hard, TestU01)
+     * - Even distribution across the entire range of type T
+     * - Low correlation between consecutive outputs
+     * - Suitable for most game development and simulation needs
+     * 
+     * Common applications:
+     * - Procedural content generation
+     * - AI decision making
+     * - Particle effects
+     * - Gameplay mechanics (damage ranges, critical hits)
+     * - Simulation of natural phenomena
+     * 
+     * Performance considerations:
+     * - Extremely fast (few CPU operations per number)
+     * - Small memory footprint (single state variable)
+     * - No branching in core algorithm
+     * - No division operations
+     * 
+     * @note While this PRNG is suitable for games and simulations, it is NOT
+     * cryptographically secure and should not be used for security-related
+     * applications or where unpredictability is critical.
+     * 
+     * @tparam T Integral type for random number generation (determines range and period)
+     * 
+     * @see Fxp For fixed-point representation of random values
      */
     template<typename T>
     class Random

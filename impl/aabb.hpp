@@ -7,6 +7,32 @@
 
 namespace SaturnMath::Types
 {
+    /**
+     * @brief Axis-Aligned Bounding Box (AABB) representation for efficient collision detection.
+     * 
+     * @details An AABB is a rectangular cuboid whose faces are aligned with the coordinate axes.
+     * It is defined by a center point and half-extents (size) along each axis.
+     * 
+     * Key features of this implementation:
+     * - Memory-efficient representation using only a center point and half-extents
+     * - Constant-time intersection tests with other AABBs, rays, and points
+     * - Optimized for performance-critical collision detection pipelines
+     * - Supports both construction from min/max points and from center/size
+     * - Provides methods for volume and surface area calculations
+     * 
+     * AABBs are primarily used for:
+     * - Broad-phase collision detection in physics simulations
+     * - Spatial partitioning structures (octrees, BVH trees)
+     * - View frustum culling in rendering pipelines
+     * - Ray-casting acceleration
+     * 
+     * This implementation inherits from the Shape base class, allowing it to be used
+     * polymorphically with other geometric primitives in the library.
+     * 
+     * @note While AABBs are very efficient for collision detection, they can become
+     * inefficient for rotated objects. Consider using oriented bounding boxes (OBBs)
+     * for objects that undergo significant rotation.
+     */
     class AABB : public Shape
     {
     public:

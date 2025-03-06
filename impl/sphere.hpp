@@ -7,13 +7,46 @@
 namespace SaturnMath::Types
 {
     /**
-     * @brief Perfect sphere defined by center and radius.
+     * @brief High-performance sphere primitive for collision detection and bounding volume applications.
      * 
-     * Provides intersection tests against:
-     * - Planes (one-sided test)
-     * - AABBs (exact test)
-     * - Other spheres (exact test)
-     * - Points (exact test)
+     * @details The Sphere class represents a perfect mathematical sphere in 3D space,
+     * defined by a center point and radius. It provides optimized intersection tests
+     * with various geometric primitives and serves as an efficient bounding volume
+     * for complex objects.
+     * 
+     * Key features:
+     * - Memory-efficient representation (center point + radius)
+     * - Constant-time intersection tests with common primitives
+     * - Fixed-point arithmetic for consistent behavior across platforms
+     * - Inheritance from Shape for polymorphic usage in collision systems
+     * 
+     * Performance characteristics:
+     * - Sphere-sphere tests: O(1) complexity, very fast
+     * - Sphere-AABB tests: O(1) complexity, slightly more expensive than sphere-sphere
+     * - Sphere-plane tests: O(1) complexity, very fast
+     * - Sphere-point tests: O(1) complexity, extremely fast
+     * 
+     * Common applications:
+     * - Bounding volume for complex meshes
+     * - Collision detection in physics simulations
+     * - Level-of-detail calculations
+     * - Spatial partitioning acceleration structures
+     * - Fast rejection tests in ray tracing
+     * 
+     * Implementation notes:
+     * - All intersection tests use squared distances where possible to avoid
+     *   expensive square root operations
+     * - The radius is stored as a fixed-point value for consistent precision
+     * - Inheritance from Shape allows polymorphic usage in collision systems
+     * 
+     * @note When using spheres as bounding volumes for complex objects, consider
+     * the trade-off between tightness of fit and computational efficiency. Spheres
+     * provide the fastest intersection tests but may not approximate elongated
+     * objects as well as other bounding volumes like AABBs or OBBs.
+     * 
+     * @see AABB For axis-aligned bounding box alternative
+     * @see Shape For the base class interface
+     * @see Plane For plane intersection tests
      */
     class Sphere : public Shape
     {

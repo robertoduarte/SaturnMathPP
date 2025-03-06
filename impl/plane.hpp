@@ -5,17 +5,42 @@
 namespace SaturnMath::Types
 {
     /**
-     * @brief Infinite plane in 3D space defined by normal and distance.
+     * @brief Infinite plane in 3D space defined by normal and distance for efficient geometric calculations.
      * 
-     * Uses the equation: normal·X + d = 0, where:
-     * - normal: Unit vector perpendicular to the plane
-     * - d: Signed distance from origin to plane along normal
+     * @details The Plane class represents an infinite mathematical plane in 3D space
+     * using the standard form of the plane equation: normal·X + d = 0, where:
+     * - normal: Unit vector perpendicular to the plane (defines orientation)
+     * - d: Signed distance from origin to plane along normal direction
      * - X: Any point on the plane
      * 
-     * Distance to point P is calculated as: normal·P + d
-     * - Positive: Point is on same side as normal
-     * - Zero: Point is on plane
-     * - Negative: Point is on opposite side from normal
+     * Key features:
+     * - Memory-efficient representation (normal vector + distance scalar)
+     * - Constant-time distance calculations to points
+     * - Efficient intersection tests with rays, lines, and other geometric primitives
+     * - Multiple construction methods (3 points, normal+point, normal+distance)
+     * - Fixed-point arithmetic for consistent behavior across platforms
+     * 
+     * Mathematical properties:
+     * - Distance to point P is calculated as: normal·P + d
+     *   - Positive: Point is on same side as normal (in front of plane)
+     *   - Zero: Point is exactly on the plane
+     *   - Negative: Point is on opposite side from normal (behind plane)
+     * - The normal vector should always be normalized (unit length)
+     *   for correct distance calculations
+     * - Planes can be used to define half-spaces for constructive solid geometry
+     * 
+     * Common applications:
+     * - Collision detection and response
+     * - View frustum culling (camera planes)
+     * - Constructive solid geometry (CSG)
+     * - Reflections and shadow calculations
+     * - Clipping algorithms
+     * 
+     * @note For optimal performance, ensure the normal vector is normalized.
+     * Non-normalized normals will result in incorrect distance calculations.
+     * 
+     * @see Frustum For usage of planes in camera view frustums
+     * @see AABB For intersection tests between planes and bounding boxes
      */
     class Plane
     {

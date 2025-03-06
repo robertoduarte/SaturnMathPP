@@ -6,12 +6,32 @@
 namespace SaturnMath::Types
 {
     /**
-     * @brief Base class for geometric shapes.
+     * @brief Base class for geometric shapes in 3D space with common functionality.
      * 
-     * Common functionality:
-     * - Position (center point)
-     * - Intersection tests
-     * - Containment tests
+     * @details The Shape class serves as the foundation for the geometric primitive hierarchy
+     * in the SaturnMath library. It provides core functionality that all shapes share:
+     * - Positional data (center point)
+     * - Intersection testing framework
+     * - Containment testing framework
+     * 
+     * This abstract base class enables polymorphic usage of different shape types
+     * in collision detection systems, spatial partitioning structures, and
+     * physics simulations. By inheriting from Shape, derived classes gain
+     * consistent interfaces for position manipulation and testing operations.
+     * 
+     * Key design features:
+     * - Minimal memory footprint (only stores position vector)
+     * - Virtual methods for shape-specific operations
+     * - Consistent coordinate system across all shape types
+     * - Optimized for performance-critical collision detection pipelines
+     * 
+     * Common derived classes include:
+     * - AABB (Axis-Aligned Bounding Box)
+     * - Sphere
+     * - Plane
+     * 
+     * @note This class uses fixed-point arithmetic for all operations to ensure
+     * consistent behavior across platforms and to optimize for Saturn hardware.
      */
     class Shape
     {

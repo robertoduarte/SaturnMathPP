@@ -4,9 +4,57 @@
 
 namespace SaturnMath::Types
 {
+    /**
+     * @brief A high-performance matrix stack implementation for hierarchical transformations.
+     * 
+     * @details MatrixStack implements a traditional matrix stack commonly used in 3D graphics
+     * for managing hierarchical transformations. It allows pushing and popping matrices
+     * to create parent-child relationships between transformations, which is essential
+     * for scene graphs, skeletal animations, and other hierarchical structures.
+     * 
+     * Key features of this implementation:
+     * - Fixed-size array-based stack to avoid dynamic memory allocation during rendering
+     * - Automatic identity matrix initialization at the base of the stack
+     * - Stack overflow protection to prevent crashes in deep hierarchies
+     * - Convenience methods for common transformations (translate, rotate, scale)
+     * - Direct point transformation using the current matrix state
+     * 
+     * Common usage patterns:
+     * 1. Push a matrix before applying transformations to child objects
+     * 2. Apply transformations (translate, rotate, scale) to the top matrix
+     * 3. Use the transformed matrix to render objects
+     * 4. Pop the matrix when returning to the parent level
+     * 
+     * This implementation is designed for performance-critical rendering paths where
+     * predictable memory usage and cache-friendly operations are essential. The fixed-size
+     * stack ensures that no dynamic memory allocation occurs during traversal of a scene
+     * hierarchy, which is particularly important for real-time applications.
+     * 
+     * @note This class follows the traditional OpenGL-style matrix stack paradigm but
+     * is implemented with modern C++ practices and optimized for embedded systems.
+     */
     class MatrixStack
     {
     public:
+        /**
+         * @brief Maximum depth of the matrix stack.
+         * 
+         * @details Defines the maximum number of matrices that can be pushed onto the stack.
+         * This value is chosen to be sufficient for typical game scene hierarchies while
+         * avoiding excessive memory usage.
+         * 
+         * The value of 16 is selected based on the following considerations:
+         * - Most game scene hierarchies rarely exceed 10-12 levels of nesting
+         * - Each matrix consumes memory (typically 48-64 bytes for a 4x3 or 4x4 matrix)
+         * - Embedded systems and performance-critical applications benefit from 
+         *   predictable, fixed memory usage
+         * 
+         * If a push operation would exceed this depth, it is silently ignored to prevent
+         * stack overflow, which is preferable to undefined behavior in a real-time system.
+         * 
+         * @note If your application requires deeper hierarchies, this constant can be
+         * adjusted, but be aware of the increased memory footprint.
+         */
         static constexpr size_t MAX_DEPTH = 16;  // Typical max depth for game scenes
 
     private:

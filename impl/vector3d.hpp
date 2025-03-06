@@ -8,7 +8,44 @@
 namespace SaturnMath::Types
 {
     /**
-     * @brief A struct for three-dimensional fixed-point vector arithmetic operations.
+     * @brief A high-performance three-dimensional vector implementation optimized for Saturn hardware.
+     * 
+     * @details Vector3D extends Vector2D to provide comprehensive 3D vector operations using
+     * fixed-point arithmetic. It inherits all 2D functionality while adding Z-axis operations
+     * and 3D-specific algorithms optimized for performance-critical graphics and physics calculations.
+     * 
+     * Key features:
+     * - Memory-efficient representation (three Fxp values)
+     * - Comprehensive set of 3D vector operations (cross product, normalization, etc.)
+     * - Multiple precision levels for performance-critical operations
+     * - Hardware-optimized calculations for Saturn platform
+     * - Inheritance from Vector2D for seamless 2D/3D interoperability
+     * 
+     * Common applications:
+     * - 3D positions and translations
+     * - Surface normals and orientation vectors
+     * - Physics simulations (velocities, forces, torques)
+     * - Camera and view transformations
+     * - Lighting calculations
+     * 
+     * The implementation follows a right-handed coordinate system where:
+     * - Positive X points right
+     * - Positive Y points up
+     * - Positive Z points toward the viewer (out of the screen)
+     * 
+     * Performance considerations:
+     * - Most operations are constexpr and can be evaluated at compile time
+     * - Precision template parameters allow trading accuracy for speed
+     * - Fixed-point arithmetic avoids expensive floating-point operations
+     * - Specialized implementations for common operations (unit vectors, etc.)
+     * 
+     * @note When working with operations that require normalization (like calculating
+     * normals), be aware of the performance implications and consider using the
+     * appropriate precision level based on your requirements.
+     * 
+     * @see Vector2D For 2D vector operations
+     * @see Fxp For details on the fixed-point implementation
+     * @see Precision For available precision levels in calculations
      */
     struct Vector3D : public Vector2D
     {
@@ -669,7 +706,7 @@ namespace SaturnMath::Types
          */
         constexpr bool operator<=(const Vector3D& vec) const
         {
-            return Vector2D::operator<(vec) || 
+            return Vector2D::operator<=(vec) || 
                    (Vector2D::operator==(vec) && Z <= vec.Z);
         }
 
@@ -693,7 +730,7 @@ namespace SaturnMath::Types
          */
         constexpr bool operator>=(const Vector3D& vec) const
         {
-            return Vector2D::operator>(vec) || 
+            return Vector2D::operator>=(vec) || 
                    (Vector2D::operator==(vec) && Z >= vec.Z);
         }
 

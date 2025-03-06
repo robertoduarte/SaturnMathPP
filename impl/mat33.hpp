@@ -6,13 +6,21 @@
 namespace SaturnMath::Types
 {
     /**
-     * @brief 3x3 matrix for 3D transformations and rotations.
+     * @brief High-performance 3x3 matrix implementation optimized for Saturn hardware.
      *
-     * This class provides methods for matrix operations commonly used in 3D graphics and physics,
-     * including rotation, scaling, and multiplication. The matrix is represented using three row vectors
-     * that define the transformation's orientation.
-     *
-     * @details The matrix is laid out as follows:
+     * @details The Matrix33 class provides a comprehensive set of matrix operations
+     * optimized for 3D transformations, rotations, and linear algebra calculations
+     * on Saturn hardware. It uses fixed-point arithmetic for all operations to ensure
+     * consistent behavior across platforms and maximize performance.
+     * 
+     * Key features:
+     * - Memory-efficient representation (three row vectors)
+     * - Comprehensive set of transformation operations
+     * - Optimized for performance-critical graphics and physics calculations
+     * - Fixed-point arithmetic for consistent precision and hardware acceleration
+     * - Support for various precision levels in calculations
+     * 
+     * Matrix layout:
      *
      *     | Row0.x Row0.y Row0.z |
      *     | Row1.x Row1.y Row1.z |
@@ -23,7 +31,29 @@ namespace SaturnMath::Types
      * - Row1 (YAxis): Up vector, defines the local Y direction
      * - Row2 (ZAxis): Forward vector, defines the local Z direction
      *
-     * @note The rows form an orthonormal basis in right-handed coordinate system.
+     * Common applications:
+     * - 3D rotations and orientations
+     * - Local-to-world and world-to-local transformations
+     * - Inertia tensors for rigid body physics
+     * - Basis transformations
+     * - Normal transformations for lighting calculations
+     * 
+     * Performance considerations:
+     * - Matrix multiplication is an O(n³) operation and can be expensive
+     * - Inverse calculation is even more costly and should be cached when possible
+     * - Consider using specialized functions for common operations:
+     *   - CreateRotationX/Y/Z for single-axis rotations
+     *   - CreateScale for uniform/non-uniform scaling
+     *   - CreateFromAxisAngle for arbitrary axis rotations
+     * 
+     * Implementation notes:
+     * - The rows form an orthonormal basis in a right-handed coordinate system
+     * - Matrix operations are designed to minimize temporary object creation
+     * - Critical operations have specialized implementations for Saturn hardware
+     * 
+     * @see Matrix43 For 4x3 matrix with translation component
+     * @see MatrixStack For hierarchical transformations
+     * @see Vector3D For the underlying vector implementation
      */
     struct Matrix33
     {

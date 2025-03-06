@@ -5,9 +5,62 @@
 namespace SaturnMath::Types
 {
     /**
-     * @brief 4x3 matrix optimized for 3D transformations.
-     * Inherits rotation from Matrix33 and adds translation.
-     * Last row [0,0,0,1] is implicit for memory efficiency.
+     * @brief High-performance 4x3 transformation matrix optimized for Saturn hardware.
+     * 
+     * @details The Matrix43 class extends Matrix33 to provide a complete set of
+     * affine transformation operations (rotation, scaling, translation) optimized
+     * for 3D graphics and physics on Saturn hardware. It uses a memory-efficient
+     * 4x3 layout where the last row [0,0,0,1] is implicit.
+     * 
+     * Key features:
+     * - Memory-efficient representation (three rotation rows + translation vector)
+     * - Complete set of affine transformation operations
+     * - Optimized for performance-critical rendering and physics calculations
+     * - Fixed-point arithmetic for consistent precision and hardware acceleration
+     * - Support for various precision levels in calculations
+     * 
+     * Matrix layout:
+     *
+     *     | Row0.x Row0.y Row0.z |
+     *     | Row1.x Row1.y Row1.z |
+     *     | Row2.x Row2.y Row2.z |
+     *     | Row3.x Row3.y Row3.z |
+     *
+     * Where:
+     * - Row0, Row1, Row2: Rotation and scale components (from Matrix33)
+     * - Row3: Translation vector (position)
+     * - The implicit 4th column [0,0,0,1] is not stored for memory efficiency
+     *
+     * This represents the transformation matrix:
+     *
+     *     | Row0.x Row0.y Row0.z 0 |
+     *     | Row1.x Row1.y Row1.z 0 |
+     *     | Row2.x Row2.y Row2.z 0 |
+     *     | Row3.x Row3.y Row3.z 1 |
+     *
+     * Common applications:
+     * - Object transformations (position, rotation, scale)
+     * - Camera view matrices
+     * - Hierarchical transformations (parent-child relationships)
+     * - Skeletal animation
+     * - Coordinate system conversions
+     * 
+     * Performance considerations:
+     * - Matrix multiplication is an O(n³) operation and can be expensive
+     * - Inverse calculation is even more costly and should be cached when possible
+     * - For hierarchical transformations, consider using MatrixStack
+     * - When applying multiple transformations, combine them into a single matrix
+     *   when possible to reduce the number of matrix multiplications
+     * 
+     * Implementation notes:
+     * - Inherits rotation/scale components from Matrix33
+     * - Adds translation component as Row3
+     * - The implicit last row [0,0,0,1] enables affine transformations
+     * - Critical operations have specialized implementations for Saturn hardware
+     * 
+     * @see Matrix33 For rotation-only transformations
+     * @see MatrixStack For hierarchical transformations
+     * @see Vector3D For the underlying vector implementation
      */
     struct Matrix43 : public Matrix33
     {

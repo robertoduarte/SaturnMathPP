@@ -546,9 +546,78 @@ namespace SaturnMath::Types
      * @see Angle The underlying angle representation used for each component
      */
     struct EulerAngles {
-        Angle pitch;  ///< Rotation around X axis (up/down)
-        Angle yaw;    ///< Rotation around Y axis (left/right)
-        Angle roll;   ///< Rotation around Z axis (tilt)
+        /**
+         * @brief Rotation around the X axis (up/down).
+         * 
+         * @details Represents the vertical rotation that causes looking up or down.
+         * In the intrinsic Tait-Bryan X-Y-Z rotation sequence, pitch is applied first.
+         * 
+         * Mathematical properties:
+         * - Range: Typically constrained to [-90°, 90°] to avoid gimbal lock
+         * - Singularities occur at ±90° when used in conjunction with yaw and roll
+         * - Positive pitch rotates upward (counter-clockwise around X-axis when viewed from positive X)
+         * - Negative pitch rotates downward (clockwise around X-axis when viewed from positive X)
+         * 
+         * Common applications:
+         * - Camera control systems (looking up/down)
+         * - Flight simulators (aircraft nose up/down)
+         * - Character head movement
+         * 
+         * @note When approaching ±90°, the system may experience gimbal lock where
+         * yaw and roll rotations become indistinguishable. Consider using quaternions
+         * for applications requiring full 360° rotation freedom.
+         */
+        Angle pitch;
+        
+        /**
+         * @brief Rotation around the Y axis (left/right).
+         * 
+         * @details Represents the horizontal rotation that causes looking left or right.
+         * In the intrinsic Tait-Bryan X-Y-Z rotation sequence, yaw is applied second,
+         * after pitch but before roll.
+         * 
+         * Mathematical properties:
+         * - Range: Full 360° rotation is possible without inherent limitations
+         * - Represents rotation in the horizontal plane (around world Y-axis)
+         * - Positive yaw rotates rightward (counter-clockwise around Y-axis when viewed from positive Y)
+         * - Negative yaw rotates leftward (clockwise around Y-axis when viewed from positive Y)
+         * 
+         * Common applications:
+         * - Camera control systems (panning left/right)
+         * - Vehicle steering and navigation
+         * - Character orientation in 3D space
+         * 
+         * @note Yaw is often the most frequently used rotation in navigation and
+         * camera control systems. For performance-critical applications, consider
+         * optimizing yaw-only rotations as special cases.
+         */
+        Angle yaw;
+        
+        /**
+         * @brief Rotation around the Z axis (tilt).
+         * 
+         * @details Represents the tilting rotation that causes leaning to either side.
+         * In the intrinsic Tait-Bryan X-Y-Z rotation sequence, roll is applied last,
+         * after both pitch and yaw.
+         * 
+         * Mathematical properties:
+         * - Range: Full 360° rotation is possible without inherent limitations
+         * - Represents rotation around the local forward axis after pitch and yaw
+         * - Positive roll rotates clockwise when viewed from behind
+         * - Negative roll rotates counter-clockwise when viewed from behind
+         * 
+         * Common applications:
+         * - Aircraft roll control (banking)
+         * - Camera dutch angle effects
+         * - Balancing simulations
+         * - Special effects for disorientation
+         * 
+         * @note Roll is often less used in standard camera control systems but is
+         * essential for flight simulators and certain special effects. The effect
+         * of roll depends on the current pitch and yaw values due to the sequential
+         * nature of Euler angle rotations.
+         */
+        Angle roll;
 
         /**
          * @brief Default constructor initializing all angles to zero.

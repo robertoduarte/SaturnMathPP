@@ -7,16 +7,46 @@ namespace SaturnMath
 {
     using namespace SaturnMath::Types;
     /**
-     * @brief Class containing interpolation and easing functions optimized for fixed-point arithmetic.
+     * @brief High-performance interpolation and easing library optimized for Saturn hardware.
      *
-     * This class provides a comprehensive set of interpolation and easing functions designed for game development.
-     * All functions are implemented using fixed-point arithmetic for consistent behavior across platforms.
+     * @details The Interpolation class provides a comprehensive collection of interpolation
+     * and easing functions essential for smooth animations, camera movements, and
+     * procedural generation in games. All functions are implemented using fixed-point
+     * arithmetic to ensure consistent behavior across platforms and maximize performance
+     * on Saturn hardware.
      *
      * Key features:
-     * - Compile-time evaluation with constexpr
-     * - No floating-point operations
-     * - Optimized for Saturn hardware
-     * - Memory-efficient implementations
+     * - Comprehensive set of interpolation methods (linear, cubic, Hermite, etc.)
+     * - Extensive easing function library (sine, quad, cubic, elastic, bounce, etc.)
+     * - Compile-time evaluation with constexpr for static animations
+     * - No floating-point operations for consistent cross-platform behavior
+     * - Optimized implementations for Saturn hardware
+     * - Memory-efficient algorithms to minimize temporary allocations
+     * 
+     * Common applications:
+     * - Animation blending and transitions
+     * - Camera movement and smoothing
+     * - UI element animations
+     * - Procedural content generation
+     * - Particle system parameter control
+     * - Audio parameter modulation
+     * 
+     * Performance considerations:
+     * - All functions use fixed-point arithmetic to avoid floating-point operations
+     * - Higher-order interpolation methods (cubic, Hermite) are more computationally
+     *   expensive than simpler methods (linear)
+     * - Complex easing functions (elastic, bounce) require more calculations than
+     *   basic functions (quad, cubic)
+     * - When performance is critical, consider pre-computing interpolation values
+     *   or using simpler interpolation methods
+     * 
+     * Implementation notes:
+     * - Functions are designed to minimize temporary object creation
+     * - Critical operations have specialized implementations for Saturn hardware
+     * - Precision is carefully managed to prevent overflow/underflow in fixed-point math
+     * 
+     * @see Fxp For details on the fixed-point implementation
+     * @see Angle For angle interpolation functions
      */
     class Interpolation
     {

@@ -7,7 +7,35 @@
 namespace SaturnMath::Types
 {
     /**
-     * @brief A struct for two-dimensional fixed-point vector arithmetic operations.
+     * @brief A high-performance two-dimensional vector implementation using fixed-point arithmetic.
+     * 
+     * @details Vector2D provides a comprehensive set of 2D vector operations optimized for
+     * Saturn hardware. It uses fixed-point arithmetic (Fxp) for all components to avoid
+     * floating-point operations while maintaining high precision.
+     * 
+     * Key features:
+     * - Memory-efficient representation (two Fxp values)
+     * - Comprehensive set of vector operations (dot product, normalization, etc.)
+     * - Optimized for performance-critical rendering and physics calculations
+     * - Consistent behavior across all platforms through fixed-point arithmetic
+     * - Support for various precision levels in calculations
+     * 
+     * Common applications:
+     * - 2D positions and translations
+     * - Texture coordinates
+     * - Screen-space calculations
+     * - Physics simulations (velocities, forces)
+     * - User interface positioning
+     * 
+     * The implementation follows a right-handed coordinate system where:
+     * - Positive X points right
+     * - Positive Y points up
+     * 
+     * @note Most operations are constexpr and can be evaluated at compile time
+     * for improved runtime performance.
+     * 
+     * @see Vector3D For 3D vector operations
+     * @see Fxp For details on the fixed-point implementation
      */
     struct Vector2D
     {

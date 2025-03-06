@@ -8,21 +8,54 @@
 namespace SaturnMath::Types
 {
     /**
-     * @brief View frustum for camera culling in 3D space.
+     * @brief High-performance view frustum implementation for efficient 3D culling operations.
      * 
-     * Represents a truncated pyramid defined by six planes:
-     * - Near: Close clipping plane
-     * - Far: Distance clipping plane
-     * - Left/Right: Horizontal bounds
-     * - Top/Bottom: Vertical bounds
+     * @details The Frustum class represents a truncated pyramid defined by six planes,
+     * commonly used for view frustum culling in 3D rendering pipelines. It provides
+     * optimized methods for testing whether geometric primitives are inside, outside,
+     * or intersecting the frustum.
      * 
-     * Uses a right-handed coordinate system where:
-     * - +X is right
-     * - +Y is up
-     * - -Z is forward
+     * Key features:
+     * - Memory-efficient representation (six planes)
+     * - Optimized intersection tests with common primitives (points, AABBs, spheres)
+     * - Multiple construction methods (from projection matrix, from individual planes)
+     * - Fixed-point arithmetic for consistent behavior across platforms
+     * - Specialized fast-rejection tests for performance-critical rendering paths
      * 
-     * All plane normals point inward, so an object is inside
-     * the frustum if it's on the positive side of all planes.
+     * Frustum planes:
+     * - Near: Close clipping plane (minimum Z distance)
+     * - Far: Distance clipping plane (maximum Z distance)
+     * - Left/Right: Horizontal bounds of the view
+     * - Top/Bottom: Vertical bounds of the view
+     * 
+     * Coordinate system:
+     * - Uses a right-handed coordinate system where:
+     *   - +X is right
+     *   - +Y is up
+     *   - -Z is forward (into the screen)
+     * 
+     * All plane normals point inward toward the frustum interior, so an object is inside
+     * the frustum if it's on the positive side of all planes. This convention simplifies
+     * containment tests and is consistent with standard graphics literature.
+     * 
+     * Performance optimizations:
+     * - Tests are ordered to maximize early rejection
+     * - AABB tests use optimized corner selection based on plane normals
+     * - Sphere tests use squared distances to avoid square root calculations
+     * 
+     * Common applications:
+     * - View frustum culling in rendering pipelines
+     * - Portal culling for indoor environments
+     * - Occlusion culling pre-processing
+     * - Visibility determination for LOD systems
+     * 
+     * @note For optimal culling performance, consider using a spatial partitioning
+     * structure (octree, BVH) in conjunction with frustum culling to minimize the
+     * number of individual object tests.
+     * 
+     * @see Plane For the underlying plane implementation
+     * @see AABB For axis-aligned bounding box intersection tests
+     * @see Sphere For sphere intersection tests
      */
     class Frustum
     {
