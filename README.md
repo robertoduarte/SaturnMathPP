@@ -49,6 +49,8 @@ Provides mathematical operations and utilities:
   - Power function for integer exponents
   - Value clamping between bounds
   - Comprehensive arithmetic operations
+  - MinValue and MaxValue constants for range boundaries
+  - Modulo operations for both Fxp and integer types
   - Flexible value conversion:
     ```cpp
     // Compile-time conversion (preferred)
@@ -62,6 +64,11 @@ Provides mathematical operations and utilities:
     // Runtime floating-point conversion (with performance warning)
     float someFloat = GetRuntimeFloat();
     Fxp d = Fxp::Convert(someFloat); // Warning: heavy operation on Saturn hardware
+    
+    // Disable performance warnings for specific sections if needed
+    #define DISABLE_PERFORMANCE_WARNINGS
+    #include "saturn_math.hpp"
+    // Now conversion warnings are suppressed in this compilation unit
 
     // Converting back to other types
     int16_t i = a.As<int16_t>();     // To integer
@@ -71,12 +78,35 @@ Provides mathematical operations and utilities:
     ```cpp
     // Create from raw 16.16 value (for advanced users only)
     Fxp raw = Fxp::BuildRaw(0x00010000);  // 1.0 in 16.16 format
+    
+    // Hardware-optimized asynchronous division
+    Fxp dividend = 10;
+    Fxp divisor = 3;
+    Fxp::AsyncDivSet(dividend, divisor);
+    Fxp quotient = Fxp::AsyncDivGetResult();    // Get division result
+    Fxp remainder = Fxp::AsyncDivGetRemainder(); // Get remainder
     ```
 
 - **Angle Handling**: Type-safe `Angle` class for angular calculations
   - Raw value construction and access
   - Scalar multiplication and division
   - Automatic wrap-around handling
+  - Comprehensive comparison operators with wrap-around considerations
+  - Performance warnings for angle conversions (can be disabled)
+  ```cpp
+  // Angle operations with comparison
+  Angle angle1 = Angle::FromDegrees(45);
+  Angle angle2 = Angle::FromDegrees(90);
+
+  if (angle1 < angle2) {
+      // This works, but be cautious near wrap-around boundaries
+  }
+
+  // Disable performance warnings when needed
+  #define DISABLE_PERFORMANCE_WARNINGS
+  #include "saturn_math.hpp"
+  // Now conversion warnings are suppressed
+  ```
 
 - **Euler Angles**: Type-safe representation of 3D rotations
   - Intrinsic Tait-Bryan angles (pitch-yaw-roll)

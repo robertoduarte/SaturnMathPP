@@ -71,6 +71,12 @@ namespace SaturnMath::Types
         static inline auto& dvdntl = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F14UL); /**< Dividend low register */
 
     public:
+        /** @return Minimum possible value (-32768.0) */
+        static consteval Fxp MinValue() { return BuildRaw(0x80000000); }
+
+        /** @return Maximum possible value (32767.99998474) */
+        static consteval Fxp MaxValue() { return BuildRaw(0x7FFFFFFF); }
+
         /**
          * @brief Default constructor for Fxp class.
          * Initializes the fixed-point number to zero.
@@ -178,11 +184,17 @@ namespace SaturnMath::Types
          * Fxp b = Fxp::Convert(f);    // Warning: heavy operation
          * @endcode
          * 
+         * @note The performance warning can be disabled by defining DISABLE_PERFORMANCE_WARNINGS
+         *       before including this header. This is useful for code sections where you have
+         *       already considered and accepted the performance implications.
+         * 
          * @warning Converting from floating-point is a heavy operation.
          * Avoid in performance-critical code paths.
          */
         template <std::floating_point T>
+#ifndef DISABLE_PERFORMANCE_WARNINGS
         [[gnu::warning("Converting from floating-point is a heavy operation - avoid in performance-critical code")]]
+#endif
         static Fxp Convert(const T &value){ return BuildRaw(static_cast<int32_t>(value * 65536.0)); }
 
         /***********Static Functions************/
@@ -224,7 +236,7 @@ namespace SaturnMath::Types
          *
          * @param dividend Numerator
          * @param divisor Denominator
-         * @note Division result must be retrieved with AsyncDivGet()
+         * @note Division result must be retrieved with AsyncDivGetResult()
          */
         static void AsyncDivSet(const Fxp& dividend, const Fxp& divisor)
         {
@@ -235,10 +247,23 @@ namespace SaturnMath::Types
 
         /**
          * @brief Retrieves result from hardware division unit.
-         * @return Fixed-point quotient from previous AsyncDivSet()
+         * @return Fixed-point result from previous AsyncDivSet()
          * @note Must be called after AsyncDivSet()
          */
-        static Fxp AsyncDivGet() { return BuildRaw(static_cast<int32_t>(dvdntl)); }
+        static Fxp AsyncDivGetResult()
+        {
+            return BuildRaw(static_cast<int32_t>(dvdntl));
+        }
+
+        /**
+         * @brief Retrieves remainder from hardware division unit.
+         * @return Fixed-point remainder from previous AsyncDivSet()
+         * @note Must be called after AsyncDivSet()
+         */
+        static Fxp AsyncDivGetRemainder()
+        {
+            return BuildRaw(static_cast<int32_t>(dvdnth));
+        }
 
         /**
          * @brief Removes fractional part, keeping only integer portion.
@@ -362,9 +387,18 @@ namespace SaturnMath::Types
          * auto f = x.As<float>();    // Convert to float (heavy operation)
          * auto d = x.As<double>();   // Convert to double (heavy operation)
          * @endcode
+         * 
+         * @note The performance warning can be disabled by defining DISABLE_PERFORMANCE_WARNINGS
+         *       before including this header. This is useful for code sections where you have
+         *       already considered and accepted the performance implications.
+         * 
+         * @warning Converting to floating-point is a heavy operation.
+         * Avoid in performance-critical code paths.
          */
         template<typename T> requires std::floating_point<T>
+#ifndef DISABLE_PERFORMANCE_WARNINGS
         [[gnu::warning("Converting to floating-point is a heavy operation - avoid in performance-critical code")]]
+#endif
         constexpr T As() const {
             return value / T{65536.0};
         }
@@ -626,6 +660,125 @@ namespace SaturnMath::Types
         constexpr friend Fxp operator/(const int16_t& lhs, const Fxp& rhs)
         {
             return Fxp(lhs) / rhs;
+        }
+        /**
+         * @brief Computes the modulo of the current fixed-point value with another fixed-point value (a % b).
+         * @param fxp The fixed-point value to use as the modulus.
+         * @return The result of the modulo operation as a new Fxp object.
+         *
+         * @note This operation does not modify the current instance. It returns a new
+         *       Fxp object representing the result of the modulo operation.
+         */
+        constexpr Fxp operator%(const Fxp& fxp) const
+        {
+            if consteval
+            {
+                double a = value / 65536.0;
+                double b = fxp.value / 65536.0;
+                double div = a / b;
+                double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
+                return BuildRaw(static_cast<int32_t>((a - (b * floorDiv)) * 65536.0));
+            }
+            else
+            {
+                return Fxp(*this) %= fxp;
+            }
+        }
+
+        /**
+         * @brief Computes the modulo of the current fixed-point value with an integer (a % b).
+         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @param value The integer value to use as the modulus.
+         * @return The result of the modulo operation as a new Fxp object.
+         *
+         * @note This operation does not modify the current instance. It returns a new
+         *       Fxp object representing the result of the modulo operation.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Fxp operator%(const T& value) const
+        {
+            if consteval
+            {
+                double a = this->value / 65536.0;
+                double b = static_cast<double>(value);
+                double div = a / b;
+                double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
+                return BuildRaw(static_cast<int32_t>((a - (b * floorDiv)) * 65536.0));
+            }
+            else
+            {
+                return Fxp(*this) %= value;
+            }
+        }
+
+        /**
+         * @brief Computes the modulo of an integer with a fixed-point value (lhs % rhs).
+         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @param lhs The integer value.
+         * @param rhs The fixed-point value to use as the modulus.
+         * @return The result of the modulo operation as a new Fxp object.
+         *
+         * @note This operation does not modify the current instance. It returns a new
+         *       Fxp object representing the result of the modulo operation.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr friend Fxp operator%(const T& lhs, const Fxp& rhs)
+        {
+            if consteval
+            {
+                double a = static_cast<double>(lhs);
+                double b = rhs.value / 65536.0;
+                double div = a / b;
+                double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
+                return BuildRaw(static_cast<int32_t>((a - (b * floorDiv)) * 65536.0));
+            }
+            else
+            {
+                return Fxp(lhs) %= rhs;
+            }
+        }
+
+        /**
+         * @brief Computes the modulo of the current fixed-point value with another fixed-point value (a %= b).
+         * @param fxp The fixed-point value to use as the modulus.
+         * @return A reference to this object after performing the modulo operation.
+         *
+         * @note This operation modifies the current instance in place.
+         */
+        constexpr Fxp& operator%=(const Fxp& fxp)
+        {
+            if consteval
+            {
+                double a = value / 65536.0;
+                double b = fxp.value / 65536.0;
+                double div = a / b;
+                double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
+                value = static_cast<int32_t>((a - (b * floorDiv)) * 65536.0);
+            }
+            else
+            {
+                AsyncDivSet(*this, fxp);
+                value = static_cast<int32_t>(dvdnth);
+            }
+            return *this;
+        }
+
+        /**
+         * @brief Computes the modulo of the current fixed-point value with an integer (a %= b).
+         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @param value The integer value to use as the modulus.
+         * @return A reference to this object after performing the modulo operation.
+         *
+         * @note This operation modifies the current instance in place.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Fxp& operator%=(const T& value)
+        {
+            this->value %= (value << 16);
+            return *this;
         }
 
         /**
