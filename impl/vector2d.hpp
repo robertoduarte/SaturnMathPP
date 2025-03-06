@@ -712,6 +712,50 @@ namespace SaturnMath::Types
             return X == vec.X && Y == vec.Y;
         }
 
+        /**
+         * @brief Less than operator.
+         * @param vec The Vector2D object to compare with.
+         * @return True if this vector is less than the provided vector, false otherwise.
+         * @details Compares vectors lexicographically (X first, then Y).
+         */
+        constexpr bool operator<(const Vector2D& vec) const
+        {
+            return (X < vec.X) || (X == vec.X && Y < vec.Y);
+        }
+
+        /**
+         * @brief Less than or equal operator.
+         * @param vec The Vector2D object to compare with.
+         * @return True if this vector is less than or equal to the provided vector, false otherwise.
+         * @details Compares vectors lexicographically (X first, then Y).
+         */
+        constexpr bool operator<=(const Vector2D& vec) const
+        {
+            return (X < vec.X) || (X == vec.X && Y <= vec.Y);
+        }
+
+        /**
+         * @brief Greater than operator.
+         * @param vec The Vector2D object to compare with.
+         * @return True if this vector is greater than the provided vector, false otherwise.
+         * @details Compares vectors lexicographically (X first, then Y).
+         */
+        constexpr bool operator>(const Vector2D& vec) const
+        {
+            return (X > vec.X) || (X == vec.X && Y > vec.Y);
+        }
+
+        /**
+         * @brief Greater than or equal operator.
+         * @param vec The Vector2D object to compare with.
+         * @return True if this vector is greater than or equal to the provided vector, false otherwise.
+         * @details Compares vectors lexicographically (X first, then Y).
+         */
+        constexpr bool operator>=(const Vector2D& vec) const
+        {
+            return (X > vec.X) || (X == vec.X && Y >= vec.Y);
+        }
+
         // Bitwise shift operators
         /**
          * @brief Bitwise right shift operator.

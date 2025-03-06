@@ -636,17 +636,65 @@ namespace SaturnMath::Types
          */
         constexpr bool operator!=(const Vector3D& vec) const
         {
-            return X != vec.X && Y != vec.Y && Z != vec.Z;
+            return X != vec.X || Y != vec.Y || Z != vec.Z;
         }
 
         /**
-         * @brief Check if two Vec3 objects are not equal.
+         * @brief Check if two Vec3 objects are equal.
          * @param vec The Vec3 object to compare.
-         * @return True if not equal, false otherwise.
+         * @return True if equal, false otherwise.
          */
         constexpr bool operator==(const Vector3D& vec) const
         {
             return X == vec.X && Y == vec.Y && Z == vec.Z;
+        }
+
+        /**
+         * @brief Less than operator.
+         * @param vec The Vector3D object to compare with.
+         * @return True if this vector is less than the provided vector, false otherwise.
+         * @details Compares vectors lexicographically (X first, then Y, then Z).
+         */
+        constexpr bool operator<(const Vector3D& vec) const
+        {
+            return Vector2D::operator<(vec) || 
+                   (Vector2D::operator==(vec) && Z < vec.Z);
+        }
+
+        /**
+         * @brief Less than or equal operator.
+         * @param vec The Vector3D object to compare with.
+         * @return True if this vector is less than or equal to the provided vector, false otherwise.
+         * @details Compares vectors lexicographically (X first, then Y, then Z).
+         */
+        constexpr bool operator<=(const Vector3D& vec) const
+        {
+            return Vector2D::operator<(vec) || 
+                   (Vector2D::operator==(vec) && Z <= vec.Z);
+        }
+
+        /**
+         * @brief Greater than operator.
+         * @param vec The Vector3D object to compare with.
+         * @return True if this vector is greater than the provided vector, false otherwise.
+         * @details Compares vectors lexicographically (X first, then Y, then Z).
+         */
+        constexpr bool operator>(const Vector3D& vec) const
+        {
+            return Vector2D::operator>(vec) || 
+                   (Vector2D::operator==(vec) && Z > vec.Z);
+        }
+
+        /**
+         * @brief Greater than or equal operator.
+         * @param vec The Vector3D object to compare with.
+         * @return True if this vector is greater than or equal to the provided vector, false otherwise.
+         * @details Compares vectors lexicographically (X first, then Y, then Z).
+         */
+        constexpr bool operator>=(const Vector3D& vec) const
+        {
+            return Vector2D::operator>(vec) || 
+                   (Vector2D::operator==(vec) && Z >= vec.Z);
         }
 
         // Bitwise shift operators
