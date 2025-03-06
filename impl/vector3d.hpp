@@ -220,6 +220,17 @@ namespace SaturnMath::Types
          * @brief Calculate the cross product of this object and another Vec3 object.
          * @param vec The Vec3 object to calculate the cross product with.
          * @return The cross product as an Vec3 object.
+         * 
+         * @details Computes the cross product, which results in a vector perpendicular 
+         * to both input vectors. The magnitude of the result equals the area of the 
+         * parallelogram spanned by the input vectors.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v1(1, 0, 0);  // Unit vector along X
+         * Vector3D v2(0, 1, 0);  // Unit vector along Y
+         * Vector3D cross = v1.Cross(v2);  // Returns (0, 0, 1) - unit vector along Z
+         * @endcode
          */
         constexpr Vector3D Cross(const Vector3D& vec) const
         {
@@ -252,6 +263,18 @@ namespace SaturnMath::Types
          * @brief Calculate the length of the vector
          * @tparam P Precision level for calculation
          * @return Length of the vector
+         * 
+         * @details Calculates the magnitude (Euclidean length) of the vector.
+         * The precision template parameter controls the calculation method:
+         * - Standard precision: Uses exact square root calculation
+         * - Turbo precision: Uses fast approximation with alpha-beta-gamma coefficients
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(3, 4, 5);
+         * Fxp length = v.Length();  // Returns sqrt(50) with standard precision
+         * Fxp fastLength = v.Length<Precision::Turbo>();  // Returns approximate length (faster)
+         * @endcode
          */
         template<Precision P = Precision::Standard>
         constexpr Fxp Length() const
@@ -276,6 +299,20 @@ namespace SaturnMath::Types
          * @brief Normalize the vector
          * @tparam P Precision level for calculation
          * @return Normalized vector
+         * 
+         * @details Creates a unit vector pointing in the same direction as this vector.
+         * The precision template parameter controls the length calculation method:
+         * - Standard precision: Uses exact square root calculation
+         * - Turbo precision: Uses fast approximation with alpha-beta-gamma coefficients
+         * 
+         * If the vector length is zero, returns a zero vector to avoid division by zero.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(3, 4, 5);
+         * Vector3D unitV = v.Normalize();  // Returns unit vector with standard precision
+         * Vector3D fastUnitV = v.Normalize<Precision::Turbo>();  // Returns approximate unit vector (faster)
+         * @endcode
          */
         template<Precision P = Precision::Standard>
         constexpr Vector3D Normalize() const
@@ -293,6 +330,18 @@ namespace SaturnMath::Types
          * @param vertexB Second vertex of the triangle
          * @param vertexC Third vertex of the triangle
          * @return Normalized normal vector
+         * 
+         * @details Calculates the normalized normal vector to a triangle defined by three vertices.
+         * The normal is computed using the cross product of two edges of the triangle.
+         * The precision template parameter controls the normalization calculation method.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v1(0, 0, 0);
+         * Vector3D v2(1, 0, 0);
+         * Vector3D v3(0, 1, 0);
+         * Vector3D normal = Vector3D::CalcNormal(v1, v2, v3);  // Returns (0, 0, 1)
+         * @endcode
          */
         template<Precision P = Precision::Standard>
         static Vector3D CalcNormal(
@@ -307,19 +356,25 @@ namespace SaturnMath::Types
 
         /**
          * @brief Calculate the Euclidean distance from this vector to another vector.
+         * @tparam P Precision level for calculation
          * @param other The other vector to calculate the distance to.
          * @return The distance as an Fxp value.
          * @details Computes the distance using the formula: sqrt((X - other.X)^2 + (Y - other.Y)^2 + (Z - other.Z)^2).
+         * The precision template parameter controls the calculation method:
+         * - Standard precision: Uses exact square root calculation
+         * - Turbo precision: Uses fast approximation
          * 
          * Example usage:
          * @code
          * Vector3D v1(1, 2, 3);
          * Vector3D v2(4, 6, 8);
-         * Fxp distance = v1.DistanceTo(v2); // Computes distance between (1, 2, 3) and (4, 6, 8)
+         * Fxp distance = v1.DistanceTo(v2);  // Computes distance between the two points
+         * Fxp fastDistance = v1.DistanceTo<Precision::Turbo>(v2);  // Computes approximate distance (faster)
          * @endcode
          */
+        template<Precision P = Precision::Standard>
         constexpr Fxp DistanceTo(const Vector3D& other) const {
-            return (*this - other).Length();
+            return (*this - other).Length<P>();
         }
 
         // Scalar multiplication and division
@@ -327,6 +382,14 @@ namespace SaturnMath::Types
          * @brief Compound multiplication assignment operator.
          * @param scalar The scalar value to multiply by.
          * @return Reference to the modified Vec3 object.
+         * 
+         * @details Multiplies each component of the vector by the scalar value.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(1, 2, 3);
+         * v *= 2.5_fxp;  // Results in v = (2.5, 5, 7.5)
+         * @endcode
          */
         constexpr Vector3D& operator*=(const Fxp& scalar)
         {
@@ -336,21 +399,88 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Divide each coordinate by a scalar value.
-         * @param fxp The scalar value to divide by.
-         * @return The resulting Vec3 object.
+         * @brief Compound multiplication assignment operator for integral types.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to multiply by.
+         * @return Reference to the modified Vec3 object.
+         * 
+         * @details Multiplies each component of the vector by the integral scalar value.
+         * This specialized version uses Fxp's optimized integral multiplication
+         * for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(1, 2, 3);
+         * v *= 2;  // Results in v = (2, 4, 6) with optimized integral multiplication
+         * @endcode
          */
-        constexpr Vector3D operator/=(const Fxp& fxp)
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Vector3D& operator*=(const T& scalar)
         {
-            Vector2D::operator*=(fxp);
-            Z *= fxp;
+            Vector2D::operator*=(scalar);
+            Z *= scalar;
             return *this;
         }
 
         /**
-         * @brief Multiply each coordinate by a scalar value.
+         * @brief Compound division assignment operator.
+         * @param scalar The scalar value to divide by.
+         * @return Reference to the modified Vec3 object.
+         * 
+         * @details Divides each component of the vector by the scalar value.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(4, 6, 8);
+         * v /= 2_fxp;  // Results in v = (2, 3, 4)
+         * @endcode
+         */
+        constexpr Vector3D& operator/=(const Fxp& scalar)
+        {
+            Vector2D::operator/=(scalar);
+            Z /= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Compound division assignment operator for integral types.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to divide by.
+         * @return Reference to the modified Vec3 object.
+         * 
+         * @details Divides each component of the vector by the integral scalar value.
+         * This specialized version uses Fxp's optimized integral division
+         * for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(10, 20, 30);
+         * v /= 5;  // Results in v = (2, 4, 6) with optimized integral division
+         * @endcode
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Vector3D& operator/=(const T& scalar)
+        {
+            Vector2D::operator/=(scalar);
+            Z /= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Scalar multiplication operator.
          * @param scalar The scalar value to multiply by.
-         * @return The resulting Vec3 object.
+         * @return A new vector with each component multiplied by the scalar.
+         * 
+         * @details Creates a new vector by multiplying each component of this vector
+         * by the scalar value.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(1, 2, 3);
+         * Vector3D result = v * 3_fxp;  // Results in result = (3, 6, 9)
+         * @endcode
          */
         constexpr Vector3D operator*(const Fxp& scalar) const
         {
@@ -360,13 +490,96 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Divide each coordinate by a scalar value.
-         * @param fxp The scalar value to divide by.
-         * @return The resulting Vec3 object.
+         * @brief Scalar multiplication operator for integral types.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to multiply by.
+         * @return A new vector with each component multiplied by the scalar.
+         * 
+         * @details Creates a new vector by multiplying each component of this vector
+         * by the integral scalar value. This specialized version uses Fxp's optimized 
+         * integral multiplication for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(1, 2, 3);
+         * Vector3D result = v * 3;  // Results in result = (3, 6, 9) with optimized integral multiplication
+         * @endcode
          */
-        constexpr Vector3D operator/(const Fxp& fxp) const
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Vector3D operator*(const T& scalar) const
         {
-            return Vector3D(Vector2D::operator/(fxp), Z / fxp);
+            Vector3D result(*this);
+            result *= scalar;
+            return result;
+        }
+
+        /**
+         * @brief Multiply an integral scalar by a Vector3D.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to multiply.
+         * @param vec The vector to multiply by.
+         * @return A new vector with each component multiplied by the scalar.
+         * 
+         * @details Creates a new vector by multiplying each component of the input vector
+         * by the integral scalar value. This specialized version uses Fxp's optimized 
+         * integral multiplication for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(1, 2, 3);
+         * Vector3D result = 3 * v;  // Results in result = (3, 6, 9) with optimized integral multiplication
+         * @endcode
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        friend constexpr Vector3D operator*(const T& scalar, const Vector3D& vec)
+        {
+            return vec * scalar;
+        }
+
+        /**
+         * @brief Scalar division operator.
+         * @param scalar The scalar value to divide by.
+         * @return A new vector with each component divided by the scalar.
+         * 
+         * @details Creates a new vector by dividing each component of this vector
+         * by the scalar value.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(6, 8, 10);
+         * Vector3D result = v / 2_fxp;  // Results in result = (3, 4, 5)
+         * @endcode
+         */
+        constexpr Vector3D operator/(const Fxp& scalar) const
+        {
+            return Vector3D(Vector2D::operator/(scalar), Z / scalar);
+        }
+
+        /**
+         * @brief Scalar division operator for integral types.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to divide by.
+         * @return A new vector with each component divided by the scalar.
+         * 
+         * @details Creates a new vector by dividing each component of this vector
+         * by the integral scalar value. This specialized version uses Fxp's optimized 
+         * integral division for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(10, 20, 30);
+         * Vector3D result = v / 5;  // Results in result = (2, 4, 6) with optimized integral division
+         * @endcode
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Vector3D operator/(const T& scalar) const
+        {
+            Vector3D result(*this);
+            result /= scalar;
+            return result;
         }
 
         // Unit vector and common vector constant methods

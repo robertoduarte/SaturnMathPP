@@ -122,6 +122,7 @@ Provides mathematical operations and utilities:
   - Unit vectors (UnitX, UnitY, UnitZ)
   - Optimized cross/dot products
   - Template-based precision control for geometric operations
+  - Optimized operators for integral types
 - **Matrix Operations**: Efficient `Matrix33` and `Matrix43` implementations
   - Common transformations (scale, rotate, translate)
   - Optimized multiplication with detailed documentation
@@ -151,6 +152,7 @@ Provides mathematical operations and utilities:
   - Point-plane distance calculation
   - Construction from points/normal
   - Normalization utilities
+  - Template-based precision control for construction and normalization
 - **Frustum**: View frustum for efficient visibility culling
   - Fast plane extraction from matrices
   - Comprehensive intersection tests
@@ -315,9 +317,10 @@ Angle interpolated = SaturnMath::Interpolation::SLerp(start, end, Fxp(0.5));
 
 // Utility functions
 using namespace SaturnMath;
-auto maxVal = Max(5_fxp, 3_fxp);
-auto absVal = Abs(-5_fxp);
-auto clampedVal = Clamp(7_fxp, 0_fxp, 5_fxp);
+auto maxInt = Max(5, 3);                      // Works with integers
+auto absInt = Abs(-42);                       // Works with integers
+auto clampedInt = Clamp(7, 0, 5);             // Works with integers
+auto maxVec = Max(Vector2D(1, 5), Vector2D(3, 2));  // Works with vectors (component-wise)
 ```
 
 ## Performance Considerations
@@ -328,6 +331,7 @@ auto clampedVal = Clamp(7_fxp, 0_fxp, 5_fxp);
 - Fixed-size containers to avoid dynamic allocation
 - Lookup table-based trigonometry
 - Compile-time constant evaluation
+- Optimized operations for integral types with specialized implementations
 
 ### Precision Control
 
@@ -352,6 +356,27 @@ Supported operations with precision control:
 - Matrix decomposition and transformations
 - Square root calculations
 - Geometric calculations (normals, distances)
+- Plane construction and normalization
+- Look-at matrix creation
+
+### Optimized Integer Operations
+
+SaturnMath++ provides specialized operators for working with integral types, offering better performance on Saturn hardware:
+
+```cpp
+// Optimized vector operations with integers
+Vector3D position(1, 2, 3);
+Vector3D doubled = position * 2;     // Uses optimized integral multiplication
+Vector3D halved = position / 2;      // Uses optimized integral division
+
+// Component-wise utility functions work with both Fxp and integers
+auto maxVal = Max(5, 3);             // Works with integers
+auto absVal = Abs(-42);              // Works with integers
+auto clampedVal = Clamp(7, 0, 5);    // Works with integers
+
+// Component-wise operations on vectors
+auto maxVec = Max(Vector2D(1, 5), Vector2D(3, 2));  // Returns Vector2D(3, 5)
+```
 
 ### Best Practices
 - Use `Fast` or `Turbo` precision for non-critical calculations where performance is important

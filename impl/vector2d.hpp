@@ -193,6 +193,18 @@ namespace SaturnMath::Types
          * @brief Calculate the length of the vector
          * @tparam P Precision level for calculation
          * @return Length of the vector
+         * 
+         * @details Calculates the magnitude (Euclidean length) of the vector.
+         * The precision template parameter controls the calculation method:
+         * - Standard precision: Uses exact square root calculation
+         * - Turbo precision: Uses fast approximation with alpha-beta coefficients
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(3, 4);
+         * Fxp length = v.Length();  // Returns 5 (standard precision)
+         * Fxp fastLength = v.Length<Precision::Turbo>();  // Returns approximate length (faster)
+         * @endcode
          */
         template<Precision P = Precision::Standard>
         constexpr Fxp Length() const
@@ -234,6 +246,20 @@ namespace SaturnMath::Types
          * @brief Normalize the vector
          * @tparam P Precision level for calculation
          * @return Normalized vector
+         * 
+         * @details Creates a unit vector pointing in the same direction as this vector.
+         * The precision template parameter controls the length calculation method:
+         * - Standard precision: Uses exact square root calculation
+         * - Turbo precision: Uses fast approximation with alpha-beta coefficients
+         * 
+         * If the vector length is zero, returns a zero vector to avoid division by zero.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(3, 4);
+         * Vector2D unitV = v.Normalize();  // Returns (0.6, 0.8) with standard precision
+         * Vector2D fastUnitV = v.Normalize<Precision::Turbo>();  // Returns approximate unit vector (faster)
+         * @endcode
          */
         template<Precision P = Precision::Standard>
         constexpr Vector2D Normalize() const
@@ -246,19 +272,49 @@ namespace SaturnMath::Types
 
         /**
          * @brief Calculate the Euclidean distance from this vector to another vector.
+         * @tparam P Precision level for calculation
          * @param other The other vector to calculate the distance to.
          * @return The distance as an Fxp value.
          * @details Computes the distance using the formula: sqrt((X - other.X)^2 + (Y - other.Y)^2).
+         * The precision template parameter controls the calculation method:
+         * - Standard precision: Uses exact square root calculation
+         * - Turbo precision: Uses fast approximation
          * 
          * Example usage:
          * @code
          * Vector2D v1(1, 2);
          * Vector2D v2(4, 6);
-         * Fxp distance = v1.DistanceTo(v2); // Computes distance between (1, 2) and (4, 6)
+         * Fxp distance = v1.DistanceTo(v2);  // Computes distance between (1, 2) and (4, 6)
+         * Fxp fastDistance = v1.DistanceTo<Precision::Turbo>(v2);  // Computes approximate distance (faster)
          * @endcode
          */
+        template<Precision P = Precision::Standard>
         constexpr Fxp DistanceTo(const Vector2D& other) const {
-            return (*this - other).Length();
+            return (*this - other).Length<P>();
+        }
+
+        /**
+         * @brief Calculate the dot product of this vector with another vector.
+         * @param vec The other vector.
+         * @return The dot product as an Fxp value.
+         * @details Computes the dot product using the formula: X*vec.X + Y*vec.Y.
+         * The dot product represents the cosine of the angle between two vectors 
+         * multiplied by their lengths.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 0);  // Unit vector along X
+         * Vector2D v2(0, 1);  // Unit vector along Y
+         * Fxp dotProduct = v1.Dot(v2);  // Returns 0 (perpendicular vectors)
+         * 
+         * Vector2D v3(1, 1);
+         * Vector2D v4(2, 3);
+         * Fxp dotProduct2 = v3.Dot(v4);  // Returns 5 (1*2 + 1*3)
+         * @endcode
+         */
+        constexpr Fxp Dot(const Vector2D& vec) const
+        {
+            return X * vec.X + Y * vec.Y;
         }
 
         // Unit vectors and directional methods
@@ -341,6 +397,14 @@ namespace SaturnMath::Types
          * @brief Compound multiplication assignment operator.
          * @param scalar The scalar value to multiply by.
          * @return Reference to the modified Vec2 object.
+         * 
+         * @details Multiplies each component of the vector by the scalar value.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(1, 2);
+         * v *= 2.5_fxp;  // Results in v = (2.5, 5)
+         * @endcode
          */
         constexpr Vector2D& operator*=(const Fxp& scalar)
         {
@@ -350,11 +414,44 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Division operator.
-         * @param scalar The scalar to divide by.
-         * @return The result of the division.
+         * @brief Compound multiplication assignment operator for integral types.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to multiply by.
+         * @return Reference to the modified Vec2 object.
+         * 
+         * @details Multiplies each component of the vector by the integral scalar value.
+         * This specialized version uses Fxp's optimized integral multiplication
+         * for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(1, 2);
+         * v *= 2;  // Results in v = (2, 4) with optimized integral multiplication
+         * @endcode
          */
-        constexpr Vector2D operator/=(const Fxp& scalar)
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Vector2D& operator*=(const T& scalar)
+        {
+            X *= scalar;
+            Y *= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Compound division assignment operator.
+         * @param scalar The scalar value to divide by.
+         * @return Reference to the modified Vec2 object.
+         * 
+         * @details Divides each component of the vector by the scalar value.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(4, 6);
+         * v /= 2_fxp;  // Results in v = (2, 3)
+         * @endcode
+         */
+        constexpr Vector2D& operator/=(const Fxp& scalar)
         {
             X /= scalar;
             Y /= scalar;
@@ -362,11 +459,46 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Addition operator.
-         * @param vec The vector to add.
-         * @return The result of the addition.
+         * @brief Compound division assignment operator for integral types.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to divide by.
+         * @return Reference to the modified Vec2 object.
+         * 
+         * @details Divides each component of the vector by the integral scalar value.
+         * This specialized version uses Fxp's optimized integral division
+         * for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(10, 20);
+         * v /= 5;  // Results in v = (2, 4) with optimized integral division
+         * @endcode
          */
-        constexpr Vector2D operator+=(const Vector2D& vec)
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Vector2D& operator/=(const T& scalar)
+        {
+            X /= scalar;
+            Y /= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Compound addition assignment operator.
+         * @param vec The vector to add.
+         * @return Reference to the modified Vec2 object.
+         * 
+         * @details Adds each component of the input vector to the corresponding
+         * component of this vector.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 2);
+         * Vector2D v2(3, 4);
+         * v1 += v2;  // Results in v1 = (4, 6)
+         * @endcode
+         */
+        constexpr Vector2D& operator+=(const Vector2D& vec)
         {
             X += vec.X;
             Y += vec.Y;
@@ -374,11 +506,21 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Subtraction operator.
+         * @brief Compound subtraction assignment operator.
          * @param vec The vector to subtract.
-         * @return The result of the subtraction.
+         * @return Reference to the modified Vec2 object.
+         * 
+         * @details Subtracts each component of the input vector from the corresponding
+         * component of this vector.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(5, 7);
+         * Vector2D v2(2, 3);
+         * v1 -= v2;  // Results in v1 = (3, 4)
+         * @endcode
          */
-        constexpr Vector2D operator-=(const Vector2D& vec)
+        constexpr Vector2D& operator-=(const Vector2D& vec)
         {
             X -= vec.X;
             Y -= vec.Y;
@@ -386,9 +528,18 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Scaling operator.
-         * @param scalar The scalar to multiply with.
-         * @return The result of the scaling.
+         * @brief Scalar multiplication operator.
+         * @param scalar The scalar value to multiply by.
+         * @return A new vector with each component multiplied by the scalar.
+         * 
+         * @details Creates a new vector by multiplying each component of this vector
+         * by the scalar value.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(1, 2);
+         * Vector2D result = v * 3_fxp;  // Results in result = (3, 6)
+         * @endcode
          */
         constexpr Vector2D operator*(const Fxp& scalar) const
         {
@@ -398,9 +549,68 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Addition operator.
+         * @brief Scalar multiplication operator for integral types.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to multiply by.
+         * @return A new vector with each component multiplied by the scalar.
+         * 
+         * @details Creates a new vector by multiplying each component of this vector
+         * by the integral scalar value. This specialized version uses Fxp's optimized 
+         * integral multiplication for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(1, 2);
+         * Vector2D result = v * 3;  // Results in result = (3, 6) with optimized integral multiplication
+         * @endcode
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Vector2D operator*(const T& scalar) const
+        {
+            Vector2D result(*this);
+            result *= scalar;
+            return result;
+        }
+
+        /**
+         * @brief Multiply an integral scalar by a Vector2D.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to multiply.
+         * @param vec The vector to multiply by.
+         * @return A new vector with each component multiplied by the scalar.
+         * 
+         * @details Creates a new vector by multiplying each component of the input vector
+         * by the integral scalar value. This specialized version uses Fxp's optimized 
+         * integral multiplication for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(1, 2);
+         * Vector2D result = 3 * v;  // Results in result = (3, 6) with optimized integral multiplication
+         * @endcode
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        friend constexpr Vector2D operator*(const T& scalar, const Vector2D& vec)
+        {
+            return vec * scalar;
+        }
+
+        /**
+         * @brief Vector addition operator.
          * @param vec The vector to add.
-         * @return The result of the addition.
+         * @return A new vector representing the sum.
+         * 
+         * @details Creates a new vector by adding each component of the input vector
+         * to the corresponding component of this vector.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 2);
+         * Vector2D v2(3, 4);
+         * Vector2D result = v1 + v2;  // Results in result = (4, 6)
+         * @endcode
          */
         constexpr Vector2D operator+(const Vector2D& vec) const
         {
@@ -408,9 +618,19 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Subtraction operator.
+         * @brief Vector subtraction operator.
          * @param vec The vector to subtract.
-         * @return The result of the subtraction.
+         * @return A new vector representing the difference.
+         * 
+         * @details Creates a new vector by subtracting each component of the input vector
+         * from the corresponding component of this vector.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(5, 7);
+         * Vector2D v2(2, 3);
+         * Vector2D result = v1 - v2;  // Results in result = (3, 4)
+         * @endcode
          */
         constexpr Vector2D operator-(const Vector2D& vec) const
         {
@@ -418,13 +638,47 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Division operator.
-         * @param scalar The scalar to divide by.
-         * @return The result of the division.
+         * @brief Scalar division operator.
+         * @param scalar The scalar value to divide by.
+         * @return A new vector with each component divided by the scalar.
+         * 
+         * @details Creates a new vector by dividing each component of this vector
+         * by the scalar value.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(6, 8);
+         * Vector2D result = v / 2_fxp;  // Results in result = (3, 4)
+         * @endcode
          */
         constexpr Vector2D operator/(const Fxp& scalar) const
         {
             return Vector2D(X / scalar, Y / scalar);
+        }
+
+        /**
+         * @brief Scalar division operator for integral types.
+         * @tparam T The integral type of the scalar value.
+         * @param scalar The scalar value to divide by.
+         * @return A new vector with each component divided by the scalar.
+         * 
+         * @details Creates a new vector by dividing each component of this vector
+         * by the integral scalar value. This specialized version uses Fxp's optimized 
+         * integral division for better performance on Saturn hardware.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v(10, 20);
+         * Vector2D result = v / 5;  // Results in result = (2, 4) with optimized integral division
+         * @endcode
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr Vector2D operator/(const T& scalar) const
+        {
+            Vector2D result(*this);
+            result /= scalar;
+            return result;
         }
         
         // Unary operators

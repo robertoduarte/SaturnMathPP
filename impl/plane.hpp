@@ -49,14 +49,16 @@ namespace SaturnMath::Types
          * Points should be specified in counter-clockwise order when
          * viewed from the side the normal points toward.
          * 
+         * @tparam P Precision level for calculation
          * @param a First point on plane
          * @param b Second point on plane
          * @param c Third point on plane
          */
+        template<Precision P = Precision::Standard>
         Plane(const Vector3D& a, const Vector3D& b, const Vector3D& c)
         {
             Vector3D cross = (b - a).Cross(c - a);
-            normal = cross.Normalize();
+            normal = cross.Normalize<P>();
             d = -normal.Dot(a);  // Negative because we want normal·X + d = 0
         }
 
@@ -90,11 +92,13 @@ namespace SaturnMath::Types
          * Ensures normal is unit length while maintaining
          * the same plane equation.
          * 
+         * @tparam P Precision level for calculation
          * @return Reference to this plane
          */
+        template<Precision P = Precision::Standard>
         constexpr Plane& Normalize()
         {
-            Fxp len = normal.Length();
+            Fxp len = normal.Length<P>();
             if (len > 0)
             {
                 normal /= len;
