@@ -54,7 +54,7 @@ Provides mathematical operations and utilities:
   - Flexible value conversion:
     ```cpp
     // Compile-time conversion (preferred)
-    constexpr Fxp a = 3.14159f;   // Exact conversion at compile-time (float)
+    constexpr Fxp a = 3.14159;   // Exact conversion at compile-time (float)
     constexpr Fxp b = 42;         // Integer conversion at compile-time (int16_t)
 
     // Runtime conversion with safety checks
@@ -257,7 +257,7 @@ using namespace SaturnMath::Types;
 
 // Fixed-point arithmetic
 Fxp a(5);                     // Create from int16_t (works at compile-time or runtime)
-Fxp b(2.5f);                  // Create from float (compile-time only)
+Fxp b(2.5);                  // Create from float (compile-time only)
 Fxp c = a * b;                // 12.5 (0x000C8000)
 int16_t i = c.As<int16_t>();  // Convert back to int16_t
 
@@ -267,12 +267,12 @@ Fxp clamped = b.Clamp(0, 2); // 2
 
 // Fixed-point conversion methods
 // 1. COMPILE-TIME construction (preferred when values are known at compile time)
-constexpr Fxp compile_time = 3.14159f;         // Exact conversion at compile-time (float)
+constexpr Fxp compile_time = 3.14159;         // Exact conversion at compile-time (float)
 constexpr Fxp compile_time_int = 42;           // Integer conversion at compile-time (int16_t)
 
 // 2. RUNTIME conversion with static Convert() (for values not known at compile time)
 int32_t runtime_int = 12345;
-float runtime_float = 67.89f;
+float runtime_float = 67.89;
 Fxp int_conversion = Fxp::Convert(runtime_int);   // With range checking
 Fxp float_conversion = Fxp::Convert(runtime_float); // Warning: heavy operation
 
@@ -351,6 +351,8 @@ Vector3D approxNormal = direction.Normalize<Precision::Fast>();
 Vector3D quickNormal = direction.Normalize<Precision::Turbo>();
 ```
 
+> **Note**: For square root operations, Fast and Turbo precision modes use the same algorithm, providing a balance between performance and accuracy. Standard precision provides the most accurate results at the cost of performance.
+
 Supported operations with precision control:
 - Vector normalization and length calculations
 - Matrix decomposition and transformations
@@ -358,6 +360,17 @@ Supported operations with precision control:
 - Geometric calculations (normals, distances)
 - Plane construction and normalization
 - Look-at matrix creation
+
+### Testing
+
+SaturnMath++ includes a comprehensive suite of compile-time tests that verify the correctness of all mathematical operations across different precision modes. These tests ensure that:
+
+- All operations produce expected results within appropriate tolerance ranges
+- Different precision modes maintain their accuracy vs. performance trade-offs
+- Edge cases (zero values, perfect squares, very small values) are handled correctly
+- Fast and Turbo modes produce identical results for operations where they share algorithms
+
+All tests are implemented as static assertions that run at compile-time, ensuring zero runtime overhead while providing strong correctness guarantees.
 
 ### Optimized Integer Operations
 

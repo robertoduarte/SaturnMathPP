@@ -311,9 +311,10 @@ namespace SaturnMath
          */
         static constexpr Fxp Cos(const Angle& angle)
         {
-            size_t index = (angle.RawValue() + Angle::HalfPi().RawValue()) >> 10;
+            Angle testAngle = angle + Angle::HalfPi();
+            size_t index = testAngle.RawValue() >> 10;
             auto tableValue = sinTable[index];
-            return Fxp::BuildRaw(sinTable[index].ExtractValue(angle.RawValue()));
+            return Fxp::BuildRaw(tableValue.ExtractValue(testAngle.RawValue()));
         }
 
         /**

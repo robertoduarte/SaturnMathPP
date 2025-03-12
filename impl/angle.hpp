@@ -43,11 +43,12 @@ namespace SaturnMath::Types
          * @brief Constructs angle from raw 16-bit value.
          *
          * @param rawAngle Raw angle value where 0x0000-0xFFFF maps to 0-1 turns
+         * @param dummy Dummy parameter to differentiate from other constructors
          *
          * @note This constructor allows direct initialization from a raw 16-bit value
          * without any conversions.
          */
-        constexpr Angle(uint16_t rawAngle) : value(rawAngle) {}
+        constexpr Angle(uint16_t rawAngle, bool dummy) : value(rawAngle) {}
 
     public:
         /**
@@ -55,11 +56,14 @@ namespace SaturnMath::Types
          * @{
          * @brief Common angle constants available at compile-time.
          */
-        static consteval Angle Zero() { return Angle(0); }         ///< 0° (0x0000)
-        static consteval Angle Pi() { return Angle(pi); }          ///< 180° (0x8000)
-        static consteval Angle HalfPi() { return Angle(halfPi); }  ///< 90° (0x4000)
-        static consteval Angle QuarterPi() { return Angle(quarterPi); } ///< 45° (0x2000)
-        static consteval Angle TwoPi() { return Angle(twoPi); }    ///< 360° (wraps to 0x0000)
+        static consteval Angle Zero() { return BuildRaw(0); }         ///< 0° (0x0000)
+        static consteval Angle Pi() { return BuildRaw(pi); }          ///< 180° (0x8000)
+        static consteval Angle HalfPi() { return BuildRaw(halfPi); }  ///< 90° (0x4000)
+        static consteval Angle QuarterPi() { return BuildRaw(quarterPi); } ///< 45° (0x2000)
+        static consteval Angle TwoPi() { return BuildRaw(twoPi); }    ///< 360° (wraps to 0x0000)
+        static consteval Angle Right() { return BuildRaw(halfPi); }   ///< 90° (0x4000)
+        static consteval Angle Straight() { return BuildRaw(pi); }    ///< 180° (0x8000)
+        static consteval Angle Full() { return BuildRaw(0); }         ///< 360° (wraps to 0x0000)
         /** @} */
 
         /**
@@ -73,7 +77,7 @@ namespace SaturnMath::Types
          */
         static constexpr Angle BuildRaw(uint16_t rawValue)
         {
-            return Angle(rawValue);
+            return Angle(rawValue, true);
         }
 
         /**
@@ -91,11 +95,12 @@ namespace SaturnMath::Types
          * @brief Constructs angle from fixed-point turns.
          * 
          * @param turns Angle in turns as fixed-point value
+         * @param isDummy Dummy parameter to differentiate from raw value constructor
          * 
          * @note This constructor allows conversion from a fixed-point representation
          * of turns (where 1.0 represents a full 360° rotation) to an Angle object.
          */
-        constexpr Angle(const Fxp& turns) : value(static_cast<uint16_t>(turns.RawValue())) {}
+        constexpr Angle(const Fxp& turns, bool isDummy = true) : value(static_cast<uint16_t>(turns.RawValue())) {}
         /** @} */
 
         /**
@@ -124,7 +129,7 @@ namespace SaturnMath::Types
          */
         static consteval Angle FromRadians(double radians)
         {
-            return Angle(static_cast<uint16_t>(Fxp(radians / (2 * RadPi)).RawValue()));
+            return BuildRaw(static_cast<uint16_t>(Fxp(radians / (2 * RadPi)).RawValue()));
         }
 
         /**
@@ -139,7 +144,7 @@ namespace SaturnMath::Types
         ANGLE_CONVERSION_WARNING
         static constexpr Angle FromRadians(const Fxp& radianTurns)
         {
-            return Angle(static_cast<uint16_t>((radianTurns / (2 * RadPi)).RawValue()));
+            return BuildRaw(static_cast<uint16_t>((radianTurns / (2 * RadPi)).RawValue()));
         }
 
         /**
@@ -167,7 +172,7 @@ namespace SaturnMath::Types
          */
         static consteval Angle FromDegrees(double degrees)
         {
-            return Angle(static_cast<uint16_t>(Fxp(degrees / 360).RawValue()));
+            return BuildRaw(static_cast<uint16_t>(Fxp(degrees / 360).RawValue()));
         }
 
         /**
@@ -210,8 +215,24 @@ namespace SaturnMath::Types
          */
         static constexpr Angle FromDegrees(const Fxp& degreeTurns)
         {
-            return Angle(static_cast<uint16_t>((degreeTurns / 360).RawValue()));
+            return BuildRaw(static_cast<uint16_t>((degreeTurns / 360).RawValue()));
         }
+
+        /**
+         * @brief Creates an angle from a floating-point value in turns.
+         * 
+         * @param turns Angle in turns as floating-point value
+         * @return Angle object
+         * 
+         * @note This is a convenience method for creating angles from floating-point values.
+         * It is less efficient than using the fixed-point version but more readable in code.
+         */
+        static consteval Angle FromTurns(float turns)
+        {
+            return BuildRaw(static_cast<uint16_t>(static_cast<int32_t>(turns * 65536.0)));
+        }
+
+
         /** @} */
 
         /**
@@ -255,7 +276,7 @@ namespace SaturnMath::Types
           */
         constexpr Angle operator+(const Angle& other) const
         {
-            return Angle(value + other.value); // Natural 16-bit wrap-around
+            return BuildRaw(value + other.value); // Natural 16-bit wrap-around
         }
 
         /**
@@ -268,7 +289,7 @@ namespace SaturnMath::Types
          */
         constexpr Angle operator-(const Angle& other) const
         {
-            return Angle(value - other.value); // Natural 16-bit wrap-around
+            return BuildRaw(value - other.value); // Natural 16-bit wrap-around
         }
 
         /**
@@ -281,7 +302,7 @@ namespace SaturnMath::Types
          */
         constexpr Angle operator*(const Fxp& fxp) const
         {
-            return Angle((ToFxp() * fxp).RawValue());
+            return BuildRaw((ToFxp() * fxp).RawValue());
         }
 
         /**
@@ -298,7 +319,7 @@ namespace SaturnMath::Types
         template <typename T>
         constexpr Angle operator*(T scalar) const requires std::integral<T>
         {
-            return Angle(value * scalar);
+            return BuildRaw(value * scalar);
         }
 
         /**
@@ -312,7 +333,7 @@ namespace SaturnMath::Types
          */
         constexpr Angle operator/(const Fxp& fxp) const
         {
-            return Angle((ToFxp() / fxp).RawValue());
+            return BuildRaw((ToFxp() / fxp).RawValue());
         }
 
         /**
@@ -330,7 +351,7 @@ namespace SaturnMath::Types
         template <typename T>
         constexpr Angle operator/(T scalar) const requires std::integral<T>
         {
-            return Angle(value / scalar);
+            return BuildRaw(value / scalar);
         }
         
         /**
@@ -436,7 +457,7 @@ namespace SaturnMath::Types
          */
         constexpr Angle operator-() const
         {
-            return Angle(value + halfPi); // Add half a turn
+            return BuildRaw(value + halfPi); // Add half a turn
         }
 
         /**

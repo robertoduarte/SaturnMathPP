@@ -29,12 +29,12 @@ namespace SaturnMath::Types
      * @code
      * // Compile-time conversion (preferred)
      * constexpr Fxp a = 5;              // 5    (0x00050000)
-     * constexpr Fxp b = 2.5f;           // 2.5  (0x00028000)
-     * 
+     * constexpr Fxp b = 2.5;           // 2.5  (0x00028000)
+     *
      * // Runtime conversion
      * Fxp c = Fxp::Convert(someInt);    // With range checking
      * Fxp d = Fxp::Convert(someFloat);  // With performance warning
-     * 
+     *
      * // Arithmetic operations
      * Fxp result = a * b;               // 12.5 (0x000C8000)
      * int16_t i = result.As<int16_t>(); // 12
@@ -122,12 +122,12 @@ namespace SaturnMath::Types
          * @code
          * // Compile-time conversion (preferred when possible)
          * constexpr Fxp a = 3.14159;     // Exact conversion at compile-time
-         * 
+         *
          * // Runtime conversion
          * Fxp b = Fxp::Convert(someFloat);    // Will warn about floating-point performance
          * @endcode
          *
-         * @note Only available at compile time (consteval). 
+         * @note Only available at compile time (consteval).
          * @warning Values outside the valid fixed-point range may cause overflow.
          */
         template<typename T> requires (!std::is_same_v<T, int16_t>)
@@ -138,14 +138,14 @@ namespace SaturnMath::Types
          * @tparam T Integral type (e.g., int, int32_t)
          * @param value The value to convert
          * @return Fixed-point value
-         * 
+         *
          * @details Converts an integral value to 16.16 fixed-point format with compile-time validation.
          * Using int16_t{value} ensures the value fits within the valid range (-32768 to 32767).
          * The compiler will warn if the value is outside this range.
-         * 
+         *
          * This is a RUNTIME conversion method. For compile-time conversion, prefer using
          * the Fxp constructor directly with constexpr when possible.
-         * 
+         *
          * Example:
          * @code
          * auto a = Fxp::Convert(5);      // OK: 5 fits in int16_t
@@ -153,41 +153,41 @@ namespace SaturnMath::Types
          * @endcode
          */
         template <std::integral T>
-        static Fxp Convert(const T &value) { return BuildRaw(static_cast<int32_t>(int16_t{value}) << 16); }
+        static constexpr Fxp Convert(const T& value) { return BuildRaw(static_cast<int32_t>(int16_t{ value }) << 16); }
 
         /**
          * @brief Convert floating-point to fixed-point with performance warning.
          * @tparam T Floating-point type (float, double)
          * @param value The value to convert
          * @return Fixed-point value
-         * 
+         *
          * @details Converts a floating-point value to 16.16 fixed-point format.
          * This operation involves floating-point multiplication which is relatively expensive
          * on Saturn hardware. The compiler will emit a warning when this function is used
          * to help identify potential performance bottlenecks.
-         * 
+         *
          * This is a RUNTIME conversion method. For compile-time conversion, prefer using
          * the Fxp constructor directly with constexpr when possible.
-         * 
+         *
          * For better performance:
          * - Use integral types when possible
          * - Perform conversions at compile time with constexpr
          * - Cache converted values instead of converting in tight loops
-         * 
+         *
          * Example:
          * @code
          * // Preferred: Compile-time conversion
          * constexpr Fxp a = 3.14159;  // Conversion done at compile time
-         * 
+         *
          * // Runtime conversion (will trigger warning)
          * float f = get_value();
          * Fxp b = Fxp::Convert(f);    // Warning: heavy operation
          * @endcode
-         * 
+         *
          * @note The performance warning can be disabled by defining DISABLE_PERFORMANCE_WARNINGS
          *       before including this header. This is useful for code sections where you have
          *       already considered and accepted the performance implications.
-         * 
+         *
          * @warning Converting from floating-point is a heavy operation.
          * Avoid in performance-critical code paths.
          */
@@ -195,7 +195,7 @@ namespace SaturnMath::Types
 #ifndef DISABLE_PERFORMANCE_WARNINGS
         [[gnu::warning("Converting from floating-point is a heavy operation - avoid in performance-critical code")]]
 #endif
-        static Fxp Convert(const T &value){ return BuildRaw(static_cast<int32_t>(value * 65536.0)); }
+        static Fxp Convert(const T& value) { return BuildRaw(static_cast<int32_t>(value * 65536.0)); }
 
         /***********Static Functions************/
 
@@ -271,25 +271,95 @@ namespace SaturnMath::Types
          */
         constexpr Fxp TruncateFraction() const
         {
-            return BuildRaw(static_cast<int32_t>(0xFFFF0000) & value);
+               if (value >= 0)
+                return BuildRaw(static_cast<int32_t>(0xFFFF0000) & value);
+            else
+                return -BuildRaw(static_cast<int32_t>(0xFFFF0000) & (-value));
+        }
+
+        /**
+         * @brief Extracts the fractional part of the fixed-point value.
+         * @return Fixed-point value containing only the fractional part (0.xxxx)
+         *
+         * @details Returns the fractional component as a value between 0 and 0.999969.
+         * The integer part is discarded.
+         */
+        constexpr Fxp GetFraction() const
+        {
+            if (value >= 0)
+                return BuildRaw(static_cast<int32_t>(0xFFFF) & value);
+            else
+                return -BuildRaw(static_cast<int32_t>(0xFFFF) & (-value));
+        }
+        /**
+         * @brief Rounds down to the nearest integer.
+         * @return Fixed-point value rounded down to nearest integer.
+         *
+         * @details Returns the largest integer that is less than or equal to this value.
+         * For negative values, this rounds further away from zero.
+         */
+        constexpr Fxp Floor() const
+        {
+            // For positive values, truncate the fraction
+            // For negative values with a fraction, subtract 1 from the integer part
+            if (value >= 0)
+                return TruncateFraction();
+            else
+                return BuildRaw((value - 0x1000) & 0xFFFF0000);
+        }
+
+        /**
+         * @brief Rounds up to the nearest integer.
+         * @return Fixed-point value rounded up to nearest integer.
+         *
+         * @details Returns the smallest integer that is greater than or equal to this value.
+         * For negative values, this rounds toward zero.
+         */
+        constexpr Fxp Ceil() const
+        {
+            // If positive with a fraction, add 1 to the integer part
+            if (value >= 0)
+                return BuildRaw((value + 0x10000) & 0xFFFF0000);
+            else
+                return TruncateFraction();
+                
+        }
+
+        /**
+         * @brief Rounds to the nearest integer.
+         * @return Fixed-point value rounded to nearest integer.
+         *
+         * @details Rounds to the nearest integer, with halfway cases rounded away from zero.
+         * This matches the common mathematical rounding behavior.
+         */
+        constexpr Fxp Round() const
+        {
+            // Round to nearest integer, with halfway cases rounded away from zero
+            if (value >= 0) {
+                // For positive values, add 0x8000 (0.5) and truncate
+                return BuildRaw((value + 0x8000) & 0xFFFF0000);
+            } else {
+                // For negative values, add 0x8000 (0.5) to the absolute value and negate
+                return -BuildRaw(((-value) + 0x8000) & 0xFFFF0000);
+            }
         }
 
         /**
          * @brief Calculate square root with configurable precision
          * @tparam P Precision level for calculation
          * @return Square root with specified precision
-         * 
+         *
          * @details Provides two precision levels with different performance and accuracy trade-offs:
          * - Standard: Full precision calculation using the digit-by-digit algorithm
          * - Fast: Approximation with varying error rates:
          *   • Maximum error of ~42% observed at very small values (~0.000046)
          *   • Error decreases as values increase, with most values below 0.0015 having errors between 6-20%
          *   • For values above 0.0015, maximum error stabilizes around 6.3%
-         * 
+         *
          * Choose the appropriate precision based on your requirements:
          * - Standard: Use for critical calculations where accuracy is essential
          * - Fast: Best for non-critical real-time effects where performance is paramount
-         * 
+         *
          * @note Turbo precision mode defaults to Fast for this function.
          */
         template<Precision P = Precision::Standard>
@@ -323,13 +393,13 @@ namespace SaturnMath::Types
                 int32_t baseEstimation = 1 << 7;
                 int32_t estimation = value >> 1;
                 uint32_t iterationValue = estimation;
-                
+
                 do
                 {
                     estimation >>= 1;
                     baseEstimation <<= 1;
                 } while (iterationValue >>= 2);
-                
+
                 estimation <<= 8;
                 return BuildRaw(baseEstimation + estimation);
             }
@@ -360,7 +430,7 @@ namespace SaturnMath::Types
          * @brief Converts to the specified integer type.
          * @tparam T The target integer type
          * @return Value as the specified type
-         * 
+         *
          * Example:
          * @code
          * Fxp x = 3.14_fxp;
@@ -368,7 +438,8 @@ namespace SaturnMath::Types
          * @endcode
          */
         template<typename T> requires std::integral<T>
-        constexpr T As() const {
+        constexpr T As() const
+        {
             return static_cast<T>(value >> 16);
         }
 
@@ -376,18 +447,18 @@ namespace SaturnMath::Types
          * @brief Converts to the specified floating-point type.
          * @tparam T The target floating-point type (float or double)
          * @return Value as the specified type
-         * 
+         *
          * Example:
          * @code
          * Fxp x = 3.14_fxp;
          * auto f = x.As<float>();    // Convert to float (heavy operation)
          * auto d = x.As<double>();   // Convert to double (heavy operation)
          * @endcode
-         * 
+         *
          * @note The performance warning can be disabled by defining DISABLE_PERFORMANCE_WARNINGS
          *       before including this header. This is useful for code sections where you have
          *       already considered and accepted the performance implications.
-         * 
+         *
          * @warning Converting to floating-point is a heavy operation.
          * Avoid in performance-critical code paths.
          */
@@ -395,8 +466,9 @@ namespace SaturnMath::Types
 #ifndef DISABLE_PERFORMANCE_WARNINGS
         [[gnu::warning("Converting to floating-point is a heavy operation - avoid in performance-critical code")]]
 #endif
-        constexpr T As() const {
-            return value / T{65536.0};
+        constexpr T As() const
+        {
+            return value / T{ 65536.0 };
         }
 
         /**
@@ -588,9 +660,18 @@ namespace SaturnMath::Types
         {
             if consteval
             {
-                double a = value / 65536.0;
+                // Convert to double for compile-time calculation
+                double a = this->value / 65536.0;
                 double b = fxp.value / 65536.0;
-                value = (a / b) * 65536.0;
+                // Handle division by zero by returning maximum positive/negative value
+                if (b == 0.0)
+                {
+                    this->value = (a >= 0.0) ? INT32_MAX : INT32_MIN;
+                }
+                else
+                {
+                    this->value = static_cast<int32_t>((a / b) * 65536.0);
+                }
             }
             else
             {
@@ -627,8 +708,15 @@ namespace SaturnMath::Types
             if consteval
             {
                 double a = this->value / 65536.0;
-                double b = value / 65536.0;
-                this->value = (a / b) * 65536.0;
+                double b = value;
+                if (b == 0)
+                {
+                    this->value = (this->value >= 0) ? INT32_MAX : INT32_MIN;
+                }
+                else
+                {
+                    this->value = static_cast<int32_t>((a / b) * 65536.0);
+                }
             }
             else
             {
@@ -680,6 +768,13 @@ namespace SaturnMath::Types
             {
                 double a = value / 65536.0;
                 double b = fxp.value / 65536.0;
+
+                // Handle division by zero
+                if (b == 0.0)
+                {
+                    return (a >= 0.0) ? BuildRaw(INT32_MAX) : BuildRaw(INT32_MIN);
+                }
+
                 double div = a / b;
                 double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
                 return BuildRaw(static_cast<int32_t>((a - (b * floorDiv)) * 65536.0));
@@ -707,6 +802,13 @@ namespace SaturnMath::Types
             {
                 double a = this->value / 65536.0;
                 double b = static_cast<double>(value);
+
+                // Handle division by zero
+                if (b == 0.0)
+                {
+                    return (a >= 0.0) ? BuildRaw(INT32_MAX) : BuildRaw(INT32_MIN);
+                }
+
                 double div = a / b;
                 double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
                 return BuildRaw(static_cast<int32_t>((a - (b * floorDiv)) * 65536.0));
@@ -735,6 +837,13 @@ namespace SaturnMath::Types
             {
                 double a = static_cast<double>(lhs);
                 double b = rhs.value / 65536.0;
+
+                // Handle division by zero
+                if (b == 0.0)
+                {
+                    return (a >= 0.0) ? BuildRaw(INT32_MAX) : BuildRaw(INT32_MIN);
+                }
+
                 double div = a / b;
                 double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
                 return BuildRaw(static_cast<int32_t>((a - (b * floorDiv)) * 65536.0));
@@ -758,6 +867,14 @@ namespace SaturnMath::Types
             {
                 double a = value / 65536.0;
                 double b = fxp.value / 65536.0;
+
+                // Handle division by zero
+                if (b == 0.0)
+                {
+                    value = (a >= 0.0) ? INT32_MAX : INT32_MIN;
+                    return *this;
+                }
+
                 double div = a / b;
                 double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
                 value = static_cast<int32_t>((a - (b * floorDiv)) * 65536.0);
@@ -803,14 +920,61 @@ namespace SaturnMath::Types
          * @param fxp The Fxp object to add.
          * @return The sum as an Fxp object.
          */
-        constexpr Fxp operator+(const Fxp& fxp) const { return BuildRaw(value + fxp.value); }
+        constexpr Fxp operator+(const Fxp& fxp) const
+        {
+            if consteval
+            {
+                int64_t result = static_cast<int64_t>(value) + static_cast<int64_t>(fxp.value);
+                if (result > INT32_MAX) return MaxValue();
+                if (result < INT32_MIN) return MinValue();
+                return BuildRaw(static_cast<int32_t>(result));
+            }
+            else
+            {
+                return BuildRaw(value + fxp.value);
+            }
+        }
+
+        /**
+         * @brief Add a fixed-point value to an integer (lhs + rhs).
+         * @param lhs The integer value to add.
+         * @param rhs The fixed-point value to add.
+         * @return The sum as a new Fxp object.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr friend Fxp operator+(const T& lhs, const Fxp& rhs) { return Fxp::Convert(lhs) + rhs; }
 
         /**
          * @brief Subtract another Fxp object from this object.
          * @param fxp The Fxp object to subtract.
          * @return The difference as an Fxp object.
          */
-        constexpr Fxp operator-(const Fxp& fxp) const { return BuildRaw(value - fxp.value); }
+        constexpr Fxp operator-(const Fxp& fxp) const
+        {
+            if consteval
+            {
+                int64_t result = static_cast<int64_t>(value) - static_cast<int64_t>(fxp.value);
+                if (result > INT32_MAX) return MaxValue();
+                if (result < INT32_MIN) return MinValue();
+                return BuildRaw(static_cast<int32_t>(result));
+            }
+            else
+            {
+                return BuildRaw(value - fxp.value);
+            }
+        }
+
+        /**
+         * @brief Subtract a fixed-point value from an integer (lhs - rhs).
+         * @param lhs The integer value.
+         * @param rhs The fixed-point value to subtract.
+         * @return The difference as a new Fxp object.
+         */
+        template<typename T>
+            requires std::is_integral_v<T>
+        constexpr friend Fxp operator-(const T& lhs, const Fxp& rhs) { return Fxp::Convert(lhs) - rhs; }
+
 
         /**
          * @brief Compare two Fxp objects for greater than.
@@ -853,6 +1017,47 @@ namespace SaturnMath::Types
          * @return `true` if this object is not equal to the other; otherwise, `false`.
          */
         constexpr bool operator!=(const Fxp& fxp) const { return value != fxp.value; }
+
+
+        /**
+         * @brief Compare a value with a fixed-point value for less than (lhs < rhs).
+         * @tparam T The type of the value to compare.
+         * @param lhs The value to compare.
+         * @param rhs The fixed-point value to compare with.
+         * @return `true` if lhs is less than rhs; otherwise, `false`.
+         */
+        template<typename T>
+        constexpr friend bool operator<(const T& lhs, const Fxp& rhs) { return rhs > lhs; }
+
+        /**
+         * @brief Compare a value with a fixed-point value for greater than (lhs > rhs).
+         * @tparam T The type of the value to compare.
+         * @param lhs The value to compare.
+         * @param rhs The fixed-point value to compare with.
+         * @return `true` if lhs is greater than rhs; otherwise, `false`.
+         */
+        template<typename T>
+        constexpr friend bool operator>(const T& lhs, const Fxp& rhs) { return rhs < lhs; }
+
+        /**
+         * @brief Compare a value with a fixed-point value for less than or equal to (lhs <= rhs).
+         * @tparam T The type of the value to compare.
+         * @param lhs The value to compare.
+         * @param rhs The fixed-point value to compare with.
+         * @return `true` if lhs is less than or equal to rhs; otherwise, `false`.
+         */
+        template<typename T>
+        constexpr friend bool operator<=(const T& lhs, const Fxp& rhs) { return rhs >= lhs; }
+
+        /**
+         * @brief Compare a value with a fixed-point value for greater than or equal to (lhs >= rhs).
+         * @tparam T The type of the value to compare.
+         * @param lhs The value to compare.
+         * @param rhs The fixed-point value to compare with.
+         * @return `true` if lhs is greater than or equal to rhs; otherwise, `false`.
+         */
+        template<typename T>
+        constexpr friend bool operator>=(const T& lhs, const Fxp& rhs) { return rhs <= lhs; }
 
         /**
          * @brief Right shift operator for logical right shift.

@@ -418,8 +418,8 @@ namespace SaturnMath::Types
          *
          * @code {.cpp}
          * Matrix43 viewMatrix = Matrix43::CreateLookAt(
-         *     Vector3D(0.0f, 0.0f, 5.0f),  // Eye position
-         *     Vector3D(0.0f, 0.0f, 0.0f),  // Target position
+         *     Vector3D(0.0, 0.0, 5.0),  // Eye position
+         *     Vector3D(0.0, 0.0, 0.0),  // Target position
          *     Vector3D::UnitY()            // Up vector
          * );
          * @endcode 
