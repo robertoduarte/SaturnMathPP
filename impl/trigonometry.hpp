@@ -471,12 +471,12 @@ namespace SaturnMath
                 divResult = -divResult;
                 size_t index = divResult >> 11;
                 auto tableValue = aTan2Table[index];
-                return Angle(result + tableValue.ExtractValue(divResult));
+                return Angle::BuildRaw(result + tableValue.ExtractValue(divResult));
             }
 
             size_t index = divResult >> 11;
             auto tableValue = aTan2Table[index];
-            return Angle(result - tableValue.ExtractValue(divResult));
+            return Angle::BuildRaw(result - tableValue.ExtractValue(divResult));
         }
 
         /**

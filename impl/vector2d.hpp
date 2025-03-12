@@ -146,34 +146,6 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Calculate the dot product of this object and another Vec2 object.
-         * @param vec The Vec2 object to calculate the dot product with.
-         * @return The dot product as an Fxp value.
-         * @details Calculates a single dot product between two vectors. For runtime calculations,
-         * this uses the DotAccumulate helper with proper MAC register management.
-         *
-         * Example usage:
-         * @code
-         * Vector2D v1(1, 2);
-         * Vector2D v2(4, 5);
-         * Fxp result = v1.Dot(v2);    // Computes 1*4 + 2*5
-         * @endcode
-         */
-        constexpr Fxp Dot(const Vector2D& vec) const
-        {
-            if consteval
-            {
-                return X * vec.X + Y * vec.Y;
-            }
-            else
-            {
-                Fxp::ClearMac();
-                DotAccumulate(*this, vec);
-                return Fxp::ExtractMac();
-            }
-        }
-
-        /**
          * @brief Calculate and accumulate the dot products of multiple 2D vector pairs.
          * @param pairs Variadic parameter pack of vector pairs (e.g., {v1, v2}, {v3, v4}, ...).
          * @return The accumulated dot product of all pairs.
@@ -342,7 +314,16 @@ namespace SaturnMath::Types
          */
         constexpr Fxp Dot(const Vector2D& vec) const
         {
-            return X * vec.X + Y * vec.Y;
+            if consteval
+            {
+                return X * vec.X + Y * vec.Y;
+            }
+            else
+            {
+                Fxp::ClearMac();
+                DotAccumulate(*this, vec);
+                return Fxp::ExtractMac();
+            }
         }
 
         // Unit vectors and directional methods

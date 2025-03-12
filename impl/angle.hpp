@@ -39,6 +39,16 @@ namespace SaturnMath::Types
 
         uint16_t value; ///< Raw 16-bit angle where 0x0000-0xFFFF maps to 0-1 turns
 
+        /**
+         * @brief Constructs angle from raw 16-bit value.
+         *
+         * @param rawAngle Raw angle value where 0x0000-0xFFFF maps to 0-1 turns
+         *
+         * @note This constructor allows direct initialization from a raw 16-bit value
+         * without any conversions.
+         */
+        constexpr Angle(uint16_t rawAngle) : value(rawAngle) {}
+
     public:
         /**
          * @name Constant Angles
@@ -63,9 +73,7 @@ namespace SaturnMath::Types
          */
         static constexpr Angle BuildRaw(uint16_t rawValue)
         {
-            Angle result;
-            result.value = rawValue;
-            return result;
+            return Angle(rawValue);
         }
 
         /**
@@ -78,16 +86,6 @@ namespace SaturnMath::Types
           * Creates an Angle object with a value of 0, representing 0 degrees or 0 turns.
           */
         constexpr Angle() : value(0) {}
-
-        /**
-         * @brief Constructs angle from raw 16-bit value.
-         * 
-         * @param rawAngle Raw angle value where 0x0000-0xFFFF maps to 0-1 turns
-         * 
-         * @note This constructor allows direct initialization from a raw 16-bit value
-         * without any conversions.
-         */
-        constexpr Angle(uint16_t rawAngle) : value(rawAngle) {}
 
         /**
          * @brief Constructs angle from fixed-point turns.
@@ -185,6 +183,20 @@ namespace SaturnMath::Types
         {
             return Fxp::BuildRaw(static_cast<uint32_t>(value) * 360);
         }
+
+        /**
+         * @brief Converts angle to turns.
+         * 
+         * @return Angle in turns as fixed-point value
+         * 
+         * @note This conversion is efficient as it directly uses the internal
+         * representation, where one full turn (360 degrees) is represented by 0xFFFF.
+         */
+        constexpr Fxp ToTurns() const
+        {
+            return Fxp::BuildRaw(value);
+        }
+
 
         #undef ANGLE_CONVERSION_WARNING
 

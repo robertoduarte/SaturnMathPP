@@ -624,7 +624,16 @@ namespace SaturnMath::Types
             requires std::is_integral_v<T>
         constexpr Fxp& operator/=(const T& value)
         {
-            value /= value;
+            if consteval
+            {
+                double a = this->value / 65536.0;
+                double b = value / 65536.0;
+                this->value = (a / b) * 65536.0;
+            }
+            else
+            {
+                this->value /= value;
+            }
             return *this;
         }
 
