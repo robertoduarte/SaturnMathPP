@@ -1027,7 +1027,18 @@ namespace SaturnMath::Types
          * @return `true` if lhs is less than rhs; otherwise, `false`.
          */
         template<typename T>
-        constexpr friend bool operator<(const T& lhs, const Fxp& rhs) { return rhs > lhs; }
+        constexpr friend bool operator<(const T& lhs, const Fxp& rhs)
+        {
+            if consteval
+            {
+                // Compiler gets confused with direct comparison. It's dumb, I know.
+                return rhs > lhs;
+            }
+            else
+            {
+                return lhs < rhs;
+            }
+        }
 
         /**
          * @brief Compare a value with a fixed-point value for greater than (lhs > rhs).
@@ -1037,7 +1048,18 @@ namespace SaturnMath::Types
          * @return `true` if lhs is greater than rhs; otherwise, `false`.
          */
         template<typename T>
-        constexpr friend bool operator>(const T& lhs, const Fxp& rhs) { return rhs < lhs; }
+        constexpr friend bool operator>(const T& lhs, const Fxp& rhs)
+        {
+            if consteval
+            {
+                // We have to flip the comparison for compile-time evaluation. It's dumb, I know.
+                return rhs < lhs;
+            }
+            else
+            {
+                return lhs > rhs;
+            }
+        }
 
         /**
          * @brief Compare a value with a fixed-point value for less than or equal to (lhs <= rhs).
@@ -1047,7 +1069,18 @@ namespace SaturnMath::Types
          * @return `true` if lhs is less than or equal to rhs; otherwise, `false`.
          */
         template<typename T>
-        constexpr friend bool operator<=(const T& lhs, const Fxp& rhs) { return rhs >= lhs; }
+        constexpr friend bool operator<=(const T& lhs, const Fxp& rhs)
+        {
+            if consteval
+            {
+                // Compiler gets confused with direct comparison at compile time. It's dumb, I know.
+                return rhs >= lhs;
+            }
+            else
+            {
+                return lhs <= rhs;
+            }
+        }
 
         /**
          * @brief Compare a value with a fixed-point value for greater than or equal to (lhs >= rhs).
@@ -1057,7 +1090,18 @@ namespace SaturnMath::Types
          * @return `true` if lhs is greater than or equal to rhs; otherwise, `false`.
          */
         template<typename T>
-        constexpr friend bool operator>=(const T& lhs, const Fxp& rhs) { return rhs <= lhs; }
+        constexpr friend bool operator>=(const T& lhs, const Fxp& rhs)
+        {
+            if consteval
+            {
+                // This flip is necessary for compile-time evaluation. It's dumb, I know.
+                return rhs <= lhs;
+            }
+            else
+            {
+                return lhs >= rhs;
+            }
+        }
 
         /**
          * @brief Right shift operator for logical right shift.

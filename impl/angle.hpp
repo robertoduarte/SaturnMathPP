@@ -94,13 +94,42 @@ namespace SaturnMath::Types
         /**
          * @brief Constructs angle from fixed-point turns.
          * 
-         * @param turns Angle in turns as fixed-point value
-         * @param isDummy Dummy parameter to differentiate from raw value constructor
+         * @param turns Angle in turns as fixed-point value (where 1.0 = 360°)
          * 
          * @note This constructor allows conversion from a fixed-point representation
-         * of turns (where 1.0 represents a full 360° rotation) to an Angle object.
+         * of turns to an Angle object. Values are interpreted as turns, where:
+         * - 0.0 = 0° = 0 turns
+         * - 0.25 = 90° = 1/4 turn
+         * - 0.5 = 180° = 1/2 turn
+         * - 0.75 = 270° = 3/4 turn
+         * - 1.0 = 360° = 1 turn = 0 turns (full circle)
+         * 
+         * Values outside the range [0,1] are automatically wrapped around.
          */
-        constexpr Angle(const Fxp& turns, bool isDummy = true) : value(static_cast<uint16_t>(turns.RawValue())) {}
+        constexpr Angle(const Fxp& turns) : value(static_cast<uint16_t>(turns.RawValue())) {}
+
+        /**
+         * @brief Template constructor that converts numeric types to Angle via Fxp.
+         * 
+         * @tparam T Numeric type (integral or floating-point)
+         * @param turns Angle in turns represented by type T (where 1.0 = 360°)
+         * 
+         * @note This constructor allows conversion from numeric types to an Angle object.
+         * Values are interpreted as turns, where:
+         * - 0.0 = 0° = 0 turns
+         * - 0.25 = 90° = 1/4 turn
+         * - 0.5 = 180° = 1/2 turn
+         * - 0.75 = 270° = 3/4 turn
+         * - 1.0 = 360° = 1 turn = 0 turns (full circle)
+         * 
+         * Integer values (0, 1, 2, etc.) all map to 0 due to wrapping behavior.
+         * For example, 1 turn = 360° = 0° after wrapping.
+         * 
+         * Values outside the range [0,1] are automatically wrapped around.
+         */
+        template <typename T>
+        requires std::integral<T> || std::floating_point<T>
+        constexpr Angle(const T& turns) : Angle(Fxp(turns)) {}
         /** @} */
 
         /**
@@ -144,7 +173,7 @@ namespace SaturnMath::Types
         ANGLE_CONVERSION_WARNING
         static constexpr Angle FromRadians(const Fxp& radianTurns)
         {
-            return BuildRaw(static_cast<uint16_t>((radianTurns / (2 * RadPi)).RawValue()));
+            return radianTurns / Fxp(2 * RadPi);
         }
 
         /**
@@ -158,7 +187,7 @@ namespace SaturnMath::Types
         ANGLE_CONVERSION_WARNING
         constexpr Fxp ToRadians() const
         {
-            return Fxp::BuildRaw(static_cast<uint32_t>(value) * 2 * RadPi);
+            return Fxp::BuildRaw(value) * 2 * RadPi;
         }
 
         /**
@@ -215,7 +244,7 @@ namespace SaturnMath::Types
          */
         static constexpr Angle FromDegrees(const Fxp& degreeTurns)
         {
-            return BuildRaw(static_cast<uint16_t>((degreeTurns / 360).RawValue()));
+            return degreeTurns / 360;
         }
 
         /**
@@ -229,7 +258,7 @@ namespace SaturnMath::Types
          */
         static consteval Angle FromTurns(float turns)
         {
-            return BuildRaw(static_cast<uint16_t>(static_cast<int32_t>(turns * 65536.0)));
+            return Fxp(turns);
         }
 
 
