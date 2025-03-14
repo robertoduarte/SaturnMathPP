@@ -1025,9 +1025,30 @@ namespace SaturnMath::Types
          * @param lhs The value to compare.
          * @param rhs The fixed-point value to compare with.
          * @return `true` if lhs is less than rhs; otherwise, `false`.
+         * 
+         * @note This operator only works at compile-time. Due to C++ language limitations,
+         * built-in types cannot be overloaded to work with user-defined types at runtime.
+         * Use explicit conversion instead: `Fxp(lhs) < rhs`
          */
         template<typename T>
-        constexpr friend bool operator<(const T& lhs, const Fxp& rhs) { return rhs > lhs; }
+        constexpr friend bool operator<(const T& lhs, const Fxp& rhs)
+        {
+            if consteval
+            {
+                return double{ lhs } < double{ rhs.value / 65536.0 };
+            }
+            else
+            {
+                static_assert(
+                    false,
+                    "COMPARISON ERROR: 'otherValue < fxpValue' doesn't work at runtime. "
+                    "Please use this alternative instead: "
+                    "Explicit conversion: 'Fxp(otherValue) < fxpValue' "
+                    "This is due to C++ operator overloading limitations with implicit conversion." 
+                    );
+                return false;
+            }
+        }
 
         /**
          * @brief Compare a value with a fixed-point value for greater than (lhs > rhs).
@@ -1035,9 +1056,30 @@ namespace SaturnMath::Types
          * @param lhs The value to compare.
          * @param rhs The fixed-point value to compare with.
          * @return `true` if lhs is greater than rhs; otherwise, `false`.
+         * 
+         * @note This operator only works at compile-time. Due to C++ language limitations,
+         * built-in types cannot be overloaded to work with user-defined types at runtime.
+         * Use explicit conversion instead: `Fxp(lhs) > rhs`
          */
         template<typename T>
-        constexpr friend bool operator>(const T& lhs, const Fxp& rhs) { return rhs < lhs; }
+        constexpr friend bool operator>(const T& lhs, const Fxp& rhs)
+        {
+            if consteval
+            {
+                return double{ lhs } > double{ rhs.value / 65536.0 };
+            }
+            else
+            {
+                static_assert(
+                    false,
+                    "COMPARISON ERROR: 'otherValue > fxpValue' doesn't work at runtime. "
+                    "Please use this alternative instead: "
+                    "Explicit conversion: 'Fxp(otherValue) > fxpValue' "
+                    "This is due to C++ operator overloading limitations with implicit conversion." 
+                    );
+                return false;
+            }
+        }
 
         /**
          * @brief Compare a value with a fixed-point value for less than or equal to (lhs <= rhs).
@@ -1045,9 +1087,30 @@ namespace SaturnMath::Types
          * @param lhs The value to compare.
          * @param rhs The fixed-point value to compare with.
          * @return `true` if lhs is less than or equal to rhs; otherwise, `false`.
+         * 
+         * @note This operator only works at compile-time. Due to C++ language limitations,
+         * built-in types cannot be overloaded to work with user-defined types at runtime.
+         * Use explicit conversion instead: `Fxp(lhs) <= rhs`
          */
         template<typename T>
-        constexpr friend bool operator<=(const T& lhs, const Fxp& rhs) { return rhs >= lhs; }
+        constexpr friend bool operator<=(const T& lhs, const Fxp& rhs)
+        {
+            if consteval
+            {
+                return double{ lhs } <= double{ rhs.value / 65536.0 };
+            }
+            else
+            {
+                static_assert(
+                    false,
+                    "COMPARISON ERROR: 'otherValue <= fxpValue' doesn't work at runtime. "
+                    "Please use this alternative instead: "
+                    "Explicit conversion: 'Fxp(otherValue) <= fxpValue' "
+                    "This is due to C++ operator overloading limitations with implicit conversion." 
+                    );
+                return false;
+            }
+        }
 
         /**
          * @brief Compare a value with a fixed-point value for greater than or equal to (lhs >= rhs).
@@ -1055,9 +1118,30 @@ namespace SaturnMath::Types
          * @param lhs The value to compare.
          * @param rhs The fixed-point value to compare with.
          * @return `true` if lhs is greater than or equal to rhs; otherwise, `false`.
+         * 
+         * @note This operator only works at compile-time. Due to C++ language limitations,
+         * built-in types cannot be overloaded to work with user-defined types at runtime.
+         * Use explicit conversion instead: `Fxp(lhs) >= rhs`
          */
         template<typename T>
-        constexpr friend bool operator>=(const T& lhs, const Fxp& rhs) { return rhs <= lhs; }
+        constexpr friend bool operator>=(const T& lhs, const Fxp& rhs)
+        {
+            if consteval
+            {
+                return double{ lhs } >= double{ rhs.value / 65536.0 };
+            }
+            else
+            {
+                static_assert(
+                    false,
+                    "COMPARISON ERROR: 'otherValue >= fxpValue' doesn't work at runtime. "
+                    "Please use this alternative instead: "
+                    "Explicit conversion: 'Fxp(otherValue) >= fxpValue' "
+                    "This is due to C++ operator overloading limitations with implicit conversion." 
+                    );
+                return false;
+            }
+        }
 
         /**
          * @brief Right shift operator for logical right shift.

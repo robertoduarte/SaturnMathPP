@@ -187,15 +187,43 @@ namespace SaturnMath::Tests
             static_assert(a >= 4.5, "Fxp >= float comparison should work with greater values");
             static_assert(a <= 5.5, "Fxp <= float comparison should work with lesser values");
 
-            // Comparisons with float literals (float on left)
-            static_assert(4.5 < a, "float < Fxp comparison should work");
-            static_assert(5.5 > a, "float > Fxp comparison should work");
-            static_assert(5.0 == a, "float == Fxp comparison should work");
-            static_assert(6.0 != a, "float != Fxp comparison should work");
-            static_assert(5.0 >= a, "float >= Fxp comparison should work with equal values");
-            static_assert(5.0 <= a, "float <= Fxp comparison should work with equal values");
-            static_assert(5.5 >= a, "float >= Fxp comparison should work with greater values");
-            static_assert(4.5 <= a, "float <= Fxp comparison should work with lesser values");
+            // Comparisons with float literals (float on left) - only works at compile-time
+            static_assert(4.5 < a, "float < Fxp comparison should work at compile-time");
+            static_assert(5.5 > a, "float > Fxp comparison should work at compile-time");
+            static_assert(5.0 == a, "float == Fxp comparison should work at compile-time");
+            static_assert(6.0 != a, "float != Fxp comparison should work at compile-time");
+            static_assert(5.0 >= a, "float >= Fxp comparison should work with equal values at compile-time");
+            static_assert(5.0 <= a, "float <= Fxp comparison should work with equal values at compile-time");
+            static_assert(5.5 >= a, "float >= Fxp comparison should work with greater values at compile-time");
+            static_assert(4.5 <= a, "float <= Fxp comparison should work with lesser values at compile-time");
+
+            /**
+             * @note Runtime comparison limitation:
+             * When comparing non-Fxp values (like float/int) with Fxp values at runtime,
+             * the comparison will not work if the non-Fxp value is on the left side.
+             * 
+             * Example that will NOT work at runtime:
+             *   float x = GetRuntimeValue();
+             *   Fxp y(5);
+             *   if (x < y) { ... }  // COMPILE ERROR
+             * 
+             * The key point is that the ORDER MATTERS:
+             *   This works: fxpValue > 40.0  (Fxp on left side)
+             *   This fails: 40.0 < fxpValue  (Fxp on right side)
+             * 
+             * Solutions:
+             * 1. Use the Convert method for runtime values:
+             *   float x = GetRuntimeValue();
+             *   Fxp convertedX = Fxp::Convert(x);
+             *   if (convertedX < y) { ... }  // Works fine
+             * 
+             * 2. Flip the comparison if possible:
+             *   if (y > x) { ... }  // Works fine
+             *   if (y > 40.0) { ... }  // Works fine
+             * 
+             * This limitation only affects the 4 comparison operators (<, >, <=, >=)
+             * when a non-Fxp value is on the left side at runtime.
+             */
 
             // Precise fractional comparisons
             static_assert(Fxp(2.5) > Fxp(2.25), "Fractional comparison should work with close values");
@@ -205,27 +233,52 @@ namespace SaturnMath::Tests
             // The smallest representable difference is 1/65536 ≈ 0.0000152587
             static_assert(Fxp(2.5) != Fxp(2.51), "Fractional inequality should detect differences above precision limit");
 
-            // Mixed comparison with integers
-            static_assert(5 == a, "Integer == Fxp comparison should work");
-            static_assert(4 != c, "Integer != Fxp comparison should work");
-            static_assert(6 > b, "Integer > Fxp comparison should work");
-            static_assert(1 < a, "Integer < Fxp comparison should work");
-            static_assert(5 >= c, "Integer >= Fxp comparison should work with equal values");
-            static_assert(2 <= b, "Integer <= Fxp comparison should work with equal values");
-            static_assert(6 >= b, "Integer >= Fxp comparison should work with greater values");
-            static_assert(1 <= a, "Integer <= Fxp comparison should work with lesser values");
+            // Mixed comparison with integers (integer on left) - only works at compile-time
+            static_assert(5 == a, "Integer == Fxp comparison should work at compile-time");
+            static_assert(4 != c, "Integer != Fxp comparison should work at compile-time");
+            static_assert(6 > b, "Integer > Fxp comparison should work at compile-time");
+            static_assert(1 < a, "Integer < Fxp comparison should work at compile-time");
+            static_assert(5 >= c, "Integer >= Fxp comparison should work with equal values at compile-time");
+            static_assert(2 <= b, "Integer <= Fxp comparison should work with equal values at compile-time");
+            static_assert(6 >= b, "Integer >= Fxp comparison should work with greater values at compile-time");
+            static_assert(1 <= a, "Integer <= Fxp comparison should work with lesser values at compile-time");
+
+            /**
+             * @note Runtime comparison with integers:
+             * Similar to float comparisons, when comparing integers with Fxp values at runtime,
+             * the comparison will not work if the integer is on the left side.
+             * 
+             * Example that will NOT work at runtime:
+             *   int x = GetRuntimeValue();
+             *   Fxp y(5);
+             *   if (x < y) { ... }  // COMPILE ERROR
+             * 
+             * The key point is that the ORDER MATTERS:
+             *   This works: fxpValue > 42  (Fxp on left side)
+             *   This fails: 42 < fxpValue  (Fxp on right side)
+             * 
+             * Solutions:
+             * 1. Use the Convert method for runtime values:
+             *   int x = GetRuntimeValue();
+             *   Fxp convertedX = Fxp::Convert(x);
+             *   if (convertedX < y) { ... }  // Works fine
+             * 
+             * 2. Flip the comparison if possible:
+             *   if (y > x) { ... }  // Works fine
+             *   if (y > 42) { ... }  // Works fine
+             */
 
             // Transitive property tests
             constexpr Fxp d(7);
             static_assert(a < d && b < a && b < d, "Transitive property should hold for less than");
             static_assert(d > a && a > b && d > b, "Transitive property should hold for greater than");
 
-            // Integer operand tests (integer on left) - kept for compatibility
-            static_assert(3 + a == 8, "Integer + Fxp addition should work");
-            static_assert(5 - b == 3, "Integer - Fxp subtraction should work");
-            static_assert(3 * a == 15, "Integer * Fxp multiplication should work");
-            static_assert(10 / b == 5, "Integer / Fxp division should work");
-            static_assert(11 % a == 1, "Integer % Fxp modulo should work");
+            // Integer operand tests (integer on left) - only works at compile-time
+            static_assert(3 + a == 8, "Integer + Fxp addition should work at compile-time");
+            static_assert(5 - b == 3, "Integer - Fxp subtraction should work at compile-time");
+            static_assert(3 * a == 15, "Integer * Fxp multiplication should work at compile-time");
+            static_assert(10 / b == 5, "Integer / Fxp division should work at compile-time");
+            static_assert(11 % a == 1, "Integer % Fxp modulo should work at compile-time");
         }
 
         // Bit operations tests

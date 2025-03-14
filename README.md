@@ -86,8 +86,61 @@ Provides mathematical operations and utilities:
     Fxp quotient = Fxp::AsyncDivGetResult();    // Get division result
     Fxp remainder = Fxp::AsyncDivGetRemainder(); // Get remainder
     ```
-
-- **Angle Handling**: Type-safe `Angle` class for angular calculations
+  - **Comparison Operators**: Comprehensive comparison support with important runtime limitations:
+    ```cpp
+    // These work at both compile-time and runtime
+    Fxp a(5);
+    Fxp b(3);
+    
+    if (a > b) { /* This works fine */ }
+    if (a == 5) { /* This works fine */ }
+    if (a > 40.0) { /* This works fine - Fxp on LEFT side */ }
+    
+    // These ONLY work at compile-time due to C++ language limitations
+    constexpr Fxp c(7);
+    constexpr bool test1 = (5 < c);  // Works in constexpr context
+    constexpr bool test2 = (9.5 > c);  // Works in constexpr context
+    
+    // This will NOT work at runtime:
+    int value = GetRuntimeValue();
+    Fxp d(10);
+    // if (value < d) { /* COMPILE ERROR - non-Fxp on LEFT side */ }
+    // if (40.0 < d) { /* COMPILE ERROR - non-Fxp on LEFT side */ }
+    
+    // KEY POINT: The order matters!
+    // This works: fxpValue > 40.0  (Fxp on left side)
+    // This fails: 40.0 < fxpValue  (Fxp on right side)
+    
+    // Solutions:
+    // 1. Use the Convert method for runtime values:
+    int runtimeValue = GetRuntimeValue();
+    Fxp convertedValue = Fxp::Convert(runtimeValue);
+    if (convertedValue < d) { /* This works fine */ }
+    
+    // 2. Flip the comparison if possible:
+    if (d > runtimeValue) { /* This works fine */ }
+    if (d > 40.0) { /* This works fine */ }
+    ```
+  - **Conversion Best Practices**:
+    ```cpp
+    // For COMPILE-TIME literals, use direct constructor:
+    constexpr Fxp a(5);      // Integer literal - efficient
+    constexpr Fxp b(3.14);   // Float literal - efficient at compile-time
+    
+    // For RUNTIME integer values, use the Convert method:
+    int runtimeInt = GetValue();
+    Fxp c = Fxp::Convert(runtimeInt); // Convert method - safer with range checking
+    
+    // For RUNTIME float values, avoid if possible (CPU intensive):
+    float runtimeFloat = GetValue();
+    // Fxp d(runtimeFloat);          // ERROR: Won't compile, constructor only works with compile-time floats
+    Fxp d = Fxp::Convert(runtimeFloat); // Works but VERY expensive on Saturn hardware
+    
+    // For comparisons with runtime values, prefer flipping the comparison:
+    // AVOID: if (Fxp(runtimeInt) < a) - can have limitations
+    // BETTER: if (a > runtimeInt) - works consistently
+    ```
+  - **Angle Handling**: Type-safe `Angle` class for angular calculations
   - Raw value construction and access
   - Scalar multiplication and division
   - Automatic wrap-around handling
