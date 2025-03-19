@@ -362,10 +362,10 @@ namespace SaturnMath::Types
          *
          * @note Turbo precision mode defaults to Fast for this function.
          */
-        template<Precision P = Precision::Standard>
+        template<Precision P = Precision::Default>
         constexpr Fxp Sqrt() const
         {
-            if constexpr (P == Precision::Standard)
+            if constexpr (P == Precision::Accurate)
             {
                 uint32_t remainder = static_cast<uint32_t>(value);
                 uint32_t root = 0;
@@ -764,59 +764,7 @@ namespace SaturnMath::Types
          */
         constexpr Fxp operator%(const Fxp& fxp) const
         {
-            if consteval
-            {
-                double a = value / 65536.0;
-                double b = fxp.value / 65536.0;
-
-                // Handle division by zero
-                if (b == 0.0)
-                {
-                    return (a >= 0.0) ? BuildRaw(INT32_MAX) : BuildRaw(INT32_MIN);
-                }
-
-                double div = a / b;
-                double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
-                return BuildRaw(static_cast<int32_t>((a - (b * floorDiv)) * 65536.0));
-            }
-            else
-            {
-                return Fxp(*this) %= fxp;
-            }
-        }
-
-        /**
-         * @brief Computes the modulo of the current fixed-point value with an integer (a % b).
-         * @tparam T The type of the integer (e.g., int, int32_t).
-         * @param value The integer value to use as the modulus.
-         * @return The result of the modulo operation as a new Fxp object.
-         *
-         * @note This operation does not modify the current instance. It returns a new
-         *       Fxp object representing the result of the modulo operation.
-         */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Fxp operator%(const T& value) const
-        {
-            if consteval
-            {
-                double a = this->value / 65536.0;
-                double b = static_cast<double>(value);
-
-                // Handle division by zero
-                if (b == 0.0)
-                {
-                    return (a >= 0.0) ? BuildRaw(INT32_MAX) : BuildRaw(INT32_MIN);
-                }
-
-                double div = a / b;
-                double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
-                return BuildRaw(static_cast<int32_t>((a - (b * floorDiv)) * 65536.0));
-            }
-            else
-            {
-                return Fxp(*this) %= value;
-            }
+            return BuildRaw(value % fxp.value);
         }
 
         /**
@@ -833,73 +781,19 @@ namespace SaturnMath::Types
             requires std::is_integral_v<T>
         constexpr friend Fxp operator%(const T& lhs, const Fxp& rhs)
         {
-            if consteval
-            {
-                double a = static_cast<double>(lhs);
-                double b = rhs.value / 65536.0;
-
-                // Handle division by zero
-                if (b == 0.0)
-                {
-                    return (a >= 0.0) ? BuildRaw(INT32_MAX) : BuildRaw(INT32_MIN);
-                }
-
-                double div = a / b;
-                double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
-                return BuildRaw(static_cast<int32_t>((a - (b * floorDiv)) * 65536.0));
-            }
-            else
-            {
-                return Fxp(lhs) %= rhs;
-            }
+            return Fxp::Convert(lhs) %= rhs;
         }
 
         /**
          * @brief Computes the modulo of the current fixed-point value with another fixed-point value (a %= b).
          * @param fxp The fixed-point value to use as the modulus.
          * @return A reference to this object after performing the modulo operation.
-         *
+         *z
          * @note This operation modifies the current instance in place.
          */
         constexpr Fxp& operator%=(const Fxp& fxp)
         {
-            if consteval
-            {
-                double a = value / 65536.0;
-                double b = fxp.value / 65536.0;
-
-                // Handle division by zero
-                if (b == 0.0)
-                {
-                    value = (a >= 0.0) ? INT32_MAX : INT32_MIN;
-                    return *this;
-                }
-
-                double div = a / b;
-                double floorDiv = div >= 0 ? static_cast<int64_t>(div) : static_cast<int64_t>(div - 1);
-                value = static_cast<int32_t>((a - (b * floorDiv)) * 65536.0);
-            }
-            else
-            {
-                AsyncDivSet(*this, fxp);
-                value = static_cast<int32_t>(dvdnth);
-            }
-            return *this;
-        }
-
-        /**
-         * @brief Computes the modulo of the current fixed-point value with an integer (a %= b).
-         * @tparam T The type of the integer (e.g., int, int32_t).
-         * @param value The integer value to use as the modulus.
-         * @return A reference to this object after performing the modulo operation.
-         *
-         * @note This operation modifies the current instance in place.
-         */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Fxp& operator%=(const T& value)
-        {
-            this->value %= (value << 16);
+            this->value %= fxp.value;
             return *this;
         }
 
@@ -1017,7 +911,6 @@ namespace SaturnMath::Types
          * @return `true` if this object is not equal to the other; otherwise, `false`.
          */
         constexpr bool operator!=(const Fxp& fxp) const { return value != fxp.value; }
-
 
         /**
          * @brief Compare a value with a fixed-point value for less than (lhs < rhs).

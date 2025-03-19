@@ -102,11 +102,11 @@ namespace SaturnMath::Types
         /**
          * @brief Tests intersection with AABB.
          * 
-         * @tparam P Precision level for calculation (default is Precision::Standard)
+         * @tparam P Precision level for calculation (default is Precision::Default)
          * @param box Box to test against
          * @return true if sphere and box overlap
          */
-        template<Precision P = Precision::Standard>
+        template<Precision P = Precision::Default>
         bool Intersects(const AABB& box) const
         {
             // Find closest point on box to sphere center

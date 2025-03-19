@@ -151,7 +151,7 @@ namespace SaturnMath::Types
          * matrix.Translate(Vector3D(1, 0, 0)); // Moves the matrix by (1, 0, 0)
          * @endcode 
          */
-        Matrix43& Translate(const Vector3D& translation)
+        constexpr Matrix43& Translate(const Vector3D& translation)
         {
             Row3 += translation;
             return *this;
@@ -172,7 +172,7 @@ namespace SaturnMath::Types
          * Matrix43 result = matrix1 * matrix2; // Combines transformations of matrix1 and matrix2
          * @endcode 
          */
-        Matrix43& operator*=(const Matrix43& other)
+        constexpr Matrix43& operator*=(const Matrix43& other)
         {
             const Vector3D oldRow3 = Row3;
 
@@ -224,7 +224,7 @@ namespace SaturnMath::Types
          * matrix *= rotationMatrix; // Updates the matrix with the rotation from rotationMatrix
          * @endcode 
          */
-        Matrix43& operator*=(const Matrix33& other)
+        constexpr Matrix43& operator*=(const Matrix33& other)
         {
             Matrix33::operator*=(other);
             return *this;
@@ -244,7 +244,7 @@ namespace SaturnMath::Types
          * Matrix43 result = matrix * rotationMatrix; // Creates a new matrix as the product of matrix and rotationMatrix
          * @endcode 
          */
-        Matrix43 operator*(const Matrix33& other) const
+        constexpr Matrix43 operator*(const Matrix33& other) const
         {
             Matrix43 result(*this);
             result *= other;
@@ -265,7 +265,7 @@ namespace SaturnMath::Types
          * Vector3D transformedPoint = matrix.TransformPoint(Vector3D(1, 2, 3)); // Transforms the point (1, 2, 3)
          * @endcode 
          */
-        Vector3D TransformPoint(const Vector3D& point) const
+        constexpr Vector3D TransformPoint(const Vector3D& point) const
         {
             return Vector3D(
                 Row0.Dot(point) + Row3.X,
@@ -288,7 +288,7 @@ namespace SaturnMath::Types
          * Vector3D transformedVector = matrix.TransformVector(Vector3D(1, 0, 0)); // Transforms the vector (1, 0, 0)
          * @endcode 
          */
-        Vector3D TransformVector(const Vector3D& vector) const
+        constexpr Vector3D TransformVector(const Vector3D& vector) const
         {
             return Matrix33::operator*(vector);
         }
@@ -309,7 +309,7 @@ namespace SaturnMath::Types
          * Matrix43 inverse = transform.Invert(); // Computes the inverse of the transformation matrix
          * @endcode
          */
-        Matrix43 Invert() const {
+        constexpr Matrix43 Invert() const {
             Matrix43 result;
 
             // Invert the 3x3 rotation part (transpose for orthogonal matrices)
@@ -377,8 +377,8 @@ namespace SaturnMath::Types
          * 
          * @note Ensure that the up vector is not collinear with the look vector to avoid undefined behavior.
          */
-        template<Precision P = Precision::Standard>
-        static Matrix43 CreateBillboard(
+        template<Precision P = Precision::Default>
+        static constexpr Matrix43 CreateBillboard(
             const Vector3D& position,
             const Vector3D& cameraPosition,
             const Vector3D& up = Vector3D::UnitY())
@@ -427,8 +427,8 @@ namespace SaturnMath::Types
          * @details This function is used to create a view matrix that can be used to position a camera in 3D space.
          * The resulting matrix can be used to transform points from world space to the camera's local space.
          */
-        template<Precision P = Precision::Standard>
-        static Matrix43 CreateLookAt(
+        template<Precision P = Precision::Default>
+        static constexpr Matrix43 CreateLookAt(
             const Vector3D& eye,
             const Vector3D& target,
             const Vector3D& up = Vector3D::UnitY())
@@ -474,7 +474,7 @@ namespace SaturnMath::Types
          * );
          * @endcode 
          */
-        static Matrix43 CreateTransform(
+        static constexpr Matrix43 CreateTransform(
             const Vector3D& translation,
             const EulerAngles& rotation,
             const Vector3D& scale = Vector3D(1, 1, 1))
@@ -508,8 +508,8 @@ namespace SaturnMath::Types
          * @note The method assumes that the input matrix is a valid transformation matrix. Ensure that the matrix 
          * has not been skewed or sheared, as this may affect the accuracy of the extracted values.
          */
-        template<Precision P = Precision::Standard>
-        void Decompose(
+        template<Precision P = Precision::Default>
+        constexpr void Decompose(
             Vector3D& scale,
             Vector3D& rotation,
             Vector3D& translation) const

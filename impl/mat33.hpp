@@ -93,7 +93,17 @@ namespace SaturnMath::Types
          * );
          * @endcode 
          */
-        constexpr Matrix33(const Vector3D& up, const Vector3D& direction) : Row0(up.Cross(direction)), Row1(up), Row2(direction) {}
+        constexpr Matrix33(const Vector3D& up, const Vector3D& direction)
+        {
+            // Normalize direction first
+            Row2 = direction.Normalize();
+            
+            // Compute right vector and normalize only once
+            Row0 = up.Cross(Row2).Normalize();
+            
+            // Recompute up vector using already normalized vectors
+            Row1 = Row2.Cross(Row0);  // No need to normalize as Row0 and Row2 are orthonormal
+        }
 
         /**
          * @brief Creates matrix from individual row vectors.
@@ -135,7 +145,7 @@ namespace SaturnMath::Types
          * matA *= matB; // Combines rotations, first X then Y
          * @endcode 
          */
-        Matrix33& operator*=(const Matrix33& other)
+        constexpr Matrix33& operator*=(const Matrix33& other)
         {
             // Store current values since we'll be modifying the matrix
             const Vector3D oldRow0 = Row0;
@@ -167,7 +177,7 @@ namespace SaturnMath::Types
          * Matrix33 combined = rotationMatrix * scaleMatrix;
          * @endcode 
          */
-        Matrix33 operator*(const Matrix33& other) const
+        constexpr Matrix33 operator*(const Matrix33& other) const
         {
             Matrix33 result(*this);
             result *= other;
@@ -194,7 +204,7 @@ namespace SaturnMath::Types
          * Vector3D rotated = rotation * direction; // Rotates the vector 90° around Y axis
          * @endcode 
          */
-        Vector3D operator*(const Vector3D& v) const 
+        constexpr Vector3D operator*(const Vector3D& v) const 
         { 
             return Vector3D(Row0.Dot(v), Row1.Dot(v), Row2.Dot(v)); 
         }
@@ -220,7 +230,7 @@ namespace SaturnMath::Types
          * mat.Transpose(); // Transposes the matrix in-place
          * @endcode 
          */
-        Matrix33& Transpose()
+        constexpr Matrix33& Transpose()
         {
             // Swap row0.y and row1.x
             const Fxp m01 = Row0.Y;
@@ -262,7 +272,7 @@ namespace SaturnMath::Types
          * transform.RotateX(Angle::FromDegrees(45)); // Rotate 45° around X
          * @endcode 
          */
-        Matrix33& RotateX(const Angle& angleX)
+        constexpr Matrix33& RotateX(const Angle& angleX)
         {
             // Compute sin and cos values for the angleX using SinCos
  
@@ -341,7 +351,7 @@ namespace SaturnMath::Types
          * transform.RotateY(Angle::FromDegrees(45)); // Rotate 45° around Y
          * @endcode 
          */
-        Matrix33& RotateY(const Angle& angleY)
+        constexpr Matrix33& RotateY(const Angle& angleY)
         {
             const Fxp sinValue = Trigonometry::Sin(angleY);
             const Fxp cosValue = Trigonometry::Cos(angleY);
@@ -419,7 +429,7 @@ namespace SaturnMath::Types
          * transform.RotateZ(Angle::FromDegrees(45)); // Rotate 45° around Z
          * @endcode 
          */
-        Matrix33& RotateZ(const Angle& angleZ)
+        constexpr Matrix33& RotateZ(const Angle& angleZ)
         {
             const Fxp sinValue = Trigonometry::Sin(angleZ);
             const Fxp cosValue = Trigonometry::Cos(angleZ);
@@ -553,7 +563,7 @@ namespace SaturnMath::Types
          * transform.Scale(Vector3D(2, 1, 0.5)); // Scale x by 2, y by 1, z by 0.5
          * @endcode 
          */
-        Matrix33& Scale(const Vector3D& scale)
+        constexpr Matrix33& Scale(const Vector3D& scale)
         {
             Row0.X *= scale.X;
             Row0.Y *= scale.Y;
@@ -628,7 +638,7 @@ namespace SaturnMath::Types
          * }
          * @endcode 
          */
-        bool TryInverse(Matrix33& out) const
+        bool constexpr TryInverse(Matrix33& out) const
         {
             const Fxp det = Determinant();
             if (det == 0.0) return false;

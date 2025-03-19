@@ -420,27 +420,27 @@ namespace SaturnMath::Tests
          * - Precision trade-offs are as expected
          * 
          * Note: For square root operations, Fast and Turbo precision modes use the same
-         * algorithm, providing a balance between performance and accuracy. Standard precision
+         * algorithm, providing a balance between performance and accuracy. Accurate precision
          * provides the most accurate results at the cost of performance.
          */
         static constexpr void TestPrecisionModes()
         {
-            // Test standard precision with perfect square
+            // Test accurate precision with perfect square
             constexpr Fxp a(16);
-            constexpr auto sqrtA = a.Sqrt<Precision::Standard>();
-            static_assert(sqrtA == 4, "Standard precision square root should be exact for perfect squares");
+            constexpr auto sqrtA = a.Sqrt<Precision::Accurate>();
+            static_assert(sqrtA == 4, "Accurate precision square root should be exact for perfect squares");
 
             // Test with non-perfect square
             constexpr Fxp b(10);
-            constexpr auto sqrtB = b.Sqrt<Precision::Standard>();
+            constexpr auto sqrtB = b.Sqrt<Precision::Accurate>();
             static_assert(sqrtB > 3.15 && sqrtB < 3.17,
-                "Standard precision square root should be accurate for non-perfect squares");
+                "Accurate precision square root should be accurate for non-perfect squares");
 
             // Test with small values
             constexpr Fxp small(0.01);
-            constexpr auto sqrtSmall = small.Sqrt<Precision::Standard>();
+            constexpr auto sqrtSmall = small.Sqrt<Precision::Accurate>();
             static_assert(sqrtSmall > 0.09 && sqrtSmall < 0.11,
-                "Standard precision square root should work with small values");
+                "Accurate precision square root should work with small values");
 
             // Test Fast/Turbo precision (they use the same algorithm for square root)
             // Note: The following tests verify both Fast and Turbo modes since they use identical algorithms
@@ -480,11 +480,11 @@ namespace SaturnMath::Tests
             
             // Test with larger values
             constexpr Fxp large(100);
-            constexpr auto sqrtLargeStd = large.Sqrt<Precision::Standard>();
+            constexpr auto sqrtLargeStd = large.Sqrt<Precision::Accurate>();
             constexpr auto sqrtLargeFast = large.Sqrt<Precision::Fast>();
             
             static_assert(sqrtLargeStd > 9.99 && sqrtLargeStd < 10.01, 
-                "Standard precision square root should be accurate for larger values");
+                "Accurate precision square root should be accurate for larger values");
             static_assert(sqrtLargeFast > 9.5 && sqrtLargeFast < 10.5, 
                 "Fast/Turbo precision square root should be reasonably accurate for larger values");
             static_assert(sqrtLargeFast == large.Sqrt<Precision::Turbo>(), 
@@ -492,11 +492,11 @@ namespace SaturnMath::Tests
             
             // Test with fractional perfect square
             constexpr Fxp fractionalPerfect(0.25); // 0.5^2
-            constexpr auto sqrtFracStd = fractionalPerfect.Sqrt<Precision::Standard>();
+            constexpr auto sqrtFracStd = fractionalPerfect.Sqrt<Precision::Accurate>();
             constexpr auto sqrtFracFast = fractionalPerfect.Sqrt<Precision::Fast>();
             
             static_assert(sqrtFracStd > 0.499 && sqrtFracStd < 0.501, 
-                "Standard precision square root should be accurate for fractional perfect squares");
+                "Accurate precision square root should be accurate for fractional perfect squares");
             static_assert(sqrtFracFast > 0.48 && sqrtFracFast < 0.52, 
                 "Fast/Turbo precision square root should be reasonably accurate for fractional perfect squares");
             static_assert(sqrtFracFast == fractionalPerfect.Sqrt<Precision::Turbo>(), 
@@ -504,11 +504,11 @@ namespace SaturnMath::Tests
             
             // Test with edge values - small number
             constexpr Fxp verySmall(0.04); // 0.2^2
-            constexpr auto sqrtVerySmallStd = verySmall.Sqrt<Precision::Standard>();
+            constexpr auto sqrtVerySmallStd = verySmall.Sqrt<Precision::Accurate>();
             constexpr auto sqrtVerySmallFast = verySmall.Sqrt<Precision::Fast>();
             
             static_assert(sqrtVerySmallStd > 0.199 && sqrtVerySmallStd < 0.201, 
-                "Standard precision square root should be accurate for small values");
+                "Accurate precision square root should be accurate for small values");
             static_assert(sqrtVerySmallFast > 0.19 && sqrtVerySmallFast < 0.21, 
                 "Fast/Turbo precision square root should handle small values");
             static_assert(sqrtVerySmallFast == verySmall.Sqrt<Precision::Turbo>(), 
@@ -516,7 +516,7 @@ namespace SaturnMath::Tests
                 
             // Test with zero
             constexpr Fxp zero(0);
-            constexpr auto sqrtZeroStd = zero.Sqrt<Precision::Standard>();
+            constexpr auto sqrtZeroStd = zero.Sqrt<Precision::Accurate>();
             constexpr auto sqrtZeroFast = zero.Sqrt<Precision::Fast>();
             constexpr auto sqrtZeroTurbo = zero.Sqrt<Precision::Turbo>();
             

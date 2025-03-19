@@ -247,7 +247,7 @@ Vector3D position(1, 2, 3);
 Vector3D direction = Vector3D::UnitZ();  // Forward direction (0,0,1)
 
 // Standard precision - highest accuracy
-Vector3D normal = direction.Normalize<Precision::Standard>();  // Explicit
+Vector3D normal = direction.Normalize<Precision::Accurate>();  // Explicit
 Vector3D same = direction.Normalize();                        // Implicit (defaults to Standard)
 
 // Fast precision - balanced performance
@@ -268,7 +268,7 @@ transform.Rotate(Vector3D(0, Angle::FromDegrees(90), 0));
 
 // Matrix decomposition with specified precision
 Vector3D scale, rotation, translation;
-transform.Decompose<Precision::Standard>(scale, rotation, translation);
+transform.Decompose<Precision::Accurate>(scale, rotation, translation);
 
 // Transform the position
 Vector3D transformed = transform * position;
@@ -284,7 +284,7 @@ AABB box(center, size);
 
 // Calculate normals with different precision levels
 Vector3D v1(0, 0, 0), v2(1, 0, 0), v3(0, 1, 0);
-Vector3D normal = Vector3D::CalcNormal<Precision::Standard>(v1, v2, v3);
+Vector3D normal = Vector3D::CalcNormal<Precision::Accurate>(v1, v2, v3);
 Vector3D fastNormal = Vector3D::CalcNormal<Precision::Fast>(v1, v2, v3);
 
 // Collision detection
@@ -295,7 +295,7 @@ bool collision = box.Intersects(sphere);
 Vector3D eye(0, 5, -10);
 Vector3D target(0, 0, 0);
 Vector3D up = Vector3D::UnitY();
-Matrix43 view = Matrix43::CreateLookAt<Precision::Standard>(eye, target, up);
+Matrix43 view = Matrix43::CreateLookAt<Precision::Accurate>(eye, target, up);
 
 // Frustum culling
 Frustum viewFrustum;
@@ -385,23 +385,37 @@ auto maxVec = Max(Vector2D(1, 5), Vector2D(3, 2));  // Works with vectors (compo
 - Lookup table-based trigonometry
 - Compile-time constant evaluation
 - Optimized operations for integral types with specialized implementations
-
 ### Precision Control
 
-SaturnMath++ provides a template-based precision control system that allows you to balance between accuracy and performance. Each precision level is optimized for different use cases. Operations that support precision control will use `Standard` precision by default when no template parameter is specified.
+SaturnMath++ provides a template-based precision control system that allows you to balance between accuracy and performance. Each precision level is optimized for different use cases:
+
+- `Accurate`: Full precision calculations, ideal for critical computations
+- `Fast`: Good approximation with better performance
+- `Turbo`: Fastest calculation with acceptable accuracy, best for real-time effects
+- `Default`: Automatically selects precision based on the `MATH_PERFORMANCE_MODE` macro (set to `ACCURATE`, `FAST`, or `TURBO`)
 
 ```cpp
 using namespace SaturnMath;
 
-// Standard precision - highest accuracy
-Vector3D normal = direction.Normalize<Precision::Standard>();  // Explicit
-Vector3D same = direction.Normalize();                        // Implicit (defaults to Standard)
+// Accurate precision - highest accuracy, ideal for critical computations
+Vector3D normal = direction.Normalize<Precision::Accurate>();
 
-// Fast precision - balanced performance
+// Fast precision - good approximation with better performance
 Vector3D approxNormal = direction.Normalize<Precision::Fast>();
 
-// Turbo precision - fastest calculation
+// Turbo precision - fastest calculation with acceptable accuracy
 Vector3D quickNormal = direction.Normalize<Precision::Turbo>();
+
+// Default precision - automatically selected based on MATH_PERFORMANCE_MODE
+Vector3D defaultNormal = direction.Normalize<Precision::Default>();
+// Same as above (Default is implied when no template parameter is specified)
+Vector3D sameAsDefault = direction.Normalize();
+
+// Setting the default precision mode at build time
+// In your build configuration or preprocessor definitions:
+// #define MATH_PERFORMANCE_MODE ACCURATE  // For highest precision calculations
+// #define MATH_PERFORMANCE_MODE FAST      // For balanced performance (used if not defined)
+// #define MATH_PERFORMANCE_MODE TURBO     // For maximum performance
 ```
 
 > **Note**: For square root operations, Fast and Turbo precision modes use the same algorithm, providing a balance between performance and accuracy. Standard precision provides the most accurate results at the cost of performance.

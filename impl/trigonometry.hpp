@@ -50,9 +50,8 @@ namespace SaturnMath
      * Precision considerations:
      * - Standard functions maintain accuracy within 0.01% across the entire range
      * - Near asymptotes (tan at 90°), precision naturally decreases
-     * - For highest precision, consider using Precision::Standard template parameter
-     * - For maximum performance, Precision::Turbo offers faster calculations with
-     *   slightly reduced accuracy
+     * - For highest precision, consider using Precision::Accurate template parameter
+
      * 
      * @see Angle For angle representation and conversion
      * @see Fxp For details on the fixed-point implementation

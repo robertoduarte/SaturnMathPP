@@ -79,7 +79,7 @@ namespace SaturnMath::Types
          * @param b Second point on plane
          * @param c Third point on plane
          */
-        template<Precision P = Precision::Standard>
+        template<Precision P = Precision::Default>
         Plane(const Vector3D& a, const Vector3D& b, const Vector3D& c)
         {
             Vector3D cross = (b - a).Cross(c - a);
@@ -120,7 +120,7 @@ namespace SaturnMath::Types
          * @tparam P Precision level for calculation
          * @return Reference to this plane
          */
-        template<Precision P = Precision::Standard>
+        template<Precision P = Precision::Default>
         constexpr Plane& Normalize()
         {
             Fxp len = normal.Length<P>();

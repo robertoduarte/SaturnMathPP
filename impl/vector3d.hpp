@@ -313,7 +313,7 @@ namespace SaturnMath::Types
          * Fxp fastLength = v.Length<Precision::Turbo>();  // Returns approximate length (faster)
          * @endcode
          */
-        template<Precision P = Precision::Standard>
+        template<Precision P = Precision::Default>
         constexpr Fxp Length() const
         {
             if constexpr (P == Precision::Turbo)
@@ -351,7 +351,7 @@ namespace SaturnMath::Types
          * Vector3D fastUnitV = v.Normalize<Precision::Turbo>();  // Returns approximate unit vector (faster)
          * @endcode
          */
-        template<Precision P = Precision::Standard>
+        template<Precision P = Precision::Default>
         constexpr Vector3D Normalize() const
         {
             Fxp length = Length<P>();
@@ -380,7 +380,7 @@ namespace SaturnMath::Types
          * Vector3D normal = Vector3D::CalcNormal(v1, v2, v3);  // Returns (0, 0, 1)
          * @endcode
          */
-        template<Precision P = Precision::Standard>
+        template<Precision P = Precision::Default>
         static Vector3D CalcNormal(
             const Vector3D& vertexA,
             const Vector3D& vertexB,
@@ -409,7 +409,7 @@ namespace SaturnMath::Types
          * Fxp fastDistance = v1.DistanceTo<Precision::Turbo>(v2);  // Computes approximate distance (faster)
          * @endcode
          */
-        template<Precision P = Precision::Standard>
+        template<Precision P = Precision::Default>
         constexpr Fxp DistanceTo(const Vector3D& other) const {
             return (*this - other).Length<P>();
         }
