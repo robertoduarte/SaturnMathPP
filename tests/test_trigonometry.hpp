@@ -164,6 +164,99 @@ namespace SaturnMath::Tests
             static_assert(tanNeg45 > -1.01 && tanNeg45 < -0.99, "Tan(-45°) should be approximately -1");
         }
 
+        /**
+         * @brief Comprehensive tests for Atan2 function
+         *
+         * This test suite verifies the Atan2 function across the full circle (0-360 degrees)
+         * by testing vectors in all four quadrants. It includes:
+         * - Special cases (x=0, y=0)
+         * - Key angles (0°, 90°, 180°, 270°, 360°)
+         * - Quadrant boundaries
+         * - Diagonal vectors
+         * - Approximate values with tolerance ranges
+         */
+        static constexpr void TestAtan2()
+        {
+            // Test Vector2D angle calculations with Atan2 across the full circle (0-360 degrees)
+            // 0° - Vector pointing right (positive X axis)
+            constexpr Angle angleRight = Trigonometry::Atan2(Fxp(0), Fxp(1));
+            static_assert(angleRight == Angle::Zero(), "Right vector should be exactly 0 degrees");
+            
+            // 30° - Vector in first quadrant
+            constexpr Angle angleDeg30 = Trigonometry::Atan2(Fxp(0.5), Fxp(0.866025));
+            static_assert(angleDeg30 >= Angle::FromDegrees(29.9) && angleDeg30 <= Angle::FromDegrees(30.1), 
+                          "30-degree vector should be approximately 30 degrees");
+            
+            // 45° - Vector at diagonal in first quadrant
+            constexpr Angle angleUpRight = Trigonometry::Atan2(Fxp(1), Fxp(1));
+            static_assert(angleUpRight == Angle::QuarterPi(), "Up-right vector should be exactly 45 degrees");
+            
+            // 60° - Vector in first quadrant
+            constexpr Angle angleDeg60 = Trigonometry::Atan2(Fxp(0.866025), Fxp(0.5));
+            static_assert(angleDeg60 >= Angle::FromDegrees(59.9) && angleDeg60 <= Angle::FromDegrees(60.1), 
+                          "60-degree vector should be approximately 60 degrees");
+            
+            // 90° - Vector pointing up (positive Y axis)
+            constexpr Angle angleUp = Trigonometry::Atan2(Fxp(1), Fxp(0));
+            static_assert(angleUp == Angle::HalfPi(), "Up vector should be exactly 90 degrees");
+            
+            // 120° - Vector in second quadrant
+            constexpr Angle angleDeg120 = Trigonometry::Atan2(Fxp(0.866025), Fxp(-0.5));
+            static_assert(angleDeg120 >= Angle::FromDegrees(119.9) && angleDeg120 <= Angle::FromDegrees(120.1), 
+                          "120-degree vector should be approximately 120 degrees");
+            
+            // 135° - Vector at diagonal in second quadrant
+            constexpr Angle angleUpLeft = Trigonometry::Atan2(Fxp(1), Fxp(-1));
+            static_assert(angleUpLeft >= Angle::FromDegrees(134.9) && angleUpLeft <= Angle::FromDegrees(135.1), 
+                          "Up-left vector should be approximately 135 degrees");
+            
+            // 150° - Vector in second quadrant
+            constexpr Angle angleDeg150 = Trigonometry::Atan2(Fxp(0.5), Fxp(-0.866025));
+            static_assert(angleDeg150 >= Angle::FromDegrees(149.9) && angleDeg150 <= Angle::FromDegrees(150.1), 
+                          "150-degree vector should be approximately 150 degrees");
+            
+            // 180° - Vector pointing left (negative X axis)
+            constexpr Angle angleLeft = Trigonometry::Atan2(Fxp(0), Fxp(-1));
+            static_assert(angleLeft == Angle::Straight(), "Left vector should be exactly 180 degrees");
+            
+            // 180° - Special case test for negative X axis
+            constexpr Angle angleLeftX = Trigonometry::Atan2(Fxp(0), Fxp(-1));
+            static_assert(angleLeftX == Angle::Pi(), "Vector on negative x-axis should be exactly 180 degrees");
+            
+            // 210° - Vector in third quadrant
+            constexpr Angle angleDeg210 = Trigonometry::Atan2(Fxp(-0.5), Fxp(-0.866025));
+            static_assert(angleDeg210 >= Angle::FromDegrees(209.9) && angleDeg210 <= Angle::FromDegrees(210.1), 
+                          "210-degree vector should be approximately 210 degrees");
+            
+            // 225° - Vector at diagonal in third quadrant
+            constexpr Angle angleDownLeft = Trigonometry::Atan2(Fxp(-1), Fxp(-1));
+            static_assert(angleDownLeft >= Angle::FromDegrees(224.9) && angleDownLeft <= Angle::FromDegrees(225.1), 
+                          "Down-left vector should be approximately 225 degrees");
+            
+            // 240° - Vector in third quadrant
+            constexpr Angle angleDeg240 = Trigonometry::Atan2(Fxp(-0.866025), Fxp(-0.5));
+            static_assert(angleDeg240 >= Angle::FromDegrees(239.9) && angleDeg240 <= Angle::FromDegrees(240.1), 
+                          "240-degree vector should be approximately 240 degrees");
+            
+            // 270° - Vector pointing down (negative Y axis)
+            constexpr Angle angleDown = Trigonometry::Atan2(Fxp(-1), Fxp(0));
+            static_assert(angleDown == Angle::ThreeQuarterPi(), "Down vector should be exactly 270 degrees");
+            
+            // 300° - Vector in fourth quadrant
+            constexpr Angle angleDeg300 = Trigonometry::Atan2(Fxp(-0.866025), Fxp(0.5));
+            static_assert(angleDeg300 >= Angle::FromDegrees(299.9) && angleDeg300 <= Angle::FromDegrees(300.1), 
+                          "300-degree vector should be approximately 300 degrees");
+            
+            // 315° - Vector at diagonal in fourth quadrant
+            constexpr Angle angleDownRight = Trigonometry::Atan2(Fxp(-1), Fxp(1));
+            static_assert(angleDownRight >= Angle::FromDegrees(314.9) && angleDownRight <= Angle::FromDegrees(315.1), 
+                          "Down-right vector should be approximately 315 degrees");
+            
+            // 330° - Vector in fourth quadrant
+            constexpr Angle angleDeg330 = Trigonometry::Atan2(Fxp(-0.5), Fxp(0.866025));
+            static_assert(angleDeg330 >= Angle::FromDegrees(329.9) && angleDeg330 <= Angle::FromDegrees(330.1), 
+                          "330-degree vector should be approximately 330 degrees");
+        }
 
         /**
          * @brief Tests for the Pythagorean identity using turns
@@ -255,6 +348,7 @@ namespace SaturnMath::Tests
             TestSine();
             TestCosine();
             TestTangent();
+            TestAtan2();
             TestPythagoreanIdentities();
             TestInterpolation();
         }

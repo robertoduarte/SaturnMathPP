@@ -34,6 +34,7 @@ namespace SaturnMath::Types
         static constexpr uint16_t pi = 0x8000;       ///< π radians = 180° = 0.5 turns
         static constexpr uint16_t halfPi = 0x4000;   ///< π/2 radians = 90° = 0.25 turns
         static constexpr uint16_t quarterPi = 0x2000; ///< π/4 radians = 45° = 0.125 turns
+        static constexpr uint16_t threeQuarterPi = 0xC000; ///< 3π/4 radians = 270° = 0.75 turns
         static constexpr uint16_t twoPi = 0;         ///< 2π radians = 360° = wraps to 0
         static constexpr double RadPi = std::numbers::pi;   ///< π constant for conversions
 
@@ -60,6 +61,7 @@ namespace SaturnMath::Types
         static consteval Angle Pi() { return BuildRaw(pi); }          ///< 180° (0x8000)
         static consteval Angle HalfPi() { return BuildRaw(halfPi); }  ///< 90° (0x4000)
         static consteval Angle QuarterPi() { return BuildRaw(quarterPi); } ///< 45° (0x2000)
+        static consteval Angle ThreeQuarterPi() { return BuildRaw(threeQuarterPi); } ///< 270° (0xC000)
         static consteval Angle TwoPi() { return BuildRaw(twoPi); }    ///< 360° (wraps to 0x0000)
         static consteval Angle Right() { return BuildRaw(halfPi); }   ///< 90° (0x4000)
         static consteval Angle Straight() { return BuildRaw(pi); }    ///< 180° (0x8000)

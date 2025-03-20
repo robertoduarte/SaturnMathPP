@@ -445,38 +445,39 @@ namespace SaturnMath
          * This is the full-quadrant arctangent function that takes into account the
          * signs of both inputs to determine the correct quadrant.
          *
+         * The function uses a lookup table for the arctangent values and handles
+         * special cases (x=0, y=0) separately to ensure correct quadrant determination.
+         *
          * @param y Y coordinate
          * @param x X coordinate
          * @return Angle in range [0, 1] turns (equivalent to [0°, 360°])
          */
         static constexpr Angle Atan2(const Fxp& y, const Fxp& x)
         {
-            uint16_t result = x < 0.0 ?
-                (y < 0.0 ? Angle::Pi().RawValue() : -Angle::Pi().RawValue()) : 0;
+            if (y == 0) return x >= 0 ? Angle::Zero() : Angle::Pi();
+            if (x == 0) return y >= 0 ? Angle::HalfPi() : Angle::ThreeQuarterPi();
 
-            int32_t divResult;
+            Angle result = x < 0 ? Angle::Pi() : Angle::Zero();
+
+            Fxp divResult;
 
             if (x.Abs() < y.Abs())
             {
-                divResult = (x / y).RawValue();
-                result += divResult < 0.0 ? -Angle::HalfPi().RawValue() : Angle::HalfPi().RawValue();
+                divResult = (x / y);
+                result += (divResult < 0) ? Angle::ThreeQuarterPi() : Angle::HalfPi();
             }
             else
             {
-                divResult = -(y / x).RawValue();
+                divResult = -(y / x);
             }
 
-            if (divResult < 0)
-            {
-                divResult = -divResult;
-                size_t index = divResult >> 11;
-                auto tableValue = aTan2Table[index];
-                return Angle::BuildRaw(result + tableValue.ExtractValue(divResult));
-            }
+            uint32_t absDivResult = divResult.Abs().RawValue();
 
-            size_t index = divResult >> 11;
+            size_t index = absDivResult >> 11;
             auto tableValue = aTan2Table[index];
-            return Angle::BuildRaw(result - tableValue.ExtractValue(divResult));
+            uint16_t atan2Result = tableValue.ExtractValue(absDivResult);
+
+            return result + Angle::BuildRaw((divResult < 0 ? atan2Result : (0x10000 - atan2Result)));
         }
 
         /**
