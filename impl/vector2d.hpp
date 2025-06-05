@@ -199,6 +199,9 @@ namespace SaturnMath::Types
          * - Standard precision: Uses exact square root calculation
          * - Turbo precision: Uses fast approximation with alpha-beta coefficients
          * 
+         * For large vector components that might cause overflow in dot product calculation,
+         * a specialized bit-shift-friendly approximation is used regardless of precision level.
+         * 
          * Example usage:
          * @code
          * Vector2D v(3, 4);
@@ -209,18 +212,40 @@ namespace SaturnMath::Types
         template<Precision P = Precision::Default>
         constexpr Fxp Length() const
         {
-            if constexpr (P == Precision::Turbo)
+            // More accurate threshold based on Fxp range
+            constexpr Fxp overflowThreshold = 100.0;
+            bool potentialOverflow = (X.Abs() > overflowThreshold || Y.Abs() > overflowThreshold);
+
+            if (potentialOverflow)
             {
-                // Use alpha-beta coefficients for fastest approximation
-                constexpr Vector2D alphaBeta(
-                    0.96043387010342,    // Alpha
-                    0.39782473475533     // Beta
-                );
-                return Abs().Sort<SortOrder::Descending>().Dot(alphaBeta);
+                // For large values, use approximation regardless of precision setting
+                Vector2D sorted = Abs().Sort<SortOrder::Descending>();
+
+                // alpha = 1.0 (no change to max component)
+                Fxp result = sorted.X;
+
+                // beta ~= 0.375 = 3/8 = 1/4 + 1/8
+                result += (sorted.Y >> 2) + (sorted.Y >> 3);
+
+                return result;
             }
             else
             {
-                return Dot(*this).Sqrt<P>();
+                // For smaller values where overflow isn't a concern:
+                if constexpr (P == Precision::Turbo)
+                {
+                    // Use existing fast approximation for small values
+                    constexpr Vector2D alphaBeta(
+                        0.96043387010342, // Alpha
+                        0.39782473475533  // Beta
+                    );
+                    return alphaBeta.Dot(Abs().Sort<SortOrder::Descending>());
+                }
+                else
+                {
+                    // Use accurate calculation for small values
+                    return Dot(*this).Sqrt<P>();
+                }
             }
         }
 
@@ -324,6 +349,27 @@ namespace SaturnMath::Types
                 DotAccumulate(*this, vec);
                 return Fxp::ExtractMac();
             }
+        }
+
+        /**
+         * @brief Calculate the cross product (z-component) of this vector and another Vector2D.
+         * @param vec The Vector2D to calculate the cross product with.
+         * @return The z-component of the cross product as an Fxp value.
+         * 
+         * @details In 2D, the cross product is effectively the z-component of a 3D cross product,
+         * representing the area of the parallelogram formed by the two vectors.
+         * The result is positive if vec is to the left of this vector, and negative if to the right.
+         * 
+         * Example usage:
+         * @code
+         * Vector2D v1(1, 0);  // Unit vector along X
+         * Vector2D v2(0, 1);  // Unit vector along Y
+         * Fxp cross = v1.Cross(v2);  // Returns 1 - positive area
+         * @endcode
+         */
+        constexpr Fxp Cross(const Vector2D& vec) const
+        {
+            return X * vec.Y - Y * vec.X;
         }
 
         // Unit vectors and directional methods

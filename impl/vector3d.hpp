@@ -306,6 +306,9 @@ namespace SaturnMath::Types
          * - Standard precision: Uses exact square root calculation
          * - Turbo precision: Uses fast approximation with alpha-beta-gamma coefficients
          * 
+         * For large vector components that might cause overflow in dot product calculation,
+         * a specialized bit-shift-friendly approximation is used regardless of precision level.
+         * 
          * Example usage:
          * @code
          * Vector3D v(3, 4, 5);
@@ -316,19 +319,44 @@ namespace SaturnMath::Types
         template<Precision P = Precision::Default>
         constexpr Fxp Length() const
         {
-            if constexpr (P == Precision::Turbo)
+            // More accurate threshold based on Fxp range
+            constexpr Fxp overflowThreshold = 100.0;
+            bool potentialOverflow = (X.Abs() > overflowThreshold || Y.Abs() > overflowThreshold || Z.Abs() > overflowThreshold);
+
+            if (potentialOverflow)
             {
-                // Use alpha-beta-gamma coefficients for fastest approximation
-                constexpr Vector3D alphaBetaGamma(
-                    0.9398086351723256,  // Alpha
-                    0.38928148272372454, // Beta
-                    0.2987061876143797   // Gamma
-                );
-                return alphaBetaGamma.Dot(Abs().Sort<SortOrder::Descending>());
+                // For large values, use approximation regardless of precision setting
+                Vector3D sorted = Abs().Sort<SortOrder::Descending>();
+
+                // Alpha is close to 1, beta is ~0.4, gamma is ~0.25
+                // These coefficients give good accuracy and can be calculated with shifts/adds
+                Fxp alpha = sorted.X;
+
+                // beta = 0.375 = 3/8 = 1/2 - 1/8
+                Fxp beta = (sorted.Y >> 1) - (sorted.Y >> 3);
+
+                // gamma = 0.25 = 1/4
+                Fxp gamma = sorted.Z >> 2;
+
+                return alpha + beta + gamma;
             }
             else
             {
-                return Dot(*this).Sqrt<P>();
+                // For smaller values where overflow isn't a concern:
+                if constexpr (P == Precision::Turbo)
+                {
+                    // Use existing fast approximation for small values
+                    constexpr Vector3D alphaBetaGamma(
+                        0.9398086351723256,
+                        0.38928148272372454,
+                        0.2987061876143797);
+                    return alphaBetaGamma.Dot(Abs().Sort<SortOrder::Descending>());
+                }
+                else
+                {
+                    // Use accurate calculation for small values
+                    return Dot(*this).Sqrt<P>();
+                }
             }
         }
 
