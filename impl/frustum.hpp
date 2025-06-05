@@ -73,8 +73,8 @@ namespace SaturnMath::Types
 
         Fxp nearDist;   /**< Near clipping plane distance (always positive) */
         Fxp farDist;    /**< Far clipping plane distance (always > nearDist) */
-        Fxp farWidth;   /**< Width of the far plane (half-width * 2) */
         Fxp farHeight;  /**< Height of the far plane (half-height * 2) */
+        Fxp farWidth;   /**< Width of the far plane (half-width * 2) */
 
     public:
         /**
