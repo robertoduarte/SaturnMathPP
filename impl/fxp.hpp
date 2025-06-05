@@ -66,9 +66,9 @@ namespace SaturnMath::Types
 
         /* Hardware division unit registers */
         static inline constexpr size_t cpuAddress = 0xFFFFF000UL;
-        static inline auto& dvsr = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F00UL);   /**< Divisor register */
-        static inline auto& dvdnth = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F10UL); /**< Dividend high register */
-        static inline auto& dvdntl = *reinterpret_cast<volatile uint32_t*>(cpuAddress + 0x0F14UL); /**< Dividend low register */
+        static inline auto& dvsr = *reinterpret_cast<volatile int32_t*>(cpuAddress + 0x0F00UL);   /**< Divisor register */
+        static inline auto& dvdnth = *reinterpret_cast<volatile int32_t*>(cpuAddress + 0x0F10UL); /**< Dividend high register */
+        static inline auto& dvdntl = *reinterpret_cast<volatile int32_t*>(cpuAddress + 0x0F14UL); /**< Dividend low register */
 
     public:
         /** @return Minimum possible value (-32768.0) */
@@ -240,9 +240,9 @@ namespace SaturnMath::Types
          */
         static void AsyncDivSet(const Fxp& dividend, const Fxp& divisor)
         {
-            dvsr = static_cast<uint32_t>(divisor.value);
-            dvdnth = static_cast<uint32_t>(dividend.value) >> 16;
-            dvdntl = static_cast<uint32_t>(dividend.value) << 16;
+            dvsr = divisor.value;
+            dvdnth = dividend.value >> 16;
+            dvdntl = dividend.value << 16;
         }
 
         /**
