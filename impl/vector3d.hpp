@@ -112,7 +112,7 @@ namespace SaturnMath::Types
          * @return A new Vec3 object with sorted coordinates.
          */
         template <SortOrder O = SortOrder::Ascending>
-        constexpr Vector3D Sort()
+        constexpr Vector3D Sort() const
         {
             Vector3D result(*this);
             Fxp temp;
@@ -269,97 +269,158 @@ namespace SaturnMath::Types
          * Vector3D cross = v1.Cross(v2);  // Returns (0, 0, 1) - unit vector along Z
          * @endcode
          */
+        /**
+         * @brief Calculate the cross product of this vector and another vector.
+         * @param vec The vector to calculate the cross product with.
+         * @return A new vector perpendicular to both input vectors.
+         * 
+         * @details The cross product follows the right-hand rule and returns a vector 
+         * that is perpendicular to both input vectors. The magnitude of the resulting 
+         * vector equals the area of the parallelogram formed by the two input vectors.
+         * 
+         * The cross product is calculated as:
+         * cross.X = Y * vec.Z - Z * vec.Y
+         * cross.Y = Z * vec.X - X * vec.Z
+         * cross.Z = X * vec.Y - Y * vec.X
+         * 
+         * Example usage:
+         * @code
+         * Vector3D a(1, 0, 0);  // Unit vector along X
+         * Vector3D b(0, 1, 0);  // Unit vector along Y
+         * Vector3D cross = a.Cross(b);  // Returns (0, 0, 1) - unit vector along Z
+         * @endcode
+         */
         constexpr Vector3D Cross(const Vector3D& vec) const
         {
             return Vector3D(
-                Z * vec.Y - Y * vec.Z,
-                X * vec.Z - Z * vec.X,
-                Y * vec.X - X * vec.Y
+                Y * vec.Z - Z * vec.Y,  // X component
+                Z * vec.X - X * vec.Z,  // Y component
+                X * vec.Y - Y * vec.X   // Z component
             );
         }
 
         /**
-         * @brief Calculate the squared length of the vector.
-         * @return The squared length as an Fxp value.
-         * @details Useful for comparisons where the actual length is not needed.
-         * 
-         * Example usage:
-         * @code
-         * Vector3D v1(1, 2, 3);
-         * Vector3D v2(4, 6, 8);
-         * if (v1.LengthSquared() < v2.LengthSquared()) {
-         *     // v1 is shorter than v2
-         * }
-         * @endcode
-         */
-        constexpr Fxp LengthSquared() const {
-            return Dot(*this);
-        }
-
-        /**
-         * @brief Calculate the length of the vector
-         * @tparam P Precision level for calculation
-         * @return Length of the vector
-         * 
-         * @details Calculates the magnitude (Euclidean length) of the vector.
-         * The precision template parameter controls the calculation method:
-         * - Standard precision: Uses exact square root calculation
-         * - Turbo precision: Uses fast approximation with alpha-beta-gamma coefficients
-         * 
-         * For large vector components that might cause overflow in dot product calculation,
-         * a specialized bit-shift-friendly approximation is used regardless of precision level.
+         * @brief Calculate the squared length of the vector with overflow protection.
+         * @return The squared length as an Fxp value, or MaxValue() if the result would overflow.
+         * @details Returns Fxp::MaxValue() if the squared magnitude would be too large to represent.
+         *          This version includes overflow protection to ensure safe calculations.
+         *          
+         *          The method checks for potential overflow by comparing against a safe threshold
+         *          that ensures the sum of squares won't exceed the maximum representable value.
+         *          For 3D vectors, we use a more conservative threshold than 2D to account for
+         *          the additional component.
          * 
          * Example usage:
          * @code
          * Vector3D v(3, 4, 5);
-         * Fxp length = v.Length();  // Returns sqrt(50) with standard precision
-         * Fxp fastLength = v.Length<Precision::Turbo>();  // Returns approximate length (faster)
+         * Fxp lenSq = v.LengthSquared();  // Returns 50 (3*3 + 4*4 + 5*5)
+         * 
+         * // With large values that would overflow:
+         * Vector3D large(1000, 1000, 1000);
+         * Fxp largeLenSq = large.LengthSquared();  // Returns Fxp::MaxValue()
+         * @endcode
+         */
+        constexpr Fxp LengthSquared() const {
+            // Special case: if any component is MinValue, the square would be MaxValue
+            if (X == Fxp::MinValue() || Y == Fxp::MinValue() || Z == Fxp::MinValue()) {
+                return Fxp::MaxValue();
+            }
+            
+            // Get absolute values to handle negative numbers
+            const Fxp absX = X.Abs();
+            const Fxp absY = Y.Abs();
+            const Fxp absZ = Z.Abs();
+            
+            // Calculate maximum possible value before overflow
+            // For 16.16 fixed-point with 3 components, we need to be more conservative
+            // sqrt(2^31 / 3) ≈ 1193.2, but we use a safer threshold to account for
+            // potential intermediate calculations and rounding
+            constexpr Fxp maxSafeValue = 100.0;  // Conservative for 3D vectors
+            
+            // If any component is too large, return MaxValue to prevent overflow
+            if (absX >= maxSafeValue || absY >= maxSafeValue || absZ >= maxSafeValue) {
+                // For values just above the threshold, try scaling down to avoid false positives
+                if (absX < 2 * maxSafeValue && absY < 2 * maxSafeValue && absZ < 2 * maxSafeValue) {
+                    // Scale down by 2, calculate, then scale back up
+                    const Vector3D scaled = *this >> 1;
+                    return scaled.Dot(scaled) << 2;  // Multiply by 4 (2^2)
+                }
+                return Fxp::MaxValue();
+            }
+            
+            // Safe to calculate normally
+            return Dot(*this);
+        }
+
+        /**
+         * @brief Calculate the length (magnitude) of the vector.
+         * @tparam P Precision level for calculation (default: Precision::Default)
+         * @return The length as an Fxp value.
+         * 
+         * @details Calculates the Euclidean length of the vector using the formula:
+         *          sqrt(X² + Y² + Z²)
+         * 
+         * The precision template parameter controls the calculation method:
+         * - Precision::Default: Uses exact square root calculation
+         * - Precision::Turbo: Uses fast approximation with alpha-beta-gamma coefficients
+         * 
+         * The method includes overflow protection by scaling down large vectors
+         * before calculation and scaling the result back up.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(3, 4, 5);
+         * Fxp len = v.Length();  // Standard precision
+         * Fxp fastLen = v.Length<Precision::Turbo>();  // Faster approximation
          * @endcode
          */
         template<Precision P = Precision::Default>
         constexpr Fxp Length() const
         {
-            // More accurate threshold based on Fxp range
-            constexpr Fxp overflowThreshold = 100.0;
-            bool potentialOverflow = (X.Abs() > overflowThreshold || Y.Abs() > overflowThreshold || Z.Abs() > overflowThreshold);
+            // Use different thresholds based on precision mode
+            constexpr Fxp overflowThreshold = (P == Precision::Turbo) ? 
+                Fxp(400.0) :  // More permissive for Turbo mode
+                Fxp(100.0);   // Conservative for other modes
+                
+            const Fxp absX = X.Abs();
+            const Fxp absY = Y.Abs();
+            const Fxp absZ = Z.Abs();
+            constexpr bool potentialOverflow = (absX > overflowThreshold || 
+                                         absY > overflowThreshold ||
+                                         absZ > overflowThreshold);
 
-            if (potentialOverflow)
-            {
-                // For large values, use approximation regardless of precision setting
-                Vector3D sorted = Abs().Sort<SortOrder::Descending>();
-
-                // Alpha is close to 1, beta is ~0.4, gamma is ~0.25
-                // These coefficients give good accuracy and can be calculated with shifts/adds
-                Fxp alpha = sorted.X;
-
-                // beta = 0.375 = 3/8 = 1/2 - 1/8
-                Fxp beta = (sorted.Y >> 1) - (sorted.Y >> 3);
-
-                // gamma = 0.25 = 1/4
-                Fxp gamma = sorted.Z >> 2;
-
-                return alpha + beta + gamma;
-            }
-            else
-            {
-                // For smaller values where overflow isn't a concern:
-                if constexpr (P == Precision::Turbo)
-                {
-                    // Use existing fast approximation for small values
+            // Use a lambda to handle the calculation based on precision
+            const auto calculateLength = [](const Vector3D& vec) -> Fxp {
+                if constexpr (P == Precision::Turbo) {
+                    // Use fast approximation for small values
                     constexpr Vector3D alphaBetaGamma(
-                        0.9398086351723256,
-                        0.38928148272372454,
-                        0.2987061876143797);
-                    return alphaBetaGamma.Dot(Abs().Sort<SortOrder::Descending>());
-                }
-                else
-                {
+                        0.96043387010342,  // Alpha
+                        0.39782473475533,   // Beta
+                        0.196034280659121   // Gamma
+                    );
+                    return alphaBetaGamma.Dot(vec.Abs().Sort<SortOrder::Descending>());
+                } else {
                     // Use accurate calculation for small values
-                    return Dot(*this).Sqrt<P>();
+                    return vec.Dot(vec).Sqrt<P>();
                 }
+            };
+
+            // Perform calculation with or without overflow protection
+            if (potentialOverflow) {
+                if constexpr (P == Precision::Turbo) {
+                    // For Turbo mode, use less aggressive scaling since alpha-beta-gamma is more robust
+                    const Vector3D scaledDown = *this >> 2;  // Divide by 4
+                    return calculateLength(scaledDown) << 2;  // Multiply by 4
+                } else {
+                    // For other precision modes, use more aggressive scaling
+                    const Vector3D scaledDown = *this >> 7;  // Divide by 128
+                    return calculateLength(scaledDown) << 7;  // Multiply by 128
+                }
+            } else {
+                return calculateLength(*this);
             }
         }
-
+    
         /**
          * @brief Normalize the vector
          * @tparam P Precision level for calculation
@@ -386,6 +447,27 @@ namespace SaturnMath::Types
             if (length != 0)
                 return Vector3D(X / length, Y / length, Z / length);
             return Vector3D();
+        }
+
+        /**
+         * @brief Get a normalized copy of the vector
+         * @tparam P Precision level for calculation
+         * @return Normalized vector
+         * 
+         * @details Creates a unit vector pointing in the same direction as this vector.
+         * Unlike Normalize(), this method returns a new vector without modifying the original.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(3, 4, 5);
+         * Vector3D unitV = v.Normalized();  // Original vector remains unchanged
+         * @endcode
+         */
+        template<Precision P = Precision::Default>
+        constexpr Vector3D Normalized() const
+        {
+            Vector3D copy(*this);
+            return copy.Normalize<P>();
         }
 
         /**
@@ -440,6 +522,140 @@ namespace SaturnMath::Types
         template<Precision P = Precision::Default>
         constexpr Fxp DistanceTo(const Vector3D& other) const {
             return (*this - other).Length<P>();
+        }
+
+        /**
+         * @brief Calculate the squared distance between this point and another 3D point.
+         * @param other The other point to measure distance to.
+         * @return The squared distance between the two points.
+         * 
+         * @details This method calculates the squared Euclidean distance between this 3D point
+         * and another 3D point. This is more efficient than calculating the actual distance
+         * as it avoids a square root operation. Useful for distance comparisons.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D a(1, 2, 3);
+         * Vector3D b(4, 6, 8);
+         * Fxp distSq = a.DistanceSquared(b);  // Returns 50 (3² + 4² + 5²)
+         * @endcode
+         */
+        constexpr Fxp DistanceSquared(const Vector3D& other) const {
+            const Fxp dx = X - other.X;
+            const Fxp dy = Y - other.Y;
+            const Fxp dz = Z - other.Z;
+            return dx * dx + dy * dy + dz * dz;
+        }
+
+        /**
+         * @brief Calculate the angle between two vectors.
+         * @tparam P Precision level for calculation
+         * @param a First vector
+         * @param b Second vector
+         * @return Angle between the vectors as an Angle object
+         * 
+         * @details Calculates the smallest angle between two 3D vectors using the formula:
+         * angle = atan2(||a × b||, a · b)
+         * 
+         * This method is more numerically stable than using acos and handles edge cases better.
+         * It returns 0 if either vector has zero length.
+         * 
+         * The precision template parameter controls the calculation method:
+         * - Precision::Default: Uses accurate but slower calculations
+         * - Precision::Fast: Uses faster but less precise calculations
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v1(1, 0, 0);  // Right vector
+         * Vector3D v2(0, 1, 0);  // Up vector
+         * Angle angle = Vector3D::Angle(v1, v2);  // Returns 90 degrees (π/2 radians)
+         * @endcode
+         */
+        template<Precision P = Precision::Default>
+        static constexpr auto Angle(const Vector3D& a, const Vector3D& b)
+        {
+            // Handle zero vectors
+            const Fxp aLenSq = a.LengthSquared();
+            const Fxp bLenSq = b.LengthSquared();
+            
+            if (aLenSq == 0 || bLenSq == 0) {
+                return Angle::Zero();
+            }
+            
+            // Calculate dot product and cross product magnitude squared
+            const Fxp dot = a.Dot(b);
+            const Vector3D cross = a.Cross(b);
+            const Fxp crossLenSq = cross.LengthSquared();
+            
+            // Handle collinear vectors (cross product is zero)
+            if (crossLenSq == 0) {
+                // Vectors are in the same direction
+                if (dot > 0) {
+                    return Angle::Zero();
+                }
+                // Vectors are in opposite directions
+                return Angle::Straight();
+            }
+            
+            // Calculate the angle using atan2 for better numerical stability
+            // atan2(||a × b||, a·b) = atan2(√(crossLenSq), dot)
+            return Trigonometry::Atan2(crossLenSq.Sqrt(), dot);
+        }
+
+        /**
+         * @brief Project this vector onto another vector.
+         * @param other The vector to project onto.
+         * @return The projection of this vector onto the other vector.
+         * 
+         * @details Calculates the projection of this vector onto another vector.
+         * The projection represents the component of this vector that lies along
+         * the direction of the other vector.
+         * 
+         * Formula: (this · other / other · other) * other
+         * 
+         * @note If the other vector is a zero vector, returns a zero vector.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(2, 3, 0);
+         * Vector3D u(1, 0, 0);
+         * Vector3D proj = v.Project(u);  // Returns (2, 0, 0)
+         * @endcode
+         */
+        constexpr Vector3D Project(const Vector3D& other) const
+        {
+            Fxp denominator = other.Dot(other);
+            if (denominator == 0) return Vector3D(); // Avoid division by zero
+            Fxp scalar = Dot(other) / denominator;
+            return other * scalar;
+        }
+
+        /**
+         * @brief Reflect this vector over a normal vector.
+         * @param normal The normal vector to reflect over (should be normalized).
+         * @return The reflected vector.
+         * 
+         * @details Calculates the reflection of this vector over a surface with the given normal.
+         * The normal vector is assumed to be normalized.
+         * 
+         * Formula: v - 2 * (v · n) * n
+         * 
+         * @note For best results, the normal vector should be normalized.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v(1, -1, 0);
+         * Vector3D n(0, 1, 0); // Up normal
+         * Vector3D reflected = v.Reflect(n);  // Returns (1, 1, 0)
+         * @endcode
+         */
+        constexpr Vector3D Reflect(const Vector3D& normal) const
+        {
+            // Standard reflection formula: v - 2*(v·n)*n
+            // Where n is the normal vector (assumed to be normalized)
+            // v·n = v.X*n.X + v.Y*n.Y + v.Z*n.Z
+            Fxp dot = Dot(normal);
+            return *this - normal * (dot * 2);
         }
 
         // Scalar multiplication and division
@@ -762,13 +978,40 @@ namespace SaturnMath::Types
                    (Vector2D::operator==(vec) && Z >= vec.Z);
         }
 
+        /**
+         * @brief Linear interpolation between two 3D vectors
+         * @param start Starting vector
+         * @param end Ending vector
+         * @param t Interpolation factor [0,1]
+         * @return Interpolated vector
+         * 
+         * @details Performs linear interpolation between start and end vectors.
+         * When t=0, returns start. When t=1, returns end. Values outside [0,1] are clamped.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D a(1, 2, 3);
+         * Vector3D b(5, 6, 7);
+         * Vector3D mid = Vector3D::Lerp(a, b, 0.5);  // Returns (3, 4, 5)
+         * @endcode
+         */
+        static constexpr Vector3D Lerp(const Vector3D& start, const Vector3D& end, const Fxp& t)
+        {
+            // Clamp t to [0, 1] range
+            Fxp clampedT = t;
+            if (t < 0.0) clampedT = 0.0;
+            else if (t > 1.0) clampedT = 1.0;
+            
+            return start + (end - start) * clampedT;
+        }
+
         // Bitwise shift operators
         /**
          * @brief Bitwise right shift operator.
          * @param shiftAmount The number of positions to shift.
          * @return The resulting Vec3 object.
          */
-        constexpr Vector3D operator>>(const size_t& shiftAmount)
+        constexpr Vector3D operator>>(const size_t& shiftAmount) const
         {
             return Vector3D(X >> shiftAmount, Y >> shiftAmount, Z >> shiftAmount);
         }

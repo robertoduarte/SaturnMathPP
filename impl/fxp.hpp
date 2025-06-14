@@ -610,7 +610,7 @@ namespace SaturnMath::Types
             requires std::is_integral_v<T>
         constexpr Fxp& operator*=(const T& value)
         {
-            value *= value;
+            this->value *= value;
             return *this;
         }
 
