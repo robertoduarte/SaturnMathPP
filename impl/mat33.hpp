@@ -152,9 +152,10 @@ namespace SaturnMath::Types
             const Vector3D oldRow1 = Row1;
             const Vector3D oldRow2 = Row2;
 
-            Matrix33 transposed = other;
-            transposed.Transpose();
+            // Create a transposed version of the other matrix to access columns efficiently
+            const Matrix33 transposed = other.Transposed();
 
+            // Compute new rows using Dot product for better performance
             Row0 = Vector3D(oldRow0.Dot(transposed.Row0), oldRow0.Dot(transposed.Row1), oldRow0.Dot(transposed.Row2));
             Row1 = Vector3D(oldRow1.Dot(transposed.Row0), oldRow1.Dot(transposed.Row1), oldRow1.Dot(transposed.Row2));
             Row2 = Vector3D(oldRow2.Dot(transposed.Row0), oldRow2.Dot(transposed.Row1), oldRow2.Dot(transposed.Row2));
@@ -182,6 +183,46 @@ namespace SaturnMath::Types
             Matrix33 result(*this);
             result *= other;
             return result;
+        }
+
+        /**
+         * @brief Equality comparison operator.
+         *
+         * Compares two matrices for exact equality by comparing each component.
+         *
+         * @param other The matrix to compare with.
+         * @return true if all components are equal, false otherwise.
+         *
+         * @code {.cpp}
+         * Matrix33 a = Matrix33::Identity();
+         * Matrix33 b = Matrix33::Identity();
+         * bool equal = (a == b);  // true
+         * @endcode
+         */
+        constexpr bool operator==(const Matrix33& other) const
+        {
+            return Row0 == other.Row0 && 
+                   Row1 == other.Row1 && 
+                   Row2 == other.Row2;
+        }
+
+        /**
+         * @brief Inequality comparison operator.
+         *
+         * Compares two matrices for inequality by comparing each component.
+         *
+         * @param other The matrix to compare with.
+         * @return true if any component is not equal, false otherwise.
+         *
+         * @code {.cpp}
+         * Matrix33 a = Matrix33::Identity();
+         * Matrix33 b = Matrix33::CreateScale(2.0f);
+         * bool notEqual = (a != b);  // true
+         * @endcode
+         */
+        constexpr bool operator!=(const Matrix33& other) const
+        {
+            return !(*this == other);
         }
 
         /**
@@ -722,6 +763,205 @@ namespace SaturnMath::Types
                 Vector3D(1, 0, 0),
                 Vector3D(0, 1, 0),
                 Vector3D(0, 0, 1)
+            );
+        }
+
+        /**
+         * @brief Returns a new matrix that is the transpose of this matrix.
+         * 
+         * @return A new transposed matrix.
+         */
+        constexpr Matrix33 Transposed() const
+        {
+            return Matrix33(
+                Vector3D(Row0.X, Row1.X, Row2.X),
+                Vector3D(Row0.Y, Row1.Y, Row2.Y),
+                Vector3D(Row0.Z, Row1.Z, Row2.Z)
+            );
+        }
+
+        /**
+         * @brief Compares two matrices for exact equality.
+         * 
+         * @param other The matrix to compare with.
+         * @return True if all elements are exactly equal, false otherwise.
+         * 
+         * @note For approximate comparison with tolerance, consider implementing
+         *       a custom comparison function that accounts for floating-point precision.
+         */
+        constexpr bool operator==(const Matrix33& other) const
+        {
+            return Row0 == other.Row0 &&
+                   Row1 == other.Row1 &&
+                   Row2 == other.Row2;
+        }
+
+        /**
+         * @brief Compares two matrices for inequality.
+         * 
+         * @param other The matrix to compare with.
+         * @return True if any elements are not equal, false otherwise.
+         */
+        constexpr bool operator!=(const Matrix33& other) const
+        {
+            return !(*this == other);
+        }
+
+        // Matrix addition
+        constexpr Matrix33 operator+(const Matrix33& other) const
+        {
+            return Matrix33(
+                Row0 + other.Row0,
+                Row1 + other.Row1,
+                Row2 + other.Row2
+            );
+        }
+
+        // Matrix subtraction
+        constexpr Matrix33 operator-(const Matrix33& other) const
+        {
+            return Matrix33(
+                Row0 - other.Row0,
+                Row1 - other.Row1,
+                Row2 - other.Row2
+            );
+        }
+
+        // Scalar multiplication
+        constexpr Matrix33 operator*(const Fxp& scalar) const
+        {
+            return Matrix33(
+                Row0 * scalar,
+                Row1 * scalar,
+                Row2 * scalar
+            );
+        }
+
+        // Scalar multiplication for integral types (optimized)
+        template <typename T>
+            requires std::is_integral_v<T>
+        constexpr Matrix33 operator*(const T& scalar) const
+        {
+            return Matrix33(
+                Row0 * scalar,
+                Row1 * scalar,
+                Row2 * scalar
+            );
+        }
+
+        // Scalar division
+        constexpr Matrix33 operator/(const Fxp& scalar) const
+        {
+            return Matrix33(
+                Row0 / scalar,
+                Row1 / scalar,
+                Row2 / scalar
+            );
+        }
+
+        // Scalar division for integral types (optimized)
+        template <typename T>
+            requires std::is_integral_v<T>
+        constexpr Matrix33 operator/(const T& scalar) const
+        {
+            return Matrix33(
+                Row0 / scalar,
+                Row1 / scalar,
+                Row2 / scalar
+            );
+        }
+
+        // Compound addition assignment
+        constexpr Matrix33& operator+=(const Matrix33& other)
+        {
+            Row0 += other.Row0;
+            Row1 += other.Row1;
+            Row2 += other.Row2;
+            return *this;
+        }
+
+        // Compound subtraction assignment
+        constexpr Matrix33& operator-=(const Matrix33& other)
+        {
+            Row0 -= other.Row0;
+            Row1 -= other.Row1;
+            Row2 -= other.Row2;
+            return *this;
+        }
+
+        // Compound scalar multiplication assignment
+        constexpr Matrix33& operator*=(const Fxp& scalar)
+        {
+            Row0 *= scalar;
+            Row1 *= scalar;
+            Row2 *= scalar;
+            return *this;
+        }
+
+        // Compound scalar multiplication assignment for integral types (optimized)
+        template <typename T>
+            requires std::is_integral_v<T>
+        constexpr Matrix33& operator*=(const T& scalar)
+        {
+            Row0 *= scalar;
+            Row1 *= scalar;
+            Row2 *= scalar;
+            return *this;
+        }
+
+        // Compound scalar division assignment
+        constexpr Matrix33& operator/=(const Fxp& scalar)
+        {
+            Row0 /= scalar;
+            Row1 /= scalar;
+            Row2 /= scalar;
+            return *this;
+        }
+
+        // Compound scalar division assignment for integral types (optimized)
+        template <typename T>
+            requires std::is_integral_v<T>
+        constexpr Matrix33& operator/=(const T& scalar)
+        {
+            Row0 /= scalar;
+            Row1 /= scalar;
+            Row2 /= scalar;
+            return *this;
+        }
+
+        // Friend function to allow scalar * matrix
+        friend constexpr Matrix33 operator*(const Fxp& scalar, const Matrix33& mat)
+        {
+            return mat * scalar;
+        }
+
+        // Friend function to allow integral scalar * matrix (optimized)
+        template <typename T>
+            requires std::is_integral_v<T>
+        friend constexpr Matrix33 operator*(const T& scalar, const Matrix33& mat)
+        {
+            return mat * scalar;
+        }
+
+        /**
+         * @brief Unary negation operator.
+         * @return A new matrix with all components negated.
+         * 
+         * @details Creates a new matrix where each component is the negation
+         * of the corresponding component in the original matrix.
+         * 
+         * Example usage:
+         * @code
+         * Matrix33 m(Vector3D(1, 2, 3), Vector3D(4, 5, 6), Vector3D(7, 8, 9));
+         * Matrix33 neg = -m;  // Results in [(-1,-2,-3), (-4,-5,-6), (-7,-8,-9)]
+         * @endcode
+         */
+        constexpr Matrix33 operator-() const
+        {
+            return Matrix33(
+                -Row0,
+                -Row1,
+                -Row2
             );
         }
     };

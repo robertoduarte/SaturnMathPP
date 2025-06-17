@@ -174,19 +174,303 @@ namespace SaturnMath::Types
          */
         constexpr Matrix43& operator*=(const Matrix43& other)
         {
+            // Save the original rows and translation
+            const Vector3D oldRow0 = Row0;
+            const Vector3D oldRow1 = Row1;
+            const Vector3D oldRow2 = Row2;
             const Vector3D oldRow3 = Row3;
 
-            // Multiply 3x3 part
+            // Multiply 3x3 part (rotation/scale)
             Matrix33::operator*=(other);
 
-            // Transform and add translation
-            Row3 = oldRow3 + Vector3D(
-                Row0.Dot(other.Row3),
-                Row1.Dot(other.Row3),
-                Row2.Dot(other.Row3)
-            );
+            // Transform the other matrix's translation by our rotation/scale
+            // and add our original translation
+            Row3 = Vector3D(
+                oldRow0.Dot(other.Row3),
+                oldRow1.Dot(other.Row3),
+                oldRow2.Dot(other.Row3)
+            ) + oldRow3;
 
             return *this;
+        }
+
+        /**
+         * @brief Equality comparison operator.
+         *
+         * Compares two matrices for exact equality by comparing each component.
+         * The comparison includes both the rotation/scale part (from Matrix33)
+         * and the translation part (Row3).
+         *
+         * @param other The matrix to compare with.
+         * @return true if all components are equal, false otherwise.
+         *
+         * @code {.cpp}
+         * Matrix43 a = Matrix43::Identity();
+         * Matrix43 b = Matrix43::Identity();
+         * bool equal = (a == b);  // true
+         * @endcode
+         */
+        constexpr bool operator==(const Matrix43& other) const
+        {
+            // Compare both the 3x3 part (via Matrix33::operator==) and the translation
+            return Matrix33::operator==(other) && Row3 == other.Row3;
+        }
+
+        /**
+         * @brief Inequality comparison operator.
+         *
+         * Compares two matrices for inequality by comparing each component.
+         * The comparison includes both the rotation/scale part (from Matrix33)
+         * and the translation part (Row3).
+         *
+         * @param other The matrix to compare with.
+         * @return true if any component is not equal, false otherwise.
+         *
+         * @code {.cpp}
+         * Matrix43 a = Matrix43::Identity();
+         * Matrix43 b = Matrix43::CreateTranslation(Vector3D(1, 2, 3));
+         * bool notEqual = (a != b);  // true
+         * @endcode
+         */
+        constexpr bool operator!=(const Matrix43& other) const
+        {
+            return !(*this == other);
+        }
+
+        /**
+         * @brief Creates new matrix as sum of this and other.
+         * 
+         * @param other The matrix to add.
+         * @return A new matrix that is the sum of this matrix and the other matrix.
+         */
+        constexpr Matrix43 operator+(const Matrix43& other) const
+        {
+            return Matrix43(
+                Row0 + other.Row0,
+                Row1 + other.Row1,
+                Row2 + other.Row2,
+                Row3 + other.Row3
+            );
+        }
+
+        /**
+         * @brief Creates new matrix as difference of this and other.
+         * 
+         * @param other The matrix to subtract.
+         * @return A new matrix that is the difference between this matrix and the other matrix.
+         */
+        constexpr Matrix43 operator-(const Matrix43& other) const
+        {
+            return Matrix43(
+                Row0 - other.Row0,
+                Row1 - other.Row1,
+                Row2 - other.Row2,
+                Row3 - other.Row3
+            );
+        }
+
+        /**
+         * @brief Multiplies this matrix by a scalar value.
+         * 
+         * @param scalar The scalar value to multiply by.
+         * @return A new matrix with each component multiplied by the scalar.
+         */
+        constexpr Matrix43 operator*(const Fxp& scalar) const
+        {
+            return Matrix43(
+                Row0 * scalar,
+                Row1 * scalar,
+                Row2 * scalar,
+                Row3 * scalar
+            );
+        }
+
+        /**
+         * @brief Multiplies this matrix by a scalar value.
+         * 
+         * @tparam T The type of the scalar (integral type)
+         * @param scalar The scalar value to multiply by.
+         * @return A new matrix with each component multiplied by the scalar.
+         */
+        template <typename T>
+            requires std::is_integral_v<T>
+        constexpr Matrix43 operator*(const T& scalar) const
+        {
+            return Matrix43(
+                Row0 * scalar,
+                Row1 * scalar,
+                Row2 * scalar,
+                Row3 * scalar
+            );
+        }
+
+        /**
+         * @brief Divides this matrix by a scalar value.
+         * 
+         * @param scalar The scalar value to divide by.
+         * @return A new matrix with each component divided by the scalar.
+         * @note Division by zero will result in undefined behavior.
+         */
+        constexpr Matrix43 operator/(const Fxp& scalar) const
+        {
+            return Matrix43(
+                Row0 / scalar,
+                Row1 / scalar,
+                Row2 / scalar,
+                Row3 / scalar
+            );
+        }
+
+        /**
+         * @brief Divides this matrix by a scalar value.
+         * 
+         * @tparam T The type of the scalar (integral type)
+         * @param scalar The scalar value to divide by.
+         * @return A new matrix with each component divided by the scalar.
+         * @note Division by zero will result in undefined behavior.
+         */
+        template <typename T>
+            requires std::is_integral_v<T>
+        constexpr Matrix43 operator/(const T& scalar) const
+        {
+            return Matrix43(
+                Row0 / scalar,
+                Row1 / scalar,
+                Row2 / scalar,
+                Row3 / scalar
+            );
+        }
+
+        /**
+         * @brief Adds another matrix to this matrix.
+         * 
+         * @param other The matrix to add.
+         * @return Reference to this matrix after addition.
+         */
+        constexpr Matrix43& operator+=(const Matrix43& other)
+        {
+            Row0 += other.Row0;
+            Row1 += other.Row1;
+            Row2 += other.Row2;
+            Row3 += other.Row3;
+            return *this;
+        }
+
+        /**
+         * @brief Subtracts another matrix from this matrix.
+         * 
+         * @param other The matrix to subtract.
+         * @return Reference to this matrix after subtraction.
+         */
+        constexpr Matrix43& operator-=(const Matrix43& other)
+        {
+            Row0 -= other.Row0;
+            Row1 -= other.Row1;
+            Row2 -= other.Row2;
+            Row3 -= other.Row3;
+            return *this;
+        }
+
+        /**
+         * @brief Multiplies this matrix by a scalar value in-place.
+         * 
+         * @param scalar The scalar value to multiply by.
+         * @return Reference to this matrix after multiplication.
+         */
+        constexpr Matrix43& operator*=(const Fxp& scalar)
+        {
+            Matrix33::operator*=(scalar);
+            Row3 *= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Multiplies this matrix by a scalar value in-place.
+         * 
+         * @tparam T The type of the scalar (integral type)
+         * @param scalar The scalar value to multiply by.
+         * @return Reference to this matrix after multiplication.
+         */
+        template <typename T>
+            requires std::is_integral_v<T>
+        constexpr Matrix43& operator*=(const T& scalar)
+        {
+            Matrix33::operator*=(scalar);
+            Row3 *= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Divides this matrix by a scalar value in-place.
+         * 
+         * @param scalar The scalar value to divide by.
+         * @return Reference to this matrix after division.
+         * @note Division by zero will result in undefined behavior.
+         */
+        constexpr Matrix43& operator/=(const Fxp& scalar)
+        {
+            Matrix33::operator/=(scalar);
+            Row3 /= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Divides this matrix by a scalar value in-place.
+         * 
+         * @tparam T The type of the scalar (integral type)
+         * @param scalar The scalar value to divide by.
+         * @return Reference to this matrix after division.
+         * @note Division by zero will result in undefined behavior.
+         */
+        template <typename T>
+            requires std::is_integral_v<T>
+        constexpr Matrix43& operator/=(const T& scalar)
+        {
+            Matrix33::operator/=(scalar);
+            Row3 /= scalar;
+            return *this;
+        }
+
+        /**
+         * @brief Returns the negation of this matrix.
+         * 
+         * @return A new matrix with all components negated.
+         */
+        constexpr Matrix43 operator-() const
+        {
+            return Matrix43(
+                -Row0,
+                -Row1,
+                -Row2,
+                -Row3
+            );
+        }
+
+        /**
+         * @brief Multiplies a scalar by a matrix (scalar * matrix).
+         * 
+         * @param scalar The scalar value to multiply by.
+         * @param matrix The matrix to be multiplied.
+         * @return A new matrix with each component multiplied by the scalar.
+         */
+        friend constexpr Matrix43 operator*(const Fxp& scalar, const Matrix43& matrix)
+        {
+            return matrix * scalar;
+        }
+
+        /**
+         * @brief Multiplies a scalar by a matrix (scalar * matrix).
+         * 
+         * @tparam T The type of the scalar (integral type)
+         * @param scalar The scalar value to multiply by.
+         * @param matrix The matrix to be multiplied.
+         * @return A new matrix with each component multiplied by the scalar.
+         */
+        template <typename T>
+            requires std::is_integral_v<T>
+        friend constexpr Matrix43 operator*(const T& scalar, const Matrix43& matrix)
+        {
+            return matrix * scalar;
         }
 
         /**
@@ -203,7 +487,7 @@ namespace SaturnMath::Types
          * Matrix43 result = matrix1 * matrix2; // Creates a new matrix as the product of matrix1 and matrix2
          * @endcode 
          */
-        Matrix43 operator*(const Matrix43& other) const
+        constexpr Matrix43 operator*(const Matrix43& other) const
         {
             Matrix43 result(*this);
             result *= other;
@@ -228,6 +512,23 @@ namespace SaturnMath::Types
         {
             Matrix33::operator*=(other);
             return *this;
+        }
+
+        /**
+         * @brief Unary minus operator.
+         * 
+         * This operator negates all components of the matrix, including the translation.
+         * 
+         * @return A new Matrix43 that is the negation of this matrix.
+         * 
+         * @code {.cpp}
+         * Matrix43 m1 = Matrix43::Translation(1, 2, 3);
+         * Matrix43 m2 = -m1; // m2 is a translation by (-1, -2, -3)
+         * @endcode 
+         */
+        constexpr Matrix43 operator-() const
+        {
+            return Matrix43(-Row0, -Row1, -Row2, -Row3);
         }
 
         /**
@@ -351,6 +652,156 @@ namespace SaturnMath::Types
                 Vector3D(0, 0, 1),
                 translation
             );
+        }
+
+        /**
+         * @brief Creates a rotation matrix around the X axis.
+         * 
+         * This static method creates a 4x3 matrix that represents a rotation around the X axis.
+         * The resulting matrix can be used to rotate points around the X axis by the specified angle.
+         * 
+         * @param angle The rotation angle.
+         * @return A new Matrix43 object representing the rotation transformation.
+         * 
+         * @code {.cpp}
+         * Matrix43 rotationX = Matrix43::CreateRotationX(Angle::FromDegrees(90)); // Rotates 90 degrees around X axis
+         * @endcode
+         */
+        static constexpr Matrix43 CreateRotationX(const Angle& angle)
+        {
+            Fxp cosA = Trigonometry::Cos(angle);
+            Fxp sinA = Trigonometry::Sin(angle);
+            
+            return Matrix43(
+                Vector3D(1, 0, 0),
+                Vector3D(0, cosA, sinA),
+                Vector3D(0, -sinA, cosA),
+                Vector3D(0, 0, 0)
+            );
+        }
+
+        /**
+         * @brief Rotate this matrix around the X axis.
+         * 
+         * This method applies a rotation around the X axis to this matrix.
+         * The rotation is applied by multiplying this matrix with a rotation matrix.
+         * 
+         * @param angle The rotation angle.
+         * @return Reference to this matrix after rotation.
+         * 
+         * @code {.cpp}
+         * Matrix43 transform = Matrix43::Identity();
+         * transform.RotateX(Angle::FromDegrees(45)); // Rotate 45° around X
+         * @endcode
+         */
+        constexpr Matrix43& RotateX(const Angle& angle)
+        {
+            Fxp cosA = Trigonometry::Cos(angle);
+            Fxp sinA = Trigonometry::Sin(angle);
+            
+            // Apply rotation to the 3x3 part (rotation/scale)
+            Matrix33::RotateX(angle);
+            
+            // Translation remains unchanged
+            return *this;
+        }
+
+        /**
+         * @brief Creates a rotation matrix around the Y axis.
+         * 
+         * This static method creates a 4x3 matrix that represents a rotation around the Y axis.
+         * The resulting matrix can be used to rotate points around the Y axis by the specified angle.
+         * 
+         * @param angle The rotation angle.
+         * @return A new Matrix43 object representing the rotation transformation.
+         * 
+         * @code {.cpp}
+         * Matrix43 rotationY = Matrix43::CreateRotationY(Angle::FromDegrees(90)); // Rotates 90 degrees around Y axis
+         * @endcode
+         */
+        static constexpr Matrix43 CreateRotationY(const Angle& angle)
+        {
+            Fxp cosA = Trigonometry::Cos(angle);
+            Fxp sinA = Trigonometry::Sin(angle);
+            
+            return Matrix43(
+                Vector3D(cosA, 0, -sinA),
+                Vector3D(0, 1, 0),
+                Vector3D(sinA, 0, cosA),
+                Vector3D(0, 0, 0)
+            );
+        }
+
+        /**
+         * @brief Rotate this matrix around the Y axis.
+         * 
+         * This method applies a rotation around the Y axis to this matrix.
+         * The rotation is applied by multiplying this matrix with a rotation matrix.
+         * 
+         * @param angle The rotation angle.
+         * @return Reference to this matrix after rotation.
+         * 
+         * @code {.cpp}
+         * Matrix43 transform = Matrix43::Identity();
+         * transform.RotateY(Angle::FromDegrees(45)); // Rotate 45° around Y
+         * @endcode
+         */
+        constexpr Matrix43& RotateY(const Angle& angle)
+        {
+            // Apply rotation to the 3x3 part (rotation/scale)
+            Matrix33::RotateY(angle);
+            
+            // Translation remains unchanged
+            return *this;
+        }
+
+        /**
+         * @brief Creates a rotation matrix around the Z axis.
+         * 
+         * This static method creates a 4x3 matrix that represents a rotation around the Z axis.
+         * The resulting matrix can be used to rotate points around the Z axis by the specified angle.
+         * 
+         * @param angle The rotation angle.
+         * @return A new Matrix43 object representing the rotation transformation.
+         * 
+         * @code {.cpp}
+         * Matrix43 rotationZ = Matrix43::CreateRotationZ(Angle::FromDegrees(90)); // Rotates 90 degrees around Z axis
+         * @endcode
+         */
+        static constexpr Matrix43 CreateRotationZ(const Angle& angle)
+        {
+            Fxp cosA = Trigonometry::Cos(angle);
+            Fxp sinA = Trigonometry::Sin(angle);
+            
+            return Matrix43(
+                Vector3D(cosA, sinA, 0),
+                Vector3D(-sinA, cosA, 0),
+                Vector3D(0, 0, 1),
+                Vector3D(0, 0, 0)
+            );
+        }
+
+        /**
+         * @brief Rotate this matrix around the Z axis.
+         * 
+         * This method applies a rotation around the Z axis to this matrix.
+         * The rotation is applied by multiplying this matrix with a rotation matrix.
+         * 
+         * @param angle The rotation angle.
+         * @return Reference to this matrix after rotation.
+         * 
+         * @code {.cpp}
+         * Matrix43 transform = Matrix43::Identity();
+         * transform.RotateZ(Angle::FromDegrees(45)); // Rotate 45° around Z
+         * @endcode
+         */
+        constexpr Matrix43& RotateZ(const Angle& angle)
+        {
+            // Apply rotation to the 3x3 part (rotation/scale)
+            Matrix33::RotateZ(angle);
+            
+            // Translation remains unchanged
+            return *this;
         }
 
         /**
