@@ -13,18 +13,6 @@
  * - Edge cases and error conditions
  * 
  * All tests are performed at compile-time using static_assert.
- * 
- * Test Organization:
- * 1. Construction and Basic Properties
- * 2. Arithmetic Operations
- * 3. Compound Assignment Operations
- * 4. Length and Magnitude Tests
- * 5. Comparison and Ordering
- * 6. Vector Operation Tests
- * 7. Angle and Direction Tests
- * 8. Edge Case Tests
- * 9. Precision Mode Tests
- * 10. Test Suite Runner
  */
 
 #include "../impl/vector2d.hpp"
@@ -47,7 +35,7 @@ namespace SaturnMath::Tests
     struct Vector2DTests
     {
         // ============================================
-        // 1. Construction and Basic Properties
+        // Construction and Basic Properties
         // ============================================
         
         /**
@@ -81,7 +69,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 2. Arithmetic Operations
+        // Arithmetic Operations
         // ============================================
         
         /**
@@ -127,7 +115,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 3. Compound Assignment Operations
+        // Compound Assignment Operations
         // ============================================
         
         /**
@@ -171,7 +159,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 4. Comparison and Ordering
+        // Comparison and Ordering
         // ============================================
         
         /**
@@ -207,7 +195,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 5. Vector Operations
+        // Vector Operations
         // ============================================
         
         /**
@@ -294,7 +282,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 6. Absolute Value and Sorting Tests
+        // Absolute Value and Sorting Tests
         // ============================================
         
         /**
@@ -328,7 +316,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 7. Static Method Tests
+        // Static Method Tests
         // ============================================
         
         /**
@@ -379,7 +367,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 8. Bitwise Operation Tests
+        // Bitwise Operation Tests
         // ============================================
         
         /**
@@ -446,7 +434,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 9. Multi-Dot Product Accumulation Tests
+        // Multi-Dot Product Accumulation Tests
         // ============================================
         
         /**
@@ -513,7 +501,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 10. Linear Interpolation Tests
+        // Linear Interpolation Tests
         // ============================================
         
         /**
@@ -559,7 +547,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 11. Angle Calculation Tests
+        // Angle Calculation Tests
         // ============================================
         
         /**
@@ -649,7 +637,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 12. Projection and Reflection Tests
+        // Projection and Reflection Tests
         // ============================================
         
         /**
@@ -734,7 +722,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 13. Distance Method Tests
+        // Distance Method Tests
         // ============================================
         
         /**
@@ -790,7 +778,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 14. Edge Case Tests
+        // Edge Case Tests
         // ============================================
         
         /**
@@ -956,7 +944,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 15. Test Suite Runner
+        // Test Suite Runner
         // ============================================
         
         /**

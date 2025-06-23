@@ -83,6 +83,23 @@ namespace SaturnMath::Types
         }
 
         /**
+         * @brief Performs spherical linear interpolation between this angle and another angle.
+         * 
+         * @param other The target angle to interpolate to
+         * @param t Interpolation factor [0, 1] where 0 returns this angle and 1 returns the other angle
+         * @return Angle The interpolated angle
+         * 
+         * @note This method takes the shortest path around the circle between the two angles.
+         * All angle operations naturally wrap around due to the 16-bit angle representation.
+         */
+        constexpr Angle SLerp(const Angle& other, const Fxp& t) const
+        {
+            // The subtraction and addition will naturally wrap
+            Angle diff = other - *this;
+            return *this + (diff * t);
+        }
+
+        /**
          * @name Constructors
          * @{
          */

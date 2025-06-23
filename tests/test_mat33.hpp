@@ -13,14 +13,6 @@
  * - Edge cases and special matrices
  * 
  * All tests are performed at compile-time using static_assert.
- * 
- * Test Organization:
- * 1. Construction and Factory Methods
- * 2. Basic Matrix Operations
- * 3. Matrix-Vector Operations
- * 4. Matrix-Matrix Operations
- * 5. Matrix Properties and Transformations
- * 6. Edge Cases and Special Matrices
  */
 
 #include "../impl/mat33.hpp"
@@ -39,7 +31,7 @@ namespace SaturnMath::Tests
     struct Matrix33Tests
     {
         // ============================================
-        // 1. Construction and Factory Methods
+        // Construction and Factory Methods
         // ============================================
         
         /**
@@ -126,7 +118,7 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // 2. Basic Matrix Operations
+        // Basic Matrix Operations
         // ============================================
         
         /**
@@ -243,7 +235,7 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // 3. Matrix-Vector Operations
+        // Matrix-Vector Operations
         // ============================================
         
         /**
@@ -296,7 +288,7 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // 4. Matrix-Matrix Operations
+        // Matrix-Matrix Operations
         // ============================================
         
         /**
@@ -425,7 +417,7 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // 5. Matrix Properties and Transformations
+        // Matrix Properties and Transformations
         // ============================================
         
         /**
@@ -522,7 +514,7 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // 6. Edge Cases and Special Matrices
+        // Edge Cases and Special Matrices
         // ============================================
         
         /**
@@ -612,22 +604,22 @@ namespace SaturnMath::Tests
          */
         static constexpr void RunAll()
         {
-            // 1. Construction and Factory Methods
+            // Construction and Factory Methods
             TestConstruction();
             
-            // 2. Basic Matrix Operations
+            // Basic Matrix Operations
             TestBasicOperations();
             
-            // 3. Matrix-Vector Operations
+            // Matrix-Vector Operations
             TestMatrixVectorOperations();
             
-            // 4. Matrix-Matrix Operations
+            // Matrix-Matrix Operations
             TestMatrixMatrixOperations();
             
-            // 5. Matrix Properties and Transformations
+            // Matrix Properties and Transformations
             TestTransformations();
             
-            // 6. Edge Cases and Special Matrices
+            // Edge Cases and Special Matrices
             TestEdgeCases();
         }
     };

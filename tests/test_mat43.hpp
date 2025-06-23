@@ -13,16 +13,6 @@
  * - Edge cases and special matrices
  * 
  * All tests are performed at compile-time using static_assert.
- * 
- * Test Organization:
- * 1. Construction
- * 2. Factory Methods
- * 3. Basic Matrix Operations
- * 4. Matrix-Vector Operations
- * 5. Matrix-Matrix Operations
- * 6. Transformation Operations
- * 7. Advanced Features
- * 8. Advanced Construction
  */
 
 #include "../impl/mat43.hpp"
@@ -41,7 +31,7 @@ namespace SaturnMath::Tests
     struct Matrix43Tests
     {
         // ============================================
-        // 1. Construction and Factory Methods
+        // Construction and Factory Methods
         // ============================================
         
         /**
@@ -213,7 +203,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 2. Basic Matrix Operations
+        // Basic Matrix Operations
         // ============================================
         
         /**
@@ -293,7 +283,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 3. Matrix-Vector Operations
+        // Matrix-Vector Operations
         // ============================================
         
         /**
@@ -327,7 +317,7 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // 4. Matrix-Matrix Operations
+        // Matrix-Matrix Operations
         // ============================================
         
         /**
@@ -373,7 +363,7 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // 5. Transformation Operations
+        // Transformation Operations
         // ============================================
         
         /**
@@ -627,7 +617,7 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // 5. Transformation Operations
+        // Transformation Operations
         // ============================================
         
         /**
@@ -745,7 +735,7 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // 6. Advanced Features and Edge Cases
+        // Advanced Features and Edge Cases
         // ============================================
         
         /**
@@ -814,7 +804,7 @@ namespace SaturnMath::Tests
         }
         
         // ============================================
-        // 7. Advanced Construction
+        // Advanced Construction
         // ============================================
         
         /**
@@ -864,28 +854,28 @@ namespace SaturnMath::Tests
          */
         static constexpr bool RunAll()
         {
-            // 1. Construction
+            // Construction
             TestConstruction();
             
-            // 2. Factory Methods
+            // Factory Methods
             TestFactoryMethods();
             
-            // 3. Basic Matrix Operations
+            // Basic Matrix Operations
             TestBasicOperations();
             
-            // 4. Matrix-Vector Operations
+            // Matrix-Vector Operations
             TestMatrixVectorOperations();
             
-            // 5. Matrix-Matrix Operations
+            // Matrix-Matrix Operations
             TestMatrixMatrixOperations();
             
-            // 6. Transformation Operations
+            // Transformation Operations
             TestTransformationOperations();
             
-            // 7. Advanced Features
+            // Advanced Features
             TestAdvancedFeatures();
             
-            // 8. Advanced Construction
+            // Advanced Construction
             TestAdvancedConstruction();
             
             return true;

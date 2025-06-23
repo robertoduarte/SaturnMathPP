@@ -884,21 +884,27 @@ namespace SaturnMath::Types
             const Vector3D& target,
             const Vector3D& up = Vector3D::UnitY())
         {
-            // Calculate the look vector
-            Vector3D look = (target - eye).Normalize<P>();
+            // Calculate the look vector (direction from eye to target)
+            Vector3D look = (target - eye).Normalized<P>();
 
             // Calculate right vector as cross product of up and look
-            Vector3D right = up.Cross(look).Normalize<P>();
+            Vector3D right = up.Cross(look).Normalized<P>();
+
 
             // Calculate actual up vector as cross product of look and right
             Vector3D actualUp = look.Cross(right);
 
+            // In a right-handed coordinate system, the camera looks down the negative Z-axis
+            // So we need to use -look for the view matrix's Z-axis
+            Vector3D viewZ = -look;
+
             // Construct the view matrix
+            // The translation components are the negative dot product of each basis vector with the eye position
             return Matrix43(
-                right.X, right.Y, right.Z,
-                actualUp.X, actualUp.Y, actualUp.Z,
-                -look.X, -look.Y, -look.Z,
-                eye.X, eye.Y, eye.Z
+                right,                                          // Right vector (X axis)
+                actualUp,                                       // Up vector (Y axis)
+                viewZ,                                          // View Z axis (points away from camera)
+                Vector3D(-right.Dot(eye), -actualUp.Dot(eye), -viewZ.Dot(eye))  // Translation
             );
         }
 

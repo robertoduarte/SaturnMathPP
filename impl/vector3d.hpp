@@ -1005,6 +1005,24 @@ namespace SaturnMath::Types
             return start + (end - start) * clampedT;
         }
 
+        /**
+         * @brief Smoothstep interpolation between two 3D vectors
+         * @param start Start vector
+         * @param end End vector
+         * @param t Interpolation factor [0, 1]
+         * @return Interpolated vector between start and end
+         */
+        static constexpr Vector3D Smoothstep(const Vector3D& start, const Vector3D& end, const Fxp& t)
+        {
+            Fxp x = (t < 0) ? 0 : ((t > 1) ? 1 : t);
+            Fxp factor = x * x * (Fxp(3) - Fxp(2) * x);
+            return Vector3D(
+                Lerp(start.X, end.X, factor),
+                Lerp(start.Y, end.Y, factor),
+                Lerp(start.Z, end.Z, factor)
+            );
+        }
+
         // Bitwise shift operators
         /**
          * @brief Bitwise right shift operator.
@@ -1096,9 +1114,24 @@ namespace SaturnMath::Types
          * @param vec The Vec3 object to subtract.
          * @return The difference as a Vec3 object.
          */
+        /**
+         * @brief Binary subtraction operator.
+         * @param vec The Vec3 object to subtract.
+         * @return The difference as a Vec3 object.
+         * 
+         * @details Creates a new vector by subtracting each component of the input vector
+         * from the corresponding component of this vector.
+         * 
+         * Example usage:
+         * @code
+         * Vector3D v1(5, 7, 9);
+         * Vector3D v2(2, 3, 4);
+         * Vector3D result = v1 - v2;  // Results in result = (3, 4, 5)
+         * @endcode
+         */
         constexpr Vector3D operator-(const Vector3D& vec) const
         {
-            return Vector3D(Vector2D::operator-(vec), Z - vec.Z);
+            return Vector3D(X - vec.X, Y - vec.Y, Z - vec.Z);
         }
 
         /**

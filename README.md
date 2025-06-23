@@ -192,7 +192,6 @@ Provides mathematical operations and utilities:
   - Direct transformation methods
 
 ### Geometric Primitives
-- **Shapes**: Abstract base class for geometric primitives
 - **AABB**: Axis-aligned bounding box with comprehensive intersection tests
   - Fast min/max calculations
   - Volume and surface area computation
@@ -218,9 +217,22 @@ Provides mathematical operations and utilities:
 - **Draft Functions**: Work-in-progress implementations
   - Inverse trigonometric (asin, acos)
   - Hyperbolic functions (sinh, cosh, tanh)
-- **Interpolation**: Smooth angle transitions
-  - Spherical linear interpolation (SLerp)
-  - Automatic shortest-path selection
+- **Class-Based Interpolation**: Each type provides its own specialized interpolation methods
+  - Angle class
+    - SLerp (spherical linear interpolation) for smooth angle transitions
+    - Automatic shortest-path selection
+  - Fxp class
+    - Lerp (linear interpolation)
+    - Smoothstep for smooth acceleration and deceleration (3t² - 2t³)
+    - Smootherstep for even smoother transitions (6t⁵ - 15t⁴ + 10t³)
+    - EaseIn/Out (quadratic) for accelerating/decelerating motion
+    - CubicEaseIn/Out for stronger acceleration/deceleration
+    - ElasticEaseIn for spring-like motion
+    - BounceEaseIn/Out for bouncing ball effects
+    - CubicBezier for custom easing curves
+  - Vector types
+    - Lerp for component-wise linear interpolation
+    - Additional vector-specific interpolation
 
 ## Installation
 
@@ -287,9 +299,9 @@ Vector3D v1(0, 0, 0), v2(1, 0, 0), v3(0, 1, 0);
 Vector3D normal = Vector3D::CalcNormal<Precision::Accurate>(v1, v2, v3);
 Vector3D fastNormal = Vector3D::CalcNormal<Precision::Fast>(v1, v2, v3);
 
-// Collision detection
+// Collision detection using the Collision namespace
 Sphere sphere(center, 2.0_fxp);
-bool collision = box.Intersects(sphere);
+bool collision = SaturnMath::Collision::Intersects(box, sphere);
 
 // Create view matrix with precision control
 Vector3D eye(0, 5, -10);
@@ -317,6 +329,14 @@ int16_t i = c.As<int16_t>();  // Convert back to int16_t
 // Power and clamping operations
 Fxp squared = a.Pow(2);    // 25
 Fxp clamped = b.Clamp(0, 2); // 2
+
+// Interpolation and easing functions
+Fxp interpolated = Fxp::Lerp(a, b, Fxp(0.5));         // Linear interpolation
+Fxp smooth = Fxp::Smoothstep(a, b, Fxp(0.5));        // Smooth acceleration/deceleration
+Fxp smoother = Fxp::Smootherstep(a, b, Fxp(0.5));     // Even smoother transition
+Fxp easeIn = Fxp::EaseIn(a, b, Fxp(0.5));           // Quadratic acceleration
+Fxp easeOut = Fxp::EaseOut(a, b, Fxp(0.5));         // Quadratic deceleration
+Fxp bounce = Fxp::BounceEaseOut(a, b, Fxp(0.5));    // Bouncing ball effect
 
 // Fixed-point conversion methods
 // 1. COMPILE-TIME construction (preferred when values are known at compile time)
@@ -366,7 +386,7 @@ Matrix43 billboard = Matrix43::CreateBillboard(
 // Smooth angle interpolation
 Angle start = Angle::Zero();
 Angle end = Angle::HalfPi();
-Angle interpolated = SaturnMath::Interpolation::SLerp(start, end, Fxp(0.5));
+Angle interpolated = Angle::SLerp(start, end, Fxp(0.5));
 
 // Utility functions
 using namespace SaturnMath;

@@ -1,8 +1,10 @@
 #pragma once
 
-#include "shape.hpp"
-#include "plane.hpp"
+#include "vector3d.hpp"
+#include "fxp.hpp"
 #include "aabb.hpp"
+#include "plane.hpp"
+#include "utils.hpp"  // For Pi constant
 
 namespace SaturnMath::Types
 {
@@ -48,85 +50,206 @@ namespace SaturnMath::Types
      * @see Shape For the base class interface
      * @see Plane For plane intersection tests
      */
-    class Sphere : public Shape
+    class Sphere
     {
     public:
+        /**
+         * @brief Default constructor creates a unit sphere at origin.
+         */
+        constexpr Sphere() : position(Vector3D::Zero()), radius(1) {}
+        
         /**
          * @brief Creates sphere from center and radius.
          * @param center Center point of sphere
          * @param radius Radius of sphere (must be >= 0)
          */
         constexpr Sphere(const Vector3D& center, const Fxp& radius)
-            : Shape(center)
+            : position(center)
             , radius(radius)
         {}
 
         /** @brief Gets sphere radius. */
         constexpr Fxp GetRadius() const { return radius; }
-
+        
+        /** @brief Gets sphere center position. */
+        constexpr Vector3D GetPosition() const { return position; }
+        
+        /** @brief Sets sphere center position. */
+        constexpr void SetPosition(const Vector3D& pos) { position = pos; }
+        
         /**
-         * @brief Tests intersection with plane.
-         * 
-         * A sphere intersects a plane if any part of it is on
-         * the positive side (same side as plane normal).
-         * 
-         * @param plane Plane to test against
-         * @return true if sphere intersects positive half-space
+         * @brief Checks if the sphere is valid (has non-negative radius).
+         * @return true if radius >= 0, false otherwise
          */
-        bool Intersects(const Plane& plane) const override
-        {
-            return plane.Distance(position) >= -radius;
-        }
-
+        constexpr bool IsValid() const { return radius >= 0; }
+        
         /**
-         * @brief Tests if a point is inside the sphere.
-         * @param point Point to test.
-         * @return true if the point is inside or on the surface of the sphere.
+         * @brief Gets the volume of the sphere.
+         * @return Volume as (4/3) * π * r³
          */
-        bool Contains(const Vector3D& point) const {
-            Fxp distanceSquared = (point - GetPosition()).LengthSquared();
-            return distanceSquared <= radius * radius;
+        constexpr Fxp GetVolume() const 
+        { 
+            return (Fxp(4) / 3) * Fxp::Pi() * radius * radius * radius; 
         }
+        
+        /**
+         * @brief Gets the surface area of the sphere.
+         * @return Surface area as 4 * π * r²
+         */
+        constexpr Fxp GetSurfaceArea() const 
+        { 
+            return 4 * Fxp::Pi() * radius * radius; 
+        }
+        
+        /**
+         * @brief Gets the diameter of the sphere.
+         * @return Diameter as 2 * radius
+         */
+        constexpr Fxp GetDiameter() const { return radius * 2; }
 
         /**
          * @brief Tests intersection with another sphere.
          * @param other Sphere to test against.
-         * @return true if spheres overlap.
+         * @return true if spheres intersect or touch.
          */
-        bool Intersects(const Sphere& other) const {
+        constexpr bool Intersects(const Sphere& other) const
+        {
             Fxp distanceSquared = (GetPosition() - other.GetPosition()).LengthSquared();
             Fxp sumOfRadii = radius + other.GetRadius();
             return distanceSquared <= sumOfRadii * sumOfRadii;
         }
 
         /**
-         * @brief Tests intersection with AABB.
+         * @brief Tests intersection with an AABB.
          * 
          * @tparam P Precision level for calculation (default is Precision::Default)
-         * @param box Box to test against
-         * @return true if sphere and box overlap
+         * @param box The AABB to test against
+         * @return true if the sphere intersects the AABB
          */
         template<Precision P = Precision::Default>
-        bool Intersects(const AABB& box) const
+        constexpr bool Intersects(const AABB& box) const
         {
             // Find closest point on box to sphere center
-            Vector3D closest = box.GetClosestPoint(position);
+            Vector3D closest = box.GetClosestPoint(GetPosition());
             
             // Test if this point is within sphere radius
-            return (closest - position).Length<P>().Square() <= radius.Square();
+            return (closest - GetPosition()).LengthSquared() <= (radius * radius);
         }
 
         /**
          * @brief Calculates bounding box containing sphere.
          * @return Axis-aligned box that exactly contains sphere
          */
+        /**
+         * @brief Gets the axis-aligned bounding box that contains this sphere.
+         * @return An AABB that exactly contains this sphere
+         */
         constexpr AABB GetBoundingBox() const
         {
             Vector3D offset(radius, radius, radius);
-            return AABB::FromMinMax(position - offset, position + offset);
+            return AABB::FromMinMax(GetPosition() - offset, GetPosition() + offset);
+        }
+        
+        /**
+         * @brief Converts the sphere to an AABB (same as GetBoundingBox).
+         * @return An AABB that exactly contains this sphere
+         */
+        constexpr AABB ToAABB() const { return GetBoundingBox(); }
+        
+        /**
+         * @brief Creates a sphere from an AABB.
+         * @param box The AABB to create a sphere from
+         * @return The minimal bounding sphere containing the AABB
+         */
+        /**
+         * @brief Creates a minimal bounding sphere from an AABB.
+         * @param box The AABB to create a sphere from
+         * @return The minimal bounding sphere containing the AABB
+         */
+        static constexpr Sphere FromAABB(const AABB& box)
+        {
+            // The center of the bounding sphere is the center of the AABB
+            Vector3D center = (box.GetMin() + box.GetMax()) * 0.5f;
+            
+            // The radius is the distance from center to any corner
+            // We calculate the vector from center to max corner and take its length
+            Vector3D cornerToCenter = box.GetMax() - center;
+            Fxp radius = cornerToCenter.Length<Precision::Accurate>();
+            
+            return Sphere(center, radius);
+        }
+        
+        /**
+         * @brief Translates the sphere by the given offset.
+         * @param translation The translation vector
+         * @return A new translated sphere
+         */
+        constexpr Sphere Translate(const Vector3D& translation) const
+        {
+            return Sphere(GetPosition() + translation, radius);
+        }
+        
+        /**
+         * @brief Scales the sphere uniformly.
+         * @param scaleFactor The scale factor to apply
+         * @return A new scaled sphere
+         */
+        constexpr Sphere Scale(const Fxp& scaleFactor) const
+        {
+            return Sphere(GetPosition() * scaleFactor, radius * scaleFactor);
+        }
+        
+        /**
+         * @brief Scales the sphere non-uniformly.
+         * @param scaleFactors The scale factors for each axis
+         * @return A new scaled sphere (uses minimum scale component for radius)
+         */
+        constexpr Sphere Scale(const Vector3D& scaleFactors) const
+        {
+            // Find minimum scale component in a constexpr-friendly way
+            Fxp minScale = scaleFactors.X;
+            if (scaleFactors.Y < minScale) minScale = scaleFactors.Y;
+            if (scaleFactors.Z < minScale) minScale = scaleFactors.Z;
+            
+            // Scale the position by the scale factors (component-wise) and the radius by the minimum scale
+            const Vector3D& pos = GetPosition();
+            return Sphere(Vector3D(pos.X * scaleFactors.X, pos.Y * scaleFactors.Y, pos.Z * scaleFactors.Z), 
+                         radius * minScale);
+        }
+        
+        /**
+         * @brief Gets the closest point on the sphere's surface to a given point.
+         * @tparam P Precision level for square root calculation (defaults to Fast for performance)
+         * @param point The point to find the closest point to
+         * @return The closest point on the sphere's surface
+         * 
+         * @note For most game physics and collision detection, the default Fast precision is sufficient.
+         * Use Precision::Accurate only when higher precision is required at the cost of performance.
+         */
+        template<Precision P = Precision::Default>
+        constexpr Vector3D GetClosestPoint(const Vector3D& point) const
+        {
+            if (radius <= 0) return GetPosition();  // Degenerate case
+            
+            Vector3D direction = point - GetPosition();
+            Fxp distanceSq = direction.LengthSquared();
+            Fxp radiusSq = radius * radius;
+            
+            // If the point is at the center, return any point on the sphere
+            if (distanceSq <= Fxp::Epsilon())
+                return GetPosition() + Vector3D(radius, 0, 0);
+            
+            // If point is inside or on the sphere, return the point itself
+            if (distanceSq <= radiusSq)
+                return point;
+                
+            // Point is outside the sphere, project onto surface
+            Fxp distance = distanceSq.Sqrt<P>();
+            return GetPosition() + (direction * (radius / distance));
         }
 
     private:
-        Fxp radius;  /**< Sphere radius (always >= 0) */
+        Vector3D position;  /**< Center position of the sphere */
+        Fxp radius;          /**< Radius of the sphere */  /**< Sphere radius (always >= 0) */
     };
 }

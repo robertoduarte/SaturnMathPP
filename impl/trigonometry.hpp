@@ -390,25 +390,6 @@ namespace SaturnMath
 
             return result + Angle::BuildRaw((divResult < 0 ? atan2Result : (0x10000 - atan2Result)));
         }
-
-        /**
-         * @brief Spherical linear interpolation between two angles.
-         *
-         * Takes the shortest path around the circle between angles.
-         * All angle operations naturally wrap around due to the 16-bit
-         * angle representation.
-         *
-         * @param start Starting angle
-         * @param end Ending angle
-         * @param t Interpolation factor [0,1]
-         * @return Interpolated angle
-         */
-        static constexpr Angle SLerp(const Angle& start, const Angle& end, const Fxp& t)
-        {
-            // The subtraction and addition will naturally wrap
-            Angle diff = end - start;
-            return start + (diff * t);
-        }
         /** @} */
     };
 }

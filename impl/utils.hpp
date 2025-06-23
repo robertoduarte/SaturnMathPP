@@ -54,6 +54,24 @@ namespace SaturnMath
     }
 
     /**
+     * @brief Get minimum value of three values
+     *
+     * @details Works with any type that supports comparison operators.
+     *
+     * @tparam ValueType Type of the value
+     *
+     * @param first First value
+     * @param second Second value
+     * @param third Third value
+     * @return Minimum value
+     */
+    template<typename ValueType>
+    constexpr static ValueType Min(const ValueType& first, const ValueType& second, const ValueType& third)
+    {
+        return Min(Min(first, second), third);
+    }
+
+    /**
      * @brief Clamps a value between min and max bounds.
      *
      * @details Works with any type that supports comparison operators.

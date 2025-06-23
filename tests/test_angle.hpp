@@ -48,10 +48,10 @@ namespace SaturnMath::Tests
      * - Precision and accuracy verification
      *
      * The tests in this file serve multiple purposes:
-     * 1. Verification: Ensure the Angle class behaves correctly across all operations
-     * 2. Documentation: Demonstrate expected behavior through concrete examples
-     * 3. Regression testing: Prevent future changes from breaking existing functionality
-     * 4. Edge case handling: Verify correct behavior in extreme or unusual situations
+     * Verification: Ensure the Angle class behaves correctly across all operations
+     * Documentation: Demonstrate expected behavior through concrete examples
+     * Regression testing: Prevent future changes from breaking existing functionality
+     * Edge case handling: Verify correct behavior in extreme or unusual situations
      */
     struct AngleTests
     {
@@ -357,15 +357,46 @@ namespace SaturnMath::Tests
         }
 
         /**
-         * @brief Tests for angle-specific operations that involve interpolation
+         * @brief Tests for spherical linear interpolation (SLERP) between angles
          *
-         * Note: The main interpolation tests for SLerp have been moved to test_trigonometry.hpp
-         * as they are more appropriately tested with other trigonometric functions.
+         * Verifies that:
+         * - SLERP works correctly for various interpolation factors
+         * - Edge cases (t=0 and t=1) produce expected results
+         * - Interpolation is accurate at intermediate points
+         * - Shortest path interpolation works correctly
          */
         static constexpr void TestAngleSpecificInterpolation()
         {
-            // This function is reserved for future angle-specific interpolation tests
-            // that are not directly related to the Trigonometry class
+            constexpr Angle angle0 = Angle::FromDegrees(0);
+            constexpr Angle angle90 = Angle::FromDegrees(90);
+
+            // Linear interpolation
+            constexpr Angle lerp25 = angle0.SLerp(angle90, 0.25);
+            static_assert(lerp25.ToDegrees() == 22.5, "SLerp(0°, 90°, 0.25) should be 22.5°");
+
+            constexpr Angle lerp50 = angle0.SLerp(angle90, 0.5);
+            static_assert(lerp50.ToDegrees() == 45, "SLerp(0°, 90°, 0.5) should be 45°");
+
+            constexpr Angle lerp75 = angle0.SLerp(angle90, 0.75);
+            static_assert(lerp75.ToDegrees() == 67.5, "SLerp(0°, 90°, 0.75) should be 67.5°");
+
+            // Edge cases
+            constexpr Angle lerp0 = angle0.SLerp(angle90, 0);
+            static_assert(lerp0.ToDegrees() == 0, "SLerp(0°, 90°, 0) should be 0°");
+
+            constexpr Angle lerp1 = angle0.SLerp(angle90, 1);
+            static_assert(lerp1.ToDegrees() == 90, "SLerp(0°, 90°, 1) should be 90°");
+
+            // Test with angles spanning more than 90 degrees
+            constexpr Angle angle180 = Angle::FromDegrees(180);
+            constexpr Angle lerp180_50 = angle0.SLerp(angle180, 0.5);
+            static_assert(lerp180_50.ToDegrees() == 90, "SLerp(0°, 180°, 0.5) should be 90°");
+
+            // Test with negative angles
+            constexpr Angle angleNeg90 = Angle::FromDegrees(-90);
+            constexpr Angle lerpNeg_50 = angle0.SLerp(angleNeg90, 0.5);
+            static_assert(lerpNeg_50.ToDegrees() == 135,
+                "SLerp(0°, -90°, 0.5) should be 135° because -90° wraps to 270° and the shortest path is clockwise");
         }
 
         /**

@@ -974,7 +974,7 @@ namespace SaturnMath::Types
          * @param end Ending vector
          * @param t Interpolation factor [0,1]
          * @return Interpolated vector
-         * 
+         
          * @details Performs linear interpolation between start and end vectors.
          * When t=0, returns start. When t=1, returns end. Values outside [0,1] are clamped.
          * 
@@ -993,6 +993,23 @@ namespace SaturnMath::Types
             else if (t > 1.0) clampedT = 1.0;
             
             return start + (end - start) * clampedT;
+        }
+
+        /**
+         * @brief Smoothstep interpolation between two 2D vectors
+         * @param start Start vector
+         * @param end End vector
+         * @param t Interpolation factor [0, 1]
+         * @return Interpolated vector between start and end
+         */
+        static constexpr Vector2D Smoothstep(const Vector2D& start, const Vector2D& end, const Fxp& t)
+        {
+            Fxp x = (t < 0) ? 0 : ((t > 1) ? 1 : t);
+            Fxp factor = x * x * (Fxp(3) - Fxp(2) * x);
+            return Vector2D(
+                Lerp(start.X, end.X, factor),
+                Lerp(start.Y, end.Y, factor)
+            );
         }
 
         // Bitwise shift operators

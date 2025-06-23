@@ -201,31 +201,31 @@ namespace SaturnMath::Tests
              * @note Runtime comparison limitation:
              * When comparing non-Fxp values (like float/int) with Fxp values at runtime,
              * the comparison will not work if the non-Fxp value is on the left side.
-             * 
+             *
              * Example that will NOT work at runtime:
              *   float x = GetRuntimeValue();
              *   Fxp y(5);
              *   if (x < y) { ... }  // COMPILE ERROR
-             * 
+             *
              * The key point is that the ORDER MATTERS:
              *   This works: fxpValue > 40.0  (Fxp on left side)
              *   This fails: 40.0 < fxpValue  (Fxp on right side)
-             * 
+             *
              * Solutions:
              * 1. Use the Convert method for runtime values:
              *   float x = GetRuntimeValue();
              *   Fxp convertedX = Fxp::Convert(x);
              *   if (convertedX < y) { ... }  // Works fine
-             * 
+             *
              * 2. Flip the comparison if possible:
              *   if (y > x) { ... }  // Works fine
              *   if (y > 40.0) { ... }  // Works fine
-             * 
+             *
              * This limitation only affects the 4 comparison operators (<, >, <=, >=)
              * when a non-Fxp value is on the left side at runtime.
              */
 
-            // Precise fractional comparisons
+             // Precise fractional comparisons
             static_assert(Fxp(2.5) > Fxp(2.25), "Fractional comparison should work with close values");
             static_assert(Fxp(2.5) < Fxp(2.75), "Fractional comparison should work with close values");
             static_assert(Fxp(2.5) == Fxp(2.5), "Fractional equality should work with identical values");
@@ -247,28 +247,28 @@ namespace SaturnMath::Tests
              * @note Runtime comparison with integers:
              * Similar to float comparisons, when comparing integers with Fxp values at runtime,
              * the comparison will not work if the integer is on the left side.
-             * 
+             *
              * Example that will NOT work at runtime:
              *   int x = GetRuntimeValue();
              *   Fxp y(5);
              *   if (x < y) { ... }  // COMPILE ERROR
-             * 
+             *
              * The key point is that the ORDER MATTERS:
              *   This works: fxpValue > 42  (Fxp on left side)
              *   This fails: 42 < fxpValue  (Fxp on right side)
-             * 
+             *
              * Solutions:
              * 1. Use the Convert method for runtime values:
              *   int x = GetRuntimeValue();
              *   Fxp convertedX = Fxp::Convert(x);
              *   if (convertedX < y) { ... }  // Works fine
-             * 
+             *
              * 2. Flip the comparison if possible:
              *   if (y > x) { ... }  // Works fine
              *   if (y > 42) { ... }  // Works fine
              */
 
-            // Transitive property tests
+             // Transitive property tests
             constexpr Fxp d(7);
             static_assert(a < d && b < a && b < d, "Transitive property should hold for less than");
             static_assert(d > a && a > b && d > b, "Transitive property should hold for greater than");
@@ -418,7 +418,7 @@ namespace SaturnMath::Tests
          * Verifies that:
          * - Operations with different precision settings work correctly
          * - Precision trade-offs are as expected
-         * 
+         *
          * Note: For square root operations, Fast and Turbo precision modes use the same
          * algorithm, providing a balance between performance and accuracy. Accurate precision
          * provides the most accurate results at the cost of performance.
@@ -444,82 +444,82 @@ namespace SaturnMath::Tests
 
             // Test Fast/Turbo precision (they use the same algorithm for square root)
             // Note: The following tests verify both Fast and Turbo modes since they use identical algorithms
-            
+
             // Test with perfect square
             constexpr auto sqrtAFast = a.Sqrt<Precision::Fast>();
             static_assert(sqrtAFast == 4, "Fast/Turbo precision square root should be exact for perfect squares");
-            
+
             constexpr auto sqrtATurbo = a.Sqrt<Precision::Turbo>();
             static_assert(sqrtATurbo == 4, "Fast/Turbo precision square root should be exact for perfect squares");
-            
+
             // Verify Fast and Turbo produce identical results
             static_assert(sqrtAFast == sqrtATurbo, "Fast and Turbo precision should produce identical results");
 
             // Test with non-perfect square
             constexpr auto sqrtBFast = b.Sqrt<Precision::Fast>();
             constexpr auto sqrtBTurbo = b.Sqrt<Precision::Turbo>();
-            
+
             // Fast/Turbo precision may be less accurate but should still be in a reasonable range
-            static_assert(sqrtBFast > 3.1 && sqrtBFast < 3.3, 
+            static_assert(sqrtBFast > 3.1 && sqrtBFast < 3.3,
                 "Fast/Turbo precision square root should be reasonably accurate for non-perfect squares");
-                
+
             // Verify Fast and Turbo produce identical results
             static_assert(sqrtBFast == sqrtBTurbo, "Fast and Turbo precision should produce identical results");
 
             // Test with small values
             constexpr auto sqrtSmallFast = small.Sqrt<Precision::Fast>();
             constexpr auto sqrtSmallTurbo = small.Sqrt<Precision::Turbo>();
-            
-            static_assert(sqrtSmallFast > 0.08 && sqrtSmallFast < 0.12, 
+
+            static_assert(sqrtSmallFast > 0.08 && sqrtSmallFast < 0.12,
                 "Fast/Turbo precision square root should work with small values");
-                
+
             // Verify Fast and Turbo produce identical results
             static_assert(sqrtSmallFast == sqrtSmallTurbo, "Fast and Turbo precision should produce identical results");
-            
+
             // Additional test cases
-            
+
             // Test with larger values
             constexpr Fxp large(100);
             constexpr auto sqrtLargeStd = large.Sqrt<Precision::Accurate>();
             constexpr auto sqrtLargeFast = large.Sqrt<Precision::Fast>();
-            
-            static_assert(sqrtLargeStd > 9.99 && sqrtLargeStd < 10.01, 
+
+            static_assert(sqrtLargeStd > 9.99 && sqrtLargeStd < 10.01,
                 "Accurate precision square root should be accurate for larger values");
-            static_assert(sqrtLargeFast > 9.5 && sqrtLargeFast < 10.5, 
+            static_assert(sqrtLargeFast > 9.5 && sqrtLargeFast < 10.5,
                 "Fast/Turbo precision square root should be reasonably accurate for larger values");
-            static_assert(sqrtLargeFast == large.Sqrt<Precision::Turbo>(), 
+            static_assert(sqrtLargeFast == large.Sqrt<Precision::Turbo>(),
                 "Fast and Turbo precision should produce identical results for larger values");
-            
+
             // Test with fractional perfect square
             constexpr Fxp fractionalPerfect(0.25); // 0.5^2
             constexpr auto sqrtFracStd = fractionalPerfect.Sqrt<Precision::Accurate>();
             constexpr auto sqrtFracFast = fractionalPerfect.Sqrt<Precision::Fast>();
-            
-            static_assert(sqrtFracStd > 0.499 && sqrtFracStd < 0.501, 
+
+            static_assert(sqrtFracStd > 0.499 && sqrtFracStd < 0.501,
                 "Accurate precision square root should be accurate for fractional perfect squares");
-            static_assert(sqrtFracFast > 0.48 && sqrtFracFast < 0.52, 
+            static_assert(sqrtFracFast > 0.48 && sqrtFracFast < 0.52,
                 "Fast/Turbo precision square root should be reasonably accurate for fractional perfect squares");
-            static_assert(sqrtFracFast == fractionalPerfect.Sqrt<Precision::Turbo>(), 
+            static_assert(sqrtFracFast == fractionalPerfect.Sqrt<Precision::Turbo>(),
                 "Fast and Turbo precision should produce identical results for fractional perfect squares");
-            
+
             // Test with edge values - small number
             constexpr Fxp verySmall(0.04); // 0.2^2
             constexpr auto sqrtVerySmallStd = verySmall.Sqrt<Precision::Accurate>();
             constexpr auto sqrtVerySmallFast = verySmall.Sqrt<Precision::Fast>();
-            
-            static_assert(sqrtVerySmallStd > 0.199 && sqrtVerySmallStd < 0.201, 
+
+            static_assert(sqrtVerySmallStd > 0.199 && sqrtVerySmallStd < 0.201,
                 "Accurate precision square root should be accurate for small values");
-            static_assert(sqrtVerySmallFast > 0.19 && sqrtVerySmallFast < 0.21, 
+            static_assert(sqrtVerySmallFast > 0.19 && sqrtVerySmallFast < 0.21,
                 "Fast/Turbo precision square root should handle small values");
-            static_assert(sqrtVerySmallFast == verySmall.Sqrt<Precision::Turbo>(), 
+            static_assert(sqrtVerySmallFast == verySmall.Sqrt<Precision::Turbo>(),
                 "Fast and Turbo precision should produce identical results for small values");
-                
+
             // Test with zero
             constexpr Fxp zero(0);
             constexpr auto sqrtZeroStd = zero.Sqrt<Precision::Accurate>();
             constexpr auto sqrtZeroFast = zero.Sqrt<Precision::Fast>();
             constexpr auto sqrtZeroTurbo = zero.Sqrt<Precision::Turbo>();
-            
+
             static_assert(sqrtZeroStd == 0, "Square root of zero should be zero in all precision modes");
             static_assert(sqrtZeroFast == 0, "Square root of zero should be zero in all precision modes");
             static_assert(sqrtZeroTurbo == 0, "Square root of zero should be zero in all precision modes");
@@ -655,6 +655,337 @@ namespace SaturnMath::Tests
             static_assert(zeroMinusMin > 0, "Zero minus min should be positive");
         }
 
+        // Clamp function tests
+        static constexpr void TestClamp()
+        {
+            constexpr Fxp min = 10;
+            constexpr Fxp max = 20;
+
+            // Value within range
+            constexpr Fxp inRange = Fxp::Clamp(15, min, max);
+            static_assert(inRange == 15, "Clamp should return value when within range");
+
+            // Value below min
+            constexpr Fxp belowMin = Fxp::Clamp(5, min, max);
+            static_assert(belowMin == min, "Clamp should return min when value < min");
+
+            // Value above max
+            constexpr Fxp aboveMax = Fxp::Clamp(25, min, max);
+            static_assert(aboveMax == max, "Clamp should return max when value > max");
+
+            // Value equals min
+            constexpr Fxp atMin = Fxp::Clamp(min, min, max);
+            static_assert(atMin == min, "Clamp should return min when value == min");
+
+            // Value equals max
+            constexpr Fxp atMax = Fxp::Clamp(max, min, max);
+            static_assert(atMax == max, "Clamp should return max when value == max");
+        }
+
+        // Smooth step Fxp tests
+        static constexpr void TestSmoothstep()
+        {
+            constexpr Fxp start = 10;
+            constexpr Fxp end = 20;
+
+            // t = 0 should return start
+            constexpr Fxp smooth0 = Fxp::Smoothstep(start, end, 0);
+            static_assert(smooth0 == start, "Smoothstep with t=0 should return start");
+
+            // t = 1 should return end
+            constexpr Fxp smooth1 = Fxp::Smoothstep(start, end, 1);
+            static_assert(smooth1 == end, "Smoothstep with t=1 should return end");
+
+            // t = 0.5 should return midpoint with smooth curve
+            constexpr Fxp smooth05 = Fxp::Smoothstep(start, end, 0.5);
+            static_assert(smooth05 == 15, "Smoothstep with t=0.5 should return midpoint");
+
+            // t = 0.25 should return a value that's smoothly interpolated
+            constexpr Fxp smooth025 = Fxp::Smoothstep(start, end, 0.25);
+
+            // Smoothstep formula: 3t² - 2t³
+            // At t=0.25: 3(0.25)² - 2(0.25)³ = 3(0.0625) - 2(0.015625) = 0.1875 - 0.03125 = 0.15625
+            // So expected value is 10 + 0.15625 * (20 - 10) = 10 + 0.15625 * 10 = 10 + 1.5625 = 11.5625
+            static_assert(smooth025 > 11.5 && smooth025 < 11.6,
+                "Smoothstep with t=0.25 should return smoothly interpolated value");
+
+            // t = 0.75 should return a value that's smoothly interpolated
+            constexpr Fxp smooth075 = Fxp::Smoothstep(start, end, 0.75);
+
+            // Smoothstep formula: 3t² - 2t³
+            // At t=0.75: 3(0.75)² - 2(0.75)³ = 3(0.5625) - 2(0.421875) = 1.6875 - 0.84375 = 0.84375
+            // So expected value is 10 + 0.84375 * (20 - 10) = 10 + 0.84375 * 10 = 10 + 8.4375 = 18.4375
+            static_assert(smooth075 > 18.4 && smooth075 < 18.5,
+                "Smoothstep with t=0.75 should return smoothly interpolated value");
+        }
+
+        // Smootherstep Fxp tests
+        static constexpr void TestSmootherstep()
+        {
+            constexpr Fxp start = 10;
+            constexpr Fxp end = 20;
+
+            // t = 0 should return start
+            constexpr Fxp smoother0 = Fxp::Smootherstep(start, end, 0);
+            static_assert(smoother0 == start, "Smootherstep with t=0 should return start");
+
+            // t = 1 should return end
+            constexpr Fxp smoother1 = Fxp::Smootherstep(start, end, 1);
+            static_assert(smoother1 == end, "Smootherstep with t=1 should return end");
+
+            // t = 0.5 should return midpoint with smooth curve
+            constexpr Fxp smoother05 = Fxp::Smootherstep(start, end, 0.5);
+            static_assert(smoother05 == 15, "Smootherstep with t=0.5 should return midpoint");
+
+            // t = 0.25 should return a value that's more smoothly interpolated than smoothstep
+            constexpr Fxp smoother025 = Fxp::Smootherstep(start, end, 0.25);
+            constexpr Fxp smooth025 = Fxp::Smoothstep(start, end, 0.25);
+
+            // Smootherstep formula: 6t⁵ - 15t⁴ + 10t³
+            // At t=0.25: 6(0.25)⁵ - 15(0.25)⁴ + 10(0.25)³ ≈ 0.1035
+            // So expected value is 10 + 0.1035 * (20 - 10) ≈ 11.035
+            static_assert(smoother025 > 11.0 && smoother025 < 11.1,
+                "Smootherstep with t=0.25 should return smoothly interpolated value");
+
+            // Smootherstep should be smoother than smoothstep at t=0.25
+            static_assert(smoother025 < smooth025,
+                "Smootherstep at t=0.25 should be less than smoothstep (starts slower)");
+
+            // Test at t=0.75 for another reference point
+            constexpr Fxp smoother075 = Fxp::Smootherstep(start, end, 0.75);
+            constexpr Fxp smooth075 = Fxp::Smoothstep(start, end, 0.75);
+
+            // Smootherstep should be smoother than smoothstep at t=0.75
+            static_assert(smoother075 > smooth075,
+                "Smootherstep at t=0.75 should be greater than smoothstep (ends slower)");
+        }
+
+        // Bezier curve Fxp tests
+        static constexpr void TestBezier()
+        {
+            // Linear bezier (straight line)
+            {
+                constexpr Fxp p0 = 10;
+                constexpr Fxp p1 = 20; // Not used in linear case
+                constexpr Fxp p2 = 30; // Not used in linear case
+                constexpr Fxp p3 = 40;
+
+                // t = 0 should return first point
+                constexpr Fxp bezier0 = Fxp::CubicBezier(p0, p1, p2, p3, 0);
+                static_assert(bezier0 == p0, "Bezier with t=0 should return first control point");
+
+                // t = 1 should return last point
+                constexpr Fxp bezier1 = Fxp::CubicBezier(p0, p1, p2, p3, 1);
+                static_assert(bezier1 == p3, "Bezier with t=1 should return last control point");
+
+                // t = 0.5 should return midpoint for linear bezier
+                constexpr Fxp bezier05 = Fxp::CubicBezier(p0, p1, p2, p3, 0.5);
+                constexpr Fxp expectedMid = (p0 + p3) / 2;
+                static_assert(bezier05 == expectedMid, "Linear bezier with t=0.5 should return midpoint");
+            }
+
+            // Quadratic bezier (using p1 = p2)
+            {
+                constexpr Fxp p0 = 0;
+                constexpr Fxp p1 = 20; // Control point
+                constexpr Fxp p2 = p1;  // Same as p1 to make it quadratic
+                constexpr Fxp p3 = 40;
+
+                // t = 0.5 should be at the peak of the quadratic curve
+                constexpr Fxp bezier05 = Fxp::CubicBezier(p0, p1, p2, p3, 0.5);
+
+                // For a quadratic bezier with p0=0, p1=20, p3=40, the midpoint should be at 20
+                // Formula: (1-t)²·p0 + 2·(1-t)·t·p1 + t²·p3
+                // At t=0.5: 0.25·0 + 2·0.25·20 + 0.25·40 = 0 + 10 + 10 = 20
+                static_assert(bezier05 == 20, "Quadratic bezier with t=0.5 should return expected value");
+            }
+
+            // Cubic bezier with control points creating an S-curve
+            {
+                constexpr Fxp p0 = 0;
+                constexpr Fxp p1 = 30;  // First control point pulls up
+                constexpr Fxp p2 = 10;  // Second control point pulls down
+                constexpr Fxp p3 = 40;
+
+                // Test at t=0.25
+                constexpr Fxp bezier025 = Fxp::CubicBezier(p0, p1, p2, p3, 0.25);
+                // Expected value calculation for t=0.25:
+                // (1-0.25)³·0 + 3·(1-0.25)²·0.25·30 + 3·(1-0.25)·0.25²·10 + 0.25³·40
+                // = 0 + 3·0.5625·0.25·30 + 3·0.75·0.0625·10 + 0.015625·40
+                // = 0 + 12.65625 + 1.40625 + 0.625 = ~14.6875
+                static_assert(bezier025 > 14.6 && bezier025 < 14.7,
+                    "Cubic bezier with t=0.25 should return expected value");
+
+                // Test at t=0.75
+                constexpr Fxp bezier075 = Fxp::CubicBezier(p0, p1, p2, p3, 0.75);
+                // Expected value calculation for t=0.75:
+                // (1-0.75)³·0 + 3·(1-0.75)²·0.75·30 + 3·(1-0.75)·0.75²·10 + 0.75³·40
+                // = 0 + 3·0.0625·0.75·30 + 3·0.25·0.5625·10 + 0.421875·40
+                // = 0 + 4.21875 + 4.21875 + 16.875 = ~25.3125
+                static_assert(bezier075 > 25.2 && bezier075 < 25.4,
+                    "Cubic bezier with t=0.75 should return expected value");
+            }
+
+            // Test extrapolation (t < 0 or t > 1)
+            {
+                constexpr Fxp p0 = 0;
+                constexpr Fxp p1 = 10;
+                constexpr Fxp p2 = 30;
+                constexpr Fxp p3 = 40;
+
+                // t = -0.5 (extrapolate before start)
+                constexpr Fxp bezierNeg = Fxp::CubicBezier(p0, p1, p2, p3, -0.5);
+                // Should be less than p0 since control point p1 is above p0
+                static_assert(bezierNeg < p0, "Bezier with t=-0.5 should extrapolate before start");
+
+                // t = 1.5 (extrapolate after end)
+                constexpr Fxp bezierOver = Fxp::CubicBezier(p0, p1, p2, p3, 1.5);
+                // Should be greater than p3 since control point p2 is below p3
+                static_assert(bezierOver > p3, "Bezier with t=1.5 should extrapolate after end");
+            }
+        }
+
+        // EaseIn Fxp tests
+        static constexpr void TestEaseIn()
+        {
+            constexpr Fxp start = 10;
+            constexpr Fxp end = 20;
+
+            // t = 0 should return start
+            constexpr Fxp ease0 = Fxp::EaseIn(start, end, 0);
+            static_assert(ease0 == start, "EaseIn with t=0 should return start value");
+
+            // t = 1 should return end
+            constexpr Fxp ease1 = Fxp::EaseIn(start, end, 1);
+            static_assert(ease1 == end, "EaseIn with t=1 should return end value");
+
+            // t = 0.5 should return a value closer to start than linear
+            constexpr Fxp ease05 = Fxp::EaseIn(start, end, 0.5);
+            constexpr Fxp linear05 = Fxp::Lerp(start, end, 0.5);
+            static_assert(ease05 < linear05, "EaseIn at t=0.5 should be less than linear");
+            static_assert(ease05 > start, "EaseIn at t=0.5 should be greater than start");
+        }
+
+        // EaseOut Fxp tests
+        static constexpr void TestEaseOut()
+        {
+            constexpr Fxp start = 10;
+            constexpr Fxp end = 20;
+
+            // t = 0 should return start
+            constexpr Fxp ease0 = Fxp::EaseOut(start, end, 0);
+            static_assert(ease0 == start, "EaseOut with t=0 should return start value");
+
+            // t = 1 should return end
+            constexpr Fxp ease1 = Fxp::EaseOut(start, end, 1);
+            static_assert(ease1 == end, "EaseOut with t=1 should return end value");
+
+            // t = 0.5 should return a value closer to end than linear
+            constexpr Fxp ease05 = Fxp::EaseOut(start, end, 0.5);
+            constexpr Fxp linear05 = Fxp::Lerp(start, end, 0.5);
+            static_assert(ease05 > linear05, "EaseOut at t=0.5 should be greater than linear");
+            static_assert(ease05 < end, "EaseOut at t=0.5 should be less than end");
+        }
+
+        // CubicEaseIn Fxp tests
+        static constexpr void TestCubicEaseIn()
+        {
+            constexpr Fxp start = 10;
+            constexpr Fxp end = 20;
+
+            // t = 0 should return start
+            constexpr Fxp ease0 = Fxp::CubicEaseIn(start, end, 0);
+            static_assert(ease0 == start, "CubicEaseIn with t=0 should return start value");
+
+            // t = 1 should return end
+            constexpr Fxp ease1 = Fxp::CubicEaseIn(start, end, 1);
+            static_assert(ease1 == end, "CubicEaseIn with t=1 should return end value");
+
+            // t = 0.5 should be more pronounced than quadratic EaseIn
+            constexpr Fxp cubicEase05 = Fxp::CubicEaseIn(start, end, 0.5);
+            constexpr Fxp quadEase05 = Fxp::EaseIn(start, end, 0.5);
+            static_assert(cubicEase05 < quadEase05, "CubicEaseIn at t=0.5 should be less than quadratic EaseIn");
+        }
+
+        // CubicEaseOut Fxp tests
+        static constexpr void TestCubicEaseOut()
+        {
+            constexpr Fxp start = 10;
+            constexpr Fxp end = 20;
+
+            // t = 0 should return start
+            constexpr Fxp ease0 = Fxp::CubicEaseOut(start, end, 0);
+            static_assert(ease0 == start, "CubicEaseOut with t=0 should return start value");
+
+            // t = 1 should return end
+            constexpr Fxp ease1 = Fxp::CubicEaseOut(start, end, 1);
+            static_assert(ease1 == end, "CubicEaseOut with t=1 should return end value");
+
+            // t = 0.5 should be more pronounced than quadratic EaseOut
+            constexpr Fxp cubicEase05 = Fxp::CubicEaseOut(start, end, 0.5);
+            constexpr Fxp quadEase05 = Fxp::EaseOut(start, end, 0.5);
+            static_assert(cubicEase05 > quadEase05, "CubicEaseOut at t=0.5 should be greater than quadratic EaseOut");
+        }
+
+        // ElasticEaseIn Fxp tests
+        static constexpr void TestElasticEaseIn()
+        {
+            constexpr Fxp start = 10;
+            constexpr Fxp end = 20;
+
+            // t = 0 should return start
+            constexpr Fxp ease0 = Fxp::ElasticEaseIn(start, end, 0);
+            static_assert(ease0 == start, "ElasticEaseIn with t=0 should return start value");
+
+            // t = 1 should return end
+            constexpr Fxp ease1 = Fxp::ElasticEaseIn(start, end, 1);
+            static_assert(ease1 == end, "ElasticEaseIn with t=1 should return end value");
+
+            // t = 0.5 should overshoot the range
+            constexpr Fxp ease05 = Fxp::ElasticEaseIn(start, end, 0.5);
+            static_assert(ease05 > end, "ElasticEaseIn at t=0.5 should overshoot above end value");
+        }
+
+        // BounceEaseIn Fxp tests
+        static constexpr void TestBounceEaseIn()
+        {
+            constexpr Fxp start = 10;
+            constexpr Fxp end = 20;
+
+            // t = 0 should return start
+            constexpr Fxp ease0 = Fxp::BounceEaseIn(start, end, 0);
+            static_assert(ease0 == start, "BounceEaseIn with t=0 should return start value");
+
+            // t = 1 should return end
+            constexpr Fxp ease1 = Fxp::BounceEaseIn(start, end, 1);
+            static_assert(ease1 == end, "BounceEaseIn with t=1 should return end value");
+
+            // t = 0.5 should be below the linear Fxp
+            constexpr Fxp ease05 = Fxp::BounceEaseIn(start, end, 0.5);
+            constexpr Fxp linear05 = Fxp::Lerp(start, end, 0.5);
+            static_assert(ease05 < linear05, "BounceEaseIn at t=0.5 should be below linear Fxp");
+        }
+
+        // BounceEaseOut Fxp tests
+        static constexpr void TestBounceEaseOut()
+        {
+            constexpr Fxp start = 10;
+            constexpr Fxp end = 20;
+
+            // t = 0 should return start
+            constexpr Fxp ease0 = Fxp::BounceEaseOut(start, end, 0);
+            static_assert(ease0 == start, "BounceEaseOut with t=0 should return start value");
+
+            // t = 1 should return end
+            constexpr Fxp ease1 = Fxp::BounceEaseOut(start, end, 1);
+            static_assert(ease1 == end, "BounceEaseOut with t=1 should return end value");
+
+            // t = 0.5 should be above the linear Fxp
+            constexpr Fxp ease05 = Fxp::BounceEaseOut(start, end, 0.5);
+            constexpr Fxp linear05 = Fxp::Lerp(start, end, 0.5);
+            static_assert(ease05 > linear05, "BounceEaseOut at t=0.5 should be above linear Fxp");
+        }
+
         /**
          * @brief Run all tests in the test suite
          *
@@ -675,6 +1006,17 @@ namespace SaturnMath::Tests
             TestSmallValues();
             TestRoundingConsistency();
             TestBoundaryValues();
+            TestClamp();
+            TestSmoothstep();
+            TestSmootherstep();
+            TestBezier();
+            TestEaseIn();
+            TestEaseOut();
+            TestCubicEaseIn();
+            TestCubicEaseOut();
+            TestElasticEaseIn();
+            TestBounceEaseIn();
+            TestBounceEaseOut();
         }
     };
 
