@@ -1,30 +1,34 @@
 #pragma once
 
-// Fixed-point arithmetic header
-#include <impl/fxp.hpp>
+/**
+ * @file saturn_math.hpp
+ * @brief Main include file for SaturnMath++ library
+ * 
+ * This header includes all public headers from the implementation directory.
+ * For optimal compile times, consider including only the specific headers you need.
+ */
 
-// Vector and matrix headers
+// Core math types
+#include <impl/angle.hpp>
+#include <impl/fxp.hpp>
+#include <impl/precision.hpp>
+
+// Vector and matrix types
 #include <impl/vector2d.hpp>
 #include <impl/vector3d.hpp>
 #include <impl/mat33.hpp>
 #include <impl/mat43.hpp>
+#include <impl/matrix_stack.hpp>
 
-// Shape headers
+// Geometric primitives
 #include <impl/plane.hpp>
 #include <impl/aabb.hpp>
 #include <impl/sphere.hpp>
-
-// Math utility headers
-#include <impl/trigonometry.hpp>
-
-// Additional utility and precision headers
-#include <impl/utils.hpp>
-#include <impl/random.hpp>
-#include <impl/interpolation.hpp>
-#include <impl/angle.hpp>
-#include <impl/sort_order.hpp>
-#include <impl/precision.hpp>
-
-// Other headers
 #include <impl/frustum.hpp>
-#include <impl/matrix_stack.hpp>
+
+// Math utilities
+#include <impl/trigonometry.hpp>
+#include <impl/collision.hpp>
+#include <impl/random.hpp>
+#include <impl/sort_order.hpp>
+#include <impl/utils.hpp>
