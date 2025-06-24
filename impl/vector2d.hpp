@@ -463,7 +463,7 @@ namespace SaturnMath::Types
          * Angle angle = Vector2D::Angle(v1, v2);  // Returns 90 degrees (π/2 radians)
          * @endcode
          */
-        static constexpr Angle Angle(const Vector2D& a, const Vector2D& b)
+        static constexpr auto Angle(const Vector2D& a, const Vector2D& b)
         {
             // Calculate cross product magnitude (perpendicular dot product)
             Fxp cross = a.X * b.Y - a.Y * b.X;
@@ -1007,8 +1007,8 @@ namespace SaturnMath::Types
             Fxp x = (t < 0) ? 0 : ((t > 1) ? 1 : t);
             Fxp factor = x * x * (Fxp(3) - Fxp(2) * x);
             return Vector2D(
-                Lerp(start.X, end.X, factor),
-                Lerp(start.Y, end.Y, factor)
+                Fxp::Lerp(start.X, end.X, factor),
+                Fxp::Lerp(start.Y, end.Y, factor)
             );
         }
 

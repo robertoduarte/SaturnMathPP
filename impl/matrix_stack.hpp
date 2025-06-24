@@ -36,9 +36,26 @@ namespace SaturnMath::Types
     class MatrixStack
     {
     public:
-        static constexpr size_t MAX_DEPTH = 16;
+        /**
+         * @brief Maximum depth of the matrix stack.
+         *
+         * @details Defines the maximum number of matrices that can be pushed onto the stack.
+         * This value is chosen to be sufficient for typical game scene hierarchies while
+         * avoiding excessive memory usage.
+         *
+         * The value of 16 is selected based on the following considerations:
+         * - Most game scene hierarchies rarely exceed 10-12 levels of nesting
+         * - Each matrix consumes memory (typically 48-64 bytes for a 4x3 or 4x4 matrix)
+         * - Embedded systems and performance-critical applications benefit from
+         *   predictable, fixed memory usage
+         *
+         * If a push operation would exceed this depth, it is silently ignored to prevent
+         * stack overflow, which is preferable to undefined behavior in a real-time system.
+         */
+        static constexpr uint8_t MAX_DEPTH = 16;
+
     private:
-        Matrix43 stack[MAX_DEPTH]{};
+        Matrix43 stack[MAX_DEPTH];
         uint8_t currentDepth = 0;
     public:
     
@@ -151,7 +168,6 @@ namespace SaturnMath::Types
          * @note If your application requires deeper hierarchies, this constant can be
          * adjusted, but be aware of the increased memory footprint.
          */
-        static constexpr size_t MAX_DEPTH = 16;  // Typical max depth for game scenes
 
     private:
 

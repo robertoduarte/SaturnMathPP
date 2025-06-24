@@ -385,7 +385,7 @@ namespace SaturnMath::Types
             const Fxp absX = X.Abs();
             const Fxp absY = Y.Abs();
             const Fxp absZ = Z.Abs();
-            constexpr bool potentialOverflow = (absX > overflowThreshold || 
+            const bool potentialOverflow = (absX > overflowThreshold || 
                                          absY > overflowThreshold ||
                                          absZ > overflowThreshold);
 
@@ -1017,9 +1017,9 @@ namespace SaturnMath::Types
             Fxp x = (t < 0) ? 0 : ((t > 1) ? 1 : t);
             Fxp factor = x * x * (Fxp(3) - Fxp(2) * x);
             return Vector3D(
-                Lerp(start.X, end.X, factor),
-                Lerp(start.Y, end.Y, factor),
-                Lerp(start.Z, end.Z, factor)
+                Fxp::Lerp(start.X, end.X, factor),
+                Fxp::Lerp(start.Y, end.Y, factor),
+                Fxp::Lerp(start.Z, end.Z, factor)
             );
         }
 

@@ -390,6 +390,28 @@ namespace SaturnMath
 
             return result + Angle::BuildRaw((divResult < 0 ? atan2Result : (0x10000 - atan2Result)));
         }
+
+        /**
+         * @brief Calculates arcsine (inverse sine) of a value
+         * 
+         * Implements arcsine using the identity: asin(x) = atan2(x, sqrt(1 - x^2))
+         * 
+         * @param x Value in range [-1, 1]
+         * @return Angle in range [-π/2, π/2] radians
+         */
+        static constexpr Angle Asin(const Fxp& x)
+        {
+            // Clamp input to valid range [-1, 1]
+            Fxp clampedX = x;
+            if (clampedX < -Fxp(1)) clampedX = -Fxp(1);
+            if (clampedX > Fxp(1)) clampedX = Fxp(1);
+            
+            // Use the identity: asin(x) = atan2(x, sqrt(1 - x^2))
+            Fxp oneMinusXSquared = Fxp(1) - (clampedX * clampedX);
+            Fxp sqrtTerm = oneMinusXSquared.Sqrt();
+            
+            return Atan2(clampedX, sqrtTerm);
+        }
         /** @} */
     };
 }

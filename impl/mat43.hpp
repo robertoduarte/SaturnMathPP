@@ -515,23 +515,6 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Unary minus operator.
-         * 
-         * This operator negates all components of the matrix, including the translation.
-         * 
-         * @return A new Matrix43 that is the negation of this matrix.
-         * 
-         * @code {.cpp}
-         * Matrix43 m1 = Matrix43::Translation(1, 2, 3);
-         * Matrix43 m2 = -m1; // m2 is a translation by (-1, -2, -3)
-         * @endcode 
-         */
-        constexpr Matrix43 operator-() const
-        {
-            return Matrix43(-Row0, -Row1, -Row2, -Row3);
-        }
-
-        /**
          * @brief Creates new matrix as product of this and another 3x3 matrix.
          * 
          * This operator overload creates a new matrix that is the result of multiplying this matrix by a 3x3 matrix. 

@@ -780,32 +780,6 @@ namespace SaturnMath::Types
             );
         }
 
-        /**
-         * @brief Compares two matrices for exact equality.
-         * 
-         * @param other The matrix to compare with.
-         * @return True if all elements are exactly equal, false otherwise.
-         * 
-         * @note For approximate comparison with tolerance, consider implementing
-         *       a custom comparison function that accounts for floating-point precision.
-         */
-        constexpr bool operator==(const Matrix33& other) const
-        {
-            return Row0 == other.Row0 &&
-                   Row1 == other.Row1 &&
-                   Row2 == other.Row2;
-        }
-
-        /**
-         * @brief Compares two matrices for inequality.
-         * 
-         * @param other The matrix to compare with.
-         * @return True if any elements are not equal, false otherwise.
-         */
-        constexpr bool operator!=(const Matrix33& other) const
-        {
-            return !(*this == other);
-        }
 
         // Matrix addition
         constexpr Matrix33 operator+(const Matrix33& other) const

@@ -1,8 +1,6 @@
 #pragma once
 
 #include "vector3d.hpp"
-#include "collision.hpp"
-#include "fxp.hpp"
 #include <array>
 
 namespace SaturnMath::Types
@@ -315,12 +313,6 @@ namespace SaturnMath::Types
                 Vector3D(min.X, max.Y, max.Z)  // 7: left top front
             };
         }
-
-        /**
-         * @brief Get the position of the AABB.
-         * @return The position of the AABB.
-         */
-        constexpr Vector3D GetPosition() const { return position; }
 
         /**
          * @brief Set the position of the AABB.

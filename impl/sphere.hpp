@@ -1,9 +1,6 @@
 #pragma once
 
 #include "vector3d.hpp"
-#include "fxp.hpp"
-#include "aabb.hpp"
-#include "plane.hpp"
 #include "utils.hpp"  // For Pi constant
 
 namespace SaturnMath::Types
@@ -56,7 +53,7 @@ namespace SaturnMath::Types
         /**
          * @brief Default constructor creates a unit sphere at origin.
          */
-        constexpr Sphere() : position(Vector3D::Zero()), radius(1) {}
+        constexpr Sphere() : position(Vector3D::Zero()), radius(Fxp(1)) {}
         
         /**
          * @brief Creates sphere from center and radius.
@@ -119,65 +116,7 @@ namespace SaturnMath::Types
             return distanceSquared <= sumOfRadii * sumOfRadii;
         }
 
-        /**
-         * @brief Tests intersection with an AABB.
-         * 
-         * @tparam P Precision level for calculation (default is Precision::Default)
-         * @param box The AABB to test against
-         * @return true if the sphere intersects the AABB
-         */
-        template<Precision P = Precision::Default>
-        constexpr bool Intersects(const AABB& box) const
-        {
-            // Find closest point on box to sphere center
-            Vector3D closest = box.GetClosestPoint(GetPosition());
-            
-            // Test if this point is within sphere radius
-            return (closest - GetPosition()).LengthSquared() <= (radius * radius);
-        }
 
-        /**
-         * @brief Calculates bounding box containing sphere.
-         * @return Axis-aligned box that exactly contains sphere
-         */
-        /**
-         * @brief Gets the axis-aligned bounding box that contains this sphere.
-         * @return An AABB that exactly contains this sphere
-         */
-        constexpr AABB GetBoundingBox() const
-        {
-            Vector3D offset(radius, radius, radius);
-            return AABB::FromMinMax(GetPosition() - offset, GetPosition() + offset);
-        }
-        
-        /**
-         * @brief Converts the sphere to an AABB (same as GetBoundingBox).
-         * @return An AABB that exactly contains this sphere
-         */
-        constexpr AABB ToAABB() const { return GetBoundingBox(); }
-        
-        /**
-         * @brief Creates a sphere from an AABB.
-         * @param box The AABB to create a sphere from
-         * @return The minimal bounding sphere containing the AABB
-         */
-        /**
-         * @brief Creates a minimal bounding sphere from an AABB.
-         * @param box The AABB to create a sphere from
-         * @return The minimal bounding sphere containing the AABB
-         */
-        static constexpr Sphere FromAABB(const AABB& box)
-        {
-            // The center of the bounding sphere is the center of the AABB
-            Vector3D center = (box.GetMin() + box.GetMax()) * 0.5f;
-            
-            // The radius is the distance from center to any corner
-            // We calculate the vector from center to max corner and take its length
-            Vector3D cornerToCenter = box.GetMax() - center;
-            Fxp radius = cornerToCenter.Length<Precision::Accurate>();
-            
-            return Sphere(center, radius);
-        }
         
         /**
          * @brief Translates the sphere by the given offset.

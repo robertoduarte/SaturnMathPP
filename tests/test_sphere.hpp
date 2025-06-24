@@ -370,66 +370,6 @@ namespace SaturnMath::Tests
         }
 
         // ============================================
-        // AABB Conversion Tests
-        // ============================================
-
-        /**
-         * @brief Tests conversion between Sphere and AABB representations
-         * 
-         * Verifies:
-         * - Sphere to AABB conversion produces a properly sized bounding box
-         * - AABB to Sphere conversion correctly computes center and radius
-         * - The resulting sphere from AABB conversion bounds the original AABB
-         */
-        static constexpr void TestAABBConversion()
-        {
-            // Convert sphere to AABB
-            {
-                constexpr Vector3D center(0, 0, 0);
-                constexpr Fxp radius = 2;
-                constexpr Sphere sphere(center, radius);
-
-                // Convert sphere to AABB
-                constexpr AABB aabb = sphere.ToAABB();
-                constexpr Vector3D aabbMin = aabb.GetMin();
-                constexpr Vector3D aabbMax = aabb.GetMax();
-                
-                // Verify the AABB properly bounds the sphere
-                static_assert(aabbMin.X == -2 && aabbMin.Y == -2 && aabbMin.Z == -2 &&
-                            aabbMax.X == 2 && aabbMax.Y == 2 && aabbMax.Z == 2,
-                            "ToAABB should return an AABB that bounds the sphere");
-            }
-
-            // Convert AABB to sphere
-            {
-                // Create an AABB with min (-1,-2,-3) and max (1,2,3)
-                constexpr Vector3D minPoint(-1, -2, -3);
-                constexpr Vector3D maxPoint(1, 2, 3);
-                constexpr AABB box = AABB::FromMinMax(minPoint, maxPoint);
-                
-                // Convert AABB to sphere
-                constexpr Sphere fromAABB = Sphere::FromAABB(box);
-                constexpr Vector3D aabbCenter = fromAABB.GetPosition();
-                constexpr Fxp aabbRadius = fromAABB.GetRadius();
-
-                // Verify the center is at the AABB's center
-                constexpr Vector3D expectedCenter = (minPoint + maxPoint) * Fxp(0.5f);
-                static_assert(aabbCenter.X == expectedCenter.X &&
-                            aabbCenter.Y == expectedCenter.Y &&
-                            aabbCenter.Z == expectedCenter.Z,
-                            "FromAABB should create a sphere with center at the center of the AABB");
-
-                // Verify the radius is the distance to the furthest corner
-                // For the box with extents (-1,-2,-3) to (1,2,3), the furthest corner is (1,2,3)
-                // Distance from center (0,0,0) to (1,2,3) is sqrt(1²+2²+3²) = sqrt(14) ≈ 3.742
-                constexpr Fxp expectedRadius = Vector3D(1, 2, 3).Length<Precision::Accurate>();
-                constexpr Fxp radiusDiff = (aabbRadius - expectedRadius).Abs();
-                static_assert(radiusDiff < Fxp::Epsilon() * 10,
-                            "FromAABB should create a sphere with radius equal to the distance to the furthest corner");
-            }
-        }
-
-        // ============================================
         // Test Runner
         // ============================================
         
@@ -445,12 +385,11 @@ namespace SaturnMath::Tests
         static constexpr bool RunAll()
         {
             // Execute each test case in sequence
-            TestConstruction();      // 1. Verify construction and factory methods
-            TestValidity();          // 2. Test sphere validity checks
-            TestProperties();        // 3. Test geometric properties
-            TestTransformation();    // 4. Test transformations (translate, scale)
-            TestClosestPoint();      // 5. Test closest point calculations
-            TestAABBConversion();    // 6. Test conversions to/from AABB
+            TestConstruction();      // Verify construction and factory methods
+            TestValidity();          // Test sphere validity checks
+            TestProperties();        // Test geometric properties
+            TestTransformation();    // Test transformations (translate, scale)
+            TestClosestPoint();      // Test closest point calculations
             
             // If we reach this point, all tests passed
             return true;
