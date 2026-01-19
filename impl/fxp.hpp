@@ -229,6 +229,16 @@ namespace SaturnMath::Types
         }
 
         /**
+         * @brief Returns the absolute value of a fixed-point value.
+         * @param v Input value
+         * @return |v|
+         */
+        static constexpr Fxp Abs(const Fxp& v)
+        {
+            return (v < 0) ? -v : v;
+        }
+
+        /**
          * @brief Creates fixed-point from raw 16.16 value.
          * @param rawValue Raw fixed-point bits
          * @return Fixed-point value
