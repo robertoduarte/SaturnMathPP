@@ -1052,7 +1052,7 @@ namespace SaturnMath::Types
          * @param shiftAmount The number of positions to shift.
          * @return The resulting Vec3 object.
          */
-        constexpr Vector3D operator<<(const size_t& shiftAmount)
+        constexpr Vector3D operator<<(const size_t& shiftAmount) const
         {
             return Vector3D(X << shiftAmount, Y << shiftAmount, Z << shiftAmount);
         }
