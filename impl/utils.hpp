@@ -107,6 +107,9 @@ namespace SaturnMath
          */
         static constexpr uint32_t FastSqrt(uint32_t src)
         {
+            if (src == 0)
+                return 0;
+
             uint32_t baseEstimation = 1;
             uint32_t estimation = src >> 2;
 
