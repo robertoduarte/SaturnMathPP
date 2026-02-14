@@ -505,7 +505,7 @@ namespace SaturnMath::Types
          */
         constexpr Angle operator-() const
         {
-            return BuildRaw(value + halfPi); // Add half a turn
+            return BuildRaw(value + pi); // Add half a turn
         }
 
         /**
