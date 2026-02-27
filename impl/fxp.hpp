@@ -307,12 +307,9 @@ namespace SaturnMath::Types
          */
         constexpr Fxp Floor() const
         {
-            // For positive values, truncate the fraction
-            // For negative values with a fraction, subtract 1 from the integer part
-            if (value >= 0)
-                return TruncateFraction();
-            else
-                return BuildRaw((value - 0x1000) & 0xFFFF0000);
+            // Masking away the fractional bits yields correct floor semantics in two's complement
+            // for both positive and negative values.
+            return BuildRaw(value & 0xFFFF0000);
         }
 
         /**
@@ -324,11 +321,15 @@ namespace SaturnMath::Types
          */
         constexpr Fxp Ceil() const
         {
-            // If positive with a fraction, add 1 to the integer part
-            if (value >= 0)
-                return BuildRaw((value + 0x10000) & 0xFFFF0000);
-            else
-                return TruncateFraction();
+            const int32_t truncated = value & 0xFFFF0000;
+            const int32_t frac = value & 0x0000FFFF;
+
+            // If already integral, return unchanged.
+            if (frac == 0)
+                return BuildRaw(truncated);
+
+            // Otherwise move to the next integer toward +infinity.
+            return BuildRaw(truncated + 0x00010000);
                 
         }
 

@@ -332,6 +332,12 @@ namespace SaturnMath::Tests
             constexpr Fxp a(5.5);
             constexpr Fxp b(-3.25);
 
+            constexpr Fxp c(1.0);
+            constexpr Fxp d(-1.0);
+
+            static_assert(c.Ceil() == 1, "Ceil of integeral positive should stay the same");
+            static_assert(d.Floor() == -1, "Floor of integeral negative should stay the same");
+
             // Absolute value
             static_assert(a.Abs() == a, "Abs of positive should be unchanged");
             static_assert(b.Abs() == -b, "Abs of negative should be positive");
@@ -578,13 +584,13 @@ namespace SaturnMath::Tests
             // For exact integers, Floor and Ceil should return the same value
             static_assert(c.Floor() == 7, "Floor of positive integer value");
             // When there's no fractional part, Ceil returns the same value
-            static_assert(c.Ceil() == 8, "Ceil of positive integer value");
+            static_assert(c.Ceil() == 7, "Ceil of positive integer value");
             static_assert(c.Round() == 7, "Round of positive integer value");
 
             // Test exact negative integers
             constexpr Fxp d(-7.0);
             // For negative integers, Floor should return the same value
-            static_assert(d.Floor() == -8, "Floor of negative integer value");
+            static_assert(d.Floor() == -7, "Floor of negative integer value");
             static_assert(d.Ceil() == -7, "Ceil of negative integer value");
             static_assert(d.Round() == -7, "Round of negative integer value");
 
