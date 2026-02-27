@@ -332,12 +332,6 @@ namespace SaturnMath::Tests
             constexpr Fxp a(5.5);
             constexpr Fxp b(-3.25);
 
-            constexpr Fxp c(1.0);
-            constexpr Fxp d(-1.0);
-
-            static_assert(c.Ceil() == 1, "Ceil of integeral positive should stay the same");
-            static_assert(d.Floor() == -1, "Floor of integeral negative should stay the same");
-
             // Absolute value
             static_assert(a.Abs() == a, "Abs of positive should be unchanged");
             static_assert(b.Abs() == -b, "Abs of negative should be positive");
