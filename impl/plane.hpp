@@ -81,14 +81,15 @@ namespace SaturnMath::Types
         static constexpr Plane FromPoints(const Vector3D& a, const Vector3D& b, const Vector3D& c)
         {
             // Calculate normal using cross product
-            Vector3D normal = (b - a).Cross(c - a).Normalize<Precision::Accurate>();
-            
-            // If the normal is zero (points are colinear), return an invalid plane
-            if (normal.LengthSquared() < Fxp::Epsilon())
+            Vector3D cross = (b - a).Cross(c - a);
+
+            // If the cross product is zero (points are collinear), return an invalid plane
+            if (cross.LengthSquared() < Fxp::Epsilon())
             {
                 return Plane(); // Or handle error appropriately
             }
-            
+
+            Vector3D normal = cross.Normalize<Precision::Accurate>();
             return Plane(normal, normal.Dot(a));
         }
         
