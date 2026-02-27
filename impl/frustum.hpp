@@ -110,7 +110,7 @@ namespace SaturnMath::Types
          * @brief Updates frustum planes based on view matrix.
          * 
          * Recalculates all six frustum planes using the camera's:
-         * - Position (viewMatrix.Row3)
+         * - Position (recovered from viewMatrix rotation and translation)
          * - Forward direction (-viewMatrix.Row2)
          * - Up direction (viewMatrix.Row1)
          * - Right direction (viewMatrix.Row0)
@@ -119,7 +119,12 @@ namespace SaturnMath::Types
          */
         constexpr void Update(const Matrix43& viewMatrix)
         {
-            const Vector3D& pos = viewMatrix.Row3;
+            // Recover world-space camera position from the view matrix.
+            // Row3 of a view matrix stores (-right·eye, -up·eye, -viewZ·eye),
+            // so we reconstruct the eye position by inverting the transform.
+            const Vector3D pos = -(viewMatrix.Row0 * viewMatrix.Row3.X
+                                 + viewMatrix.Row1 * viewMatrix.Row3.Y
+                                 + viewMatrix.Row2 * viewMatrix.Row3.Z);
             
             // Calculate near plane corners
             const Vector3D originalNearCenter = pos - viewMatrix.Row2 * NearDist;

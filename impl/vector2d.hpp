@@ -5,6 +5,8 @@
 #include "sort_order.hpp"
 #include "trigonometry.hpp"
 
+#include <utility>
+
 namespace SaturnMath::Types
 {
     /**
@@ -100,13 +102,32 @@ namespace SaturnMath::Types
         constexpr Vector2D Sort() const
         {
             Vector2D result(*this);
-            if (O == SortOrder::Ascending ? result.X > result.Y : result.X < result.Y)
-            {
-                Fxp temp = result.X;
-                result.X = result.Y;
-                result.Y = temp;
-            }
+            result.SortInPlace<O>();
             return result;
+        }
+
+        /**
+         * @brief Sort coordinates in-place.
+         * @tparam O Sort order (Ascending or Descending)
+         * @details Sorts the coordinates of the vector in-place, modifying the original object.
+         * This function is used internally by Sort() and can be used directly for performance-critical code.
+         */
+        template <SortOrder O = SortOrder::Ascending>
+        constexpr void SortInPlace()
+        {
+            if constexpr (O == SortOrder::Ascending) {
+                if (X > Y) {
+                    Fxp temp = X;
+                    X = Y;
+                    Y = temp;
+                }
+            } else {
+                if (X < Y) {
+                    Fxp temp = X;
+                    X = Y;
+                    Y = temp;
+                }
+            }
         }
 
         /**
@@ -210,42 +231,33 @@ namespace SaturnMath::Types
         template<Precision P = Precision::Default>
         constexpr Fxp Length() const
         {
-            // Use different thresholds based on precision mode
-            constexpr Fxp overflowThreshold = (P == Precision::Turbo) ? 
-                Fxp(724.0) :  // sqrt(2^31 / 2) * 4 ≈ 724.08 - more permissive for Turbo
-                Fxp(181.0);   // sqrt(2^31 / 2) ≈ 181.02 - conservative for other modes
-                
-            const bool potentialOverflow = (X.Abs() > overflowThreshold || Y.Abs() > overflowThreshold);
+            if constexpr (P == Precision::Turbo) {
+                constexpr Vector2D alphaBeta(
+                    0.96043387010342, // Alpha
+                    0.39782473475533  // Beta
+                );
+                Vector2D absolute = Abs();
+                absolute.SortInPlace<SortOrder::Descending>();
+                return alphaBeta.Dot(absolute);
+            }
 
-            // Use a lambda to handle the calculation based on precision
-            const auto calculateLength = [](const Vector2D& vec) -> Fxp {
-                if constexpr (P == Precision::Turbo) {
-                    // Use existing fast approximation for small values
-                    constexpr Vector2D alphaBeta(
-                        0.96043387010342, // Alpha
-                        0.39782473475533  // Beta
-                    );
-                    return alphaBeta.Dot(vec.Abs().Sort<SortOrder::Descending>());
+            const int32_t combined = X.Abs().RawValue() | Y.Abs().RawValue();
+
+            auto calc = [this](auto shift_tag) -> Fxp {
+                constexpr int s = decltype(shift_tag)::value;
+                if constexpr (s == 0) {
+                    return Dot(*this).template Sqrt<P>();
                 } else {
-                    // Use accurate calculation for small values
-                    return vec.Dot(vec).Sqrt<P>();
+                    const Vector2D v = *this >> s;
+                    const Fxp res = v.Dot(v).template Sqrt<P>();
+                    return Fxp::BuildRaw(res.RawValue() << s);
                 }
             };
 
-            // Perform calculation with or without overflow protection
-            if (potentialOverflow) {
-                if constexpr (P == Precision::Turbo) {
-                    // For Turbo mode, use less aggressive scaling since alpha-beta is more robust
-                    const Vector2D scaledDown = *this >> 2;  // Divide by 4
-                    return calculateLength(scaledDown) << 2;  // Multiply by 4
-                } else {
-                    // For other precision modes, use more aggressive scaling
-                    const Vector2D scaledDown = *this >> 7;  // Divide by 128
-                    return calculateLength(scaledDown) << 7;  // Multiply by 128
-                }
-            } else {
-                return calculateLength(*this);
-            }
+            if (combined <= 0x00800000) return calc(std::integral_constant<int, 0>{});
+            if (combined <= 0x02000000) return calc(std::integral_constant<int, 2>{});
+            if (combined <= 0x08000000) return calc(std::integral_constant<int, 4>{});
+            return calc(std::integral_constant<int, 6>{});
         }
 
         /**

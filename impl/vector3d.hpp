@@ -115,30 +115,31 @@ namespace SaturnMath::Types
         constexpr Vector3D Sort() const
         {
             Vector3D result(*this);
+            result.SortInPlace<O>();
+            return result;
+        }
+
+        /**
+         * @brief Sort coordinates in-place.
+         * @tparam O Sort order (Ascending or Descending)
+         * @details Sorts the coordinates of the vector in-place, modifying the original object.
+         * This method is used internally by Sort() to avoid creating a temporary object.
+         * It uses a simple swap-based approach to sort the coordinates.
+         */
+        template <SortOrder O = SortOrder::Ascending>
+        constexpr void SortInPlace()
+        {
             Fxp temp;
 
-            if (O == SortOrder::Ascending ? result.X > result.Y : result.X < result.Y)
-            {
-                temp = result.X;
-                result.X = result.Y;
-                result.Y = temp;
+            if constexpr (O == SortOrder::Ascending) {
+                if (X > Y) { temp = X; X = Y; Y = temp; }
+                if (X > Z) { temp = X; X = Z; Z = temp; }
+                if (Y > Z) { temp = Y; Y = Z; Z = temp; }
+            } else {
+                if (X < Y) { temp = X; X = Y; Y = temp; }
+                if (Y < Z) { temp = Y; Y = Z; Z = temp; }
+                if (X < Y) { temp = X; X = Y; Y = temp; }
             }
-
-            if (O == SortOrder::Ascending ? result.X > result.Z : result.X < result.Z)
-            {
-                temp = result.X;
-                result.X = result.Z;
-                result.Z = temp;
-            }
-
-            if (O == SortOrder::Ascending ? result.Y > result.Z : result.Y < result.Z)
-            {
-                temp = result.Y;
-                result.Y = result.Z;
-                result.Z = temp;
-            }
-
-            return result;
         }
 
         /**
@@ -361,8 +362,9 @@ namespace SaturnMath::Types
          *          sqrt(X² + Y² + Z²)
          * 
          * The precision template parameter controls the calculation method:
-         * - Precision::Default: Uses exact square root calculation
-         * - Precision::Turbo: Uses fast approximation with alpha-beta-gamma coefficients
+         * - Accurate: Full precision square root calculation
+         * - Fast: Fast approximation with good accuracy
+         * - Turbo: Fastest approximation using alpha-beta-gamma coefficients
          * 
          * The method includes overflow protection by scaling down large vectors
          * before calculation and scaling the result back up.
@@ -370,63 +372,61 @@ namespace SaturnMath::Types
          * Example usage:
          * @code
          * Vector3D v(3, 4, 5);
-         * Fxp len = v.Length();  // Standard precision
-         * Fxp fastLen = v.Length<Precision::Turbo>();  // Faster approximation
+         * Fxp len = v.Length();  // Default precision (Fast)
+         * Fxp accLen = v.Length<Precision::Accurate>();  // Accurate sqrt
+         * Fxp fastLen = v.Length<Precision::Fast>();  // Fast sqrt
+         * Fxp turboLen = v.Length<Precision::Turbo>();  // Fast approximation (alpha-beta-gamma)
          * @endcode
          */
         template<Precision P = Precision::Default>
         constexpr Fxp Length() const
         {
-            // Use different thresholds based on precision mode
-            constexpr Fxp overflowThreshold = (P == Precision::Turbo) ? 
-                Fxp(400.0) :  // More permissive for Turbo mode
-                Fxp(100.0);   // Conservative for other modes
+            if constexpr (P == Precision::Turbo) {
+                // Alpha-beta-gamma fast approximation
+                constexpr Vector3D alphaBetaGamma(
+                    0.96043387010342,   // Alpha
+                    0.39782473475533,   // Beta
+                    0.196034280659121   // Gamma
+                );
                 
-            const Fxp absX = X.Abs();
-            const Fxp absY = Y.Abs();
-            const Fxp absZ = Z.Abs();
-            const bool potentialOverflow = (absX > overflowThreshold || 
-                                         absY > overflowThreshold ||
-                                         absZ > overflowThreshold);
+                Vector3D absolute = Abs();
+                absolute.SortInPlace<SortOrder::Descending>();
+                return alphaBetaGamma.Dot(absolute);
+            }
 
-            // Use a lambda to handle the calculation based on precision
-            const auto calculateLength = [](const Vector3D& vec) -> Fxp {
-                if constexpr (P == Precision::Turbo) {
-                    // Use fast approximation for small values
-                    constexpr Vector3D alphaBetaGamma(
-                        0.96043387010342,  // Alpha
-                        0.39782473475533,   // Beta
-                        0.196034280659121   // Gamma
-                    );
-                    return alphaBetaGamma.Dot(vec.Abs().Sort<SortOrder::Descending>());
+            // For Accurate/Fast: use adaptive shift to maximise precision
+            // while preventing overflow in the Dot(self) intermediate.
+            // The OR of absolute raw values captures the highest set bit
+            // across all three components.
+            const int32_t combined = X.Abs().RawValue() | 
+                                     Y.Abs().RawValue() | 
+                                     Z.Abs().RawValue();
+
+            // Each threshold doubles the previous one, starting at ~104.5
+            // (sqrt(INT32_MAX_fxp / 3) — the safe per-component limit for
+            // a 3-component Dot that must fit in int32_t after >>16).
+            // A lambda with integral_constant keeps the shift compile-time
+            // so the s==0 branch avoids the unnecessary shift/rebuild.
+            auto calc = [this](auto shift_tag) -> Fxp {
+                constexpr int s = decltype(shift_tag)::value;
+                if constexpr (s == 0) {
+                    return Dot(*this).template Sqrt<P>();
                 } else {
-                    // Use accurate calculation for small values
-                    return vec.Dot(vec).Sqrt<P>();
+                    const Vector3D v = *this >> s;
+                    const Fxp res = v.Dot(v).template Sqrt<P>();
+                    return Fxp::BuildRaw(res.RawValue() << s);
                 }
             };
 
-            // Perform calculation with or without overflow protection
-            if (potentialOverflow) {
-                if constexpr (P == Precision::Turbo) {
-                    // For Turbo mode, use less aggressive scaling since alpha-beta-gamma is more robust
-                    const Vector3D scaledDown = *this >> 2;  // Divide by 4
-                    return calculateLength(scaledDown) << 2;  // Multiply by 4
-                } else {
-                    // For other precision modes, use more aggressive scaling
-                    const Vector3D scaledDown = *this >> 7;  // Divide by 128
-                    return calculateLength(scaledDown) << 7;  // Multiply by 128
-                }
-            } else {
-                return calculateLength(*this);
-            }
+            if (combined <= 0x00688000) return calc(std::integral_constant<int, 0>{});
+            if (combined <= 0x01A20000) return calc(std::integral_constant<int, 2>{});
+            if (combined <= 0x06880000) return calc(std::integral_constant<int, 4>{});
+            if (combined <= 0x1A200000) return calc(std::integral_constant<int, 6>{});
+            return calc(std::integral_constant<int, 7>{});
         }
-    
+
         /**
-         * @brief Normalize the vector
-         * @tparam P Precision level for calculation
-         * @return Normalized vector
-         * 
-         * @details Creates a unit vector pointing in the same direction as this vector.
+         * @brief Creates a unit vector pointing in the same direction as this vector.
          * The precision template parameter controls the length calculation method:
          * - Standard precision: Uses exact square root calculation
          * - Turbo precision: Uses fast approximation with alpha-beta-gamma coefficients

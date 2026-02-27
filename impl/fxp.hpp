@@ -357,14 +357,14 @@ namespace SaturnMath::Types
          * @return Square root with specified precision
          *
          * @details Provides two precision levels with different performance and accuracy trade-offs:
-         * - Standard: Full precision calculation using the digit-by-digit algorithm
+         * - Accurate: Full precision calculation using the digit-by-digit algorithm
          * - Fast: Approximation with varying error rates:
          *   • Maximum error of ~42% observed at very small values (~0.000046)
          *   • Error decreases as values increase, with most values below 0.0015 having errors between 6-20%
          *   • For values above 0.0015, maximum error stabilizes around 6.3%
          *
          * Choose the appropriate precision based on your requirements:
-         * - Standard: Use for critical calculations where accuracy is essential
+         * - Accurate: Full or critical calculations where accuracy is essential
          * - Fast: Best for non-critical real-time effects where performance is paramount
          *
          * @note Turbo precision mode defaults to Fast for this function.
@@ -374,24 +374,54 @@ namespace SaturnMath::Types
         {
             if constexpr (P == Precision::Accurate)
             {
-                uint32_t remainder = static_cast<uint32_t>(value);
-                uint32_t root = 0;
-                uint32_t bit = 0x40000000;
+                if (value <= 0) return BuildRaw(0);
 
-                while (bit > 0x40)
+                uint32_t remainderHi = static_cast<uint32_t>(value) >> 16;
+                uint32_t remainderLo = static_cast<uint32_t>(value) << 16;
+
+                uint32_t rootHi = 0;
+                uint32_t rootLo = 0;
+
+                uint32_t bitHi = 0x00004000u;
+                uint32_t bitLo = 0u;
+
+                while ((bitHi | bitLo) != 0)
                 {
-                    uint32_t trial = root + bit;
-                    if (remainder >= trial)
+                    // trial = res + bit
+                    uint32_t trialLo = rootLo + bitLo;
+                    uint32_t trialHi = rootHi + bitHi + (trialLo < rootLo ? 1u : 0u);
+
+                    const bool ge = (remainderHi > trialHi) || (remainderHi == trialHi && remainderLo >= trialLo);
+
+                    if (ge)
                     {
-                        remainder -= trial;
-                        root = trial + bit;
+                        // n -= trial
+                        const uint32_t newRemainderLo = remainderLo - trialLo;
+                        remainderHi = remainderHi - trialHi - (remainderLo < trialLo ? 1u : 0u);
+                        remainderLo = newRemainderLo;
+
+                        // res = (res >> 1) + bit
+                        const uint32_t shrRootLo = (rootLo >> 1) | (rootHi << 31);
+                        const uint32_t shrRootHi = (rootHi >> 1);
+
+                        uint32_t newRootLo = shrRootLo + bitLo;
+                        uint32_t newRootHi = shrRootHi + bitHi + (newRootLo < shrRootLo ? 1u : 0u);
+                        rootLo = newRootLo;
+                        rootHi = newRootHi;
                     }
-                    remainder <<= 1;
-                    bit >>= 1;
+                    else
+                    {
+                        // res >>= 1
+                        rootLo = (rootLo >> 1) | (rootHi << 31);
+                        rootHi = (rootHi >> 1);
+                    }
+
+                    // bit >>= 2
+                    bitLo = (bitLo >> 2) | (bitHi << 30);
+                    bitHi >>= 2;
                 }
 
-                root >>= 8;
-                return BuildRaw(root);
+                return BuildRaw(static_cast<int32_t>(rootLo));
             }
             else // P == Precision::Fast || P == Precision::Turbo
             {
