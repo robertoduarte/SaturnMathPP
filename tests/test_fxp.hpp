@@ -578,13 +578,13 @@ namespace SaturnMath::Tests
             // For exact integers, Floor and Ceil should return the same value
             static_assert(c.Floor() == 7, "Floor of positive integer value");
             // When there's no fractional part, Ceil returns the same value
-            static_assert(c.Ceil() == 8, "Ceil of positive integer value");
+            static_assert(c.Ceil() == 7, "Ceil of positive integer value");
             static_assert(c.Round() == 7, "Round of positive integer value");
 
             // Test exact negative integers
             constexpr Fxp d(-7.0);
             // For negative integers, Floor should return the same value
-            static_assert(d.Floor() == -8, "Floor of negative integer value");
+            static_assert(d.Floor() == -7, "Floor of negative integer value");
             static_assert(d.Ceil() == -7, "Ceil of negative integer value");
             static_assert(d.Round() == -7, "Round of negative integer value");
 
