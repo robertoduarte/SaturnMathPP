@@ -45,7 +45,7 @@ namespace SaturnMath::Types
          * @param size Half-extents in each axis
          */
         constexpr AABB(const Vector3D& center, const Fxp& size)
-            : position(center), halfExtents(size, size, size)
+            : position(center), halfExtents(size.Abs(), size.Abs(), size.Abs())
         {
         }
 
@@ -55,7 +55,7 @@ namespace SaturnMath::Types
          * @param halfExtents Half-extents for each axis
          */
         constexpr AABB(const Vector3D& center, const Vector3D& halfExtents)
-            : position(center), halfExtents(halfExtents)
+            : position(center), halfExtents(halfExtents.X.Abs(), halfExtents.Y.Abs(), halfExtents.Z.Abs())
         {
         }
 
@@ -67,8 +67,18 @@ namespace SaturnMath::Types
          */
         static constexpr AABB FromMinMax(const Vector3D& minPoint, const Vector3D& maxPoint)
         {
-            Vector3D center = (minPoint + maxPoint) / 2;
-            Vector3D halfExtents = (maxPoint - minPoint) / 2;
+            Vector3D actualMin(
+                Fxp::Min(minPoint.X, maxPoint.X),
+                Fxp::Min(minPoint.Y, maxPoint.Y),
+                Fxp::Min(minPoint.Z, maxPoint.Z)
+            );
+            Vector3D actualMax(
+                Fxp::Max(minPoint.X, maxPoint.X),
+                Fxp::Max(minPoint.Y, maxPoint.Y),
+                Fxp::Max(minPoint.Z, maxPoint.Z)
+            );
+            Vector3D center = (actualMin + actualMax) / 2;
+            Vector3D halfExtents = (actualMax - actualMin) / 2;
             return AABB(center, halfExtents);
         }
 
@@ -83,7 +93,7 @@ namespace SaturnMath::Types
          * @return True if the AABB has zero size in any dimension
          */
         constexpr bool IsDegenerate() const {
-            return halfExtents.X == 0 && halfExtents.Y == 0 && halfExtents.Z == 0;
+            return halfExtents.X == 0 || halfExtents.Y == 0 || halfExtents.Z == 0;
         }
 
         /**
@@ -152,7 +162,12 @@ namespace SaturnMath::Types
          */
         constexpr AABB Expand(const Fxp& margin) const
         {
-            return AABB(position, halfExtents + margin);
+            Vector3D newHalfExtents(
+                Fxp::Max(Fxp(0), halfExtents.X + margin),
+                Fxp::Max(Fxp(0), halfExtents.Y + margin),
+                Fxp::Max(Fxp(0), halfExtents.Z + margin)
+            );
+            return AABB(position, newHalfExtents);
         }
 
         /**
@@ -271,7 +286,7 @@ namespace SaturnMath::Types
          */
         constexpr AABB Scale(const Fxp& scale) const
         {
-            return AABB(position, halfExtents * scale);
+            return AABB(position, halfExtents * scale.Abs());
         }
 
         /**
