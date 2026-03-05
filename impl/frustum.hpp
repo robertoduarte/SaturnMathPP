@@ -107,6 +107,32 @@ namespace SaturnMath::Types
         }
 
         /**
+         * @brief Creates a plane from three points, ensuring the normal faces inward.
+         * 
+         * Builds a plane via FromPoints, then flips the normal if it does not
+         * point toward the given interior reference point.
+         * 
+         * @param a First point on the plane
+         * @param b Second point on the plane
+         * @param c Third point on the plane
+         * @param interiorPoint A point known to be inside the frustum
+         * @return Plane with inward-facing normal
+         */
+        static constexpr Plane MakeInwardPlane(
+            const Vector3D& a, const Vector3D& b, const Vector3D& c,
+            const Vector3D& interiorPoint)
+        {
+            Plane p = Plane::FromPoints(a, b, c);
+            // If the interior point is behind the plane, the normal faces outward — flip it.
+            if (p.GetSignedDistance(interiorPoint) < 0)
+            {
+                p.Normal = -p.Normal;
+                p.SignedDistance = -p.SignedDistance;
+            }
+            return p;
+        }
+
+        /**
          * @brief Updates frustum planes based on view matrix.
          * 
          * Recalculates all six frustum planes using the camera's:
@@ -125,73 +151,61 @@ namespace SaturnMath::Types
             const Vector3D pos = -(viewMatrix.Row0 * viewMatrix.Row3.X
                                  + viewMatrix.Row1 * viewMatrix.Row3.Y
                                  + viewMatrix.Row2 * viewMatrix.Row3.Z);
-            
-            // Calculate near plane corners
-            const Vector3D originalNearCenter = pos - viewMatrix.Row2 * NearDist;
-            const Vector3D nearCenter = pos - viewMatrix.Row2 * REFERENCE_NEAR_DISTANCE;
-            const Vector3D nearUp = viewMatrix.Row1 * NearHeight;
-            const Vector3D nearRight = viewMatrix.Row0 * NearWidth;
-            
-            const Vector3D nearTopCenter = nearCenter + nearUp;
-            const Vector3D nearTopRight = nearTopCenter - nearRight; 
-            const Vector3D nearTopLeft = nearTopCenter + nearRight;  
-            const Vector3D nearBottomCenter = nearCenter - nearUp;
-            const Vector3D nearBottomRight = nearBottomCenter - nearRight; 
-            const Vector3D nearBottomLeft = nearBottomCenter + nearRight;
 
-            // Use original far distance only for the far plane center
-            const Vector3D originalFarCenter = pos - viewMatrix.Row2 * FarDist;
-            const Vector3D farCenter = pos - viewMatrix.Row2 * REFERENCE_MAX_DISTANCE;
-            const Vector3D farUp = viewMatrix.Row1 * FarHeight;
-            const Vector3D farRight = viewMatrix.Row0 * FarWidth;
+            // Camera basis vectors
+            const Vector3D right = viewMatrix.Row0;   // camera right
+            const Vector3D up    = viewMatrix.Row1;    // camera up
+            const Vector3D forward = -viewMatrix.Row2; // camera forward (into the scene)
 
-            const Vector3D farTopRight = farCenter + farUp - farRight; 
-            const Vector3D farTopLeft = farCenter + farUp + farRight;  
-            const Vector3D farBottomRight = farCenter - farUp - farRight; 
-            const Vector3D farBottomLeft = farCenter - farUp + farRight;   
+            // Near and far plane centers at actual clipping distances
+            const Vector3D nearPlaneCenter = pos + forward * NearDist;
+            const Vector3D farPlaneCenter  = pos + forward * FarDist;
 
-            // Define planes with inward-facing normals in view space
-            // In view space, the camera looks down the negative Z axis
-            // So the near plane normal should be (0,0,-1) and far plane normal (0,0,1)
-            
-            // Near plane (facing away from camera, negative Z in view space)
-            Planes[PLANE_NEAR] = Plane(-viewMatrix.Row2, originalNearCenter);
-            
-            // Far plane (facing toward camera, positive Z in view space)
-            Planes[PLANE_FAR] = Plane(viewMatrix.Row2, originalFarCenter);
-            
-            // Calculate plane normals using camera position and view direction vectors
-            // This ensures the planes are correctly oriented in view space
-            
-            // Top plane (facing down, negative Y in view space)
-            // Using three points in counter-clockwise order when viewed from inside the frustum
-            Planes[PLANE_TOP] = Plane::FromPoints(
-                nearTopRight,   // top-right near
-                nearTopLeft,    // top-left near
-                farTopLeft      // top-left far
-            );
-            
-            // Bottom plane (facing up, positive Y in view space)
-            // Using three points in counter-clockwise order when viewed from inside the frustum
-            Planes[PLANE_BOTTOM] = Plane::FromPoints(
-                nearBottomLeft,    // bottom-left near
-                nearBottomRight,  // bottom-right near
-                farBottomRight     // bottom-right far
-            );
-            
-            // Left plane (facing right, positive X in view space)
-            Planes[PLANE_LEFT] = Plane::FromPoints(
-                nearTopLeft,     // top-left near
-                nearBottomLeft,  // bottom-left near
-                farBottomLeft    // bottom-left far
-            );
+            // Reference near/far centers used for side plane geometry
+            const Vector3D nearCenter = pos + forward * REFERENCE_NEAR_DISTANCE;
+            const Vector3D farCenter  = pos + forward * REFERENCE_MAX_DISTANCE;
 
-            // Right plane (facing left, negative X in view space)
-            Planes[PLANE_RIGHT] = Plane::FromPoints(
-                nearBottomRight, // bottom-right near
-                nearTopRight,    // top-right near
-                farTopRight      // top-right far
-            );
+            // Near plane corners (camera-space naming: tl/tr/bl/br)
+            const Vector3D nearUp    = up * NearHeight;
+            const Vector3D nearRight = right * NearWidth;
+
+            const Vector3D ntl = nearCenter + nearUp - nearRight; // camera top-left
+            const Vector3D ntr = nearCenter + nearUp + nearRight; // camera top-right
+            const Vector3D nbl = nearCenter - nearUp - nearRight; // camera bottom-left
+            const Vector3D nbr = nearCenter - nearUp + nearRight; // camera bottom-right
+
+            // Far plane corners
+            const Vector3D farUp    = up * FarHeight;
+            const Vector3D farRight = right * FarWidth;
+
+            const Vector3D ftl = farCenter + farUp - farRight;
+            const Vector3D ftr = farCenter + farUp + farRight;
+            const Vector3D fbl = farCenter - farUp - farRight;
+            const Vector3D fbr = farCenter - farUp + farRight;
+
+            // Frustum center point for inward-normal validation
+            const Vector3D frustumCenter = pos + forward * ((REFERENCE_NEAR_DISTANCE + REFERENCE_MAX_DISTANCE) / Fxp(int16_t{2}));
+
+            // Near plane: normal points into the frustum (same as forward)
+            Planes[PLANE_NEAR] = Plane(forward, nearPlaneCenter);
+
+            // Far plane: normal points back toward camera (opposite of forward)
+            Planes[PLANE_FAR] = Plane(-forward, farPlaneCenter);
+
+            // Side planes: build from three coplanar points, then
+            // MakeInwardPlane ensures the normal always faces inward.
+
+            // Top plane: uses camera top-left, top-right, and far top-right
+            Planes[PLANE_TOP] = MakeInwardPlane(ntl, ntr, ftr, frustumCenter);
+
+            // Bottom plane: uses camera bottom-right, bottom-left, and far bottom-left
+            Planes[PLANE_BOTTOM] = MakeInwardPlane(nbr, nbl, fbl, frustumCenter);
+
+            // Left plane: uses camera bottom-left, top-left, and far top-left
+            Planes[PLANE_LEFT] = MakeInwardPlane(nbl, ntl, ftl, frustumCenter);
+
+            // Right plane: uses camera top-right, bottom-right, and far bottom-right
+            Planes[PLANE_RIGHT] = MakeInwardPlane(ntr, nbr, fbr, frustumCenter);
         }
 
         constexpr Frustum Updated(const Matrix43& viewMatrix) const

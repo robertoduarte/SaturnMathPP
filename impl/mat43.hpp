@@ -870,12 +870,11 @@ namespace SaturnMath::Types
             // Calculate the look vector (direction from eye to target)
             Vector3D look = (target - eye).Normalized<P>();
 
-            // Calculate right vector as cross product of up and look
-            Vector3D right = up.Cross(look).Normalized<P>();
+            // Calculate right vector as cross product of look and up
+            Vector3D right = look.Cross(up).Normalized<P>();
 
-
-            // Calculate actual up vector as cross product of look and right
-            Vector3D actualUp = look.Cross(right);
+            // Calculate actual up vector as cross product of right and look
+            Vector3D actualUp = right.Cross(look);
 
             // In a right-handed coordinate system, the camera looks down the negative Z-axis
             // So we need to use -look for the view matrix's Z-axis

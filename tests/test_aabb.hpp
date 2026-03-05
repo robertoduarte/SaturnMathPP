@@ -788,6 +788,107 @@ namespace SaturnMath::Tests
                     static_assert(tinyBox.GetMax().X == epsilon, "Tiny box max X incorrect");
                 }
             }
+            
+            // ============================================
+            // Negative input handling tests
+            // ============================================
+            {
+                // Constructor with negative uniform size should use absolute value
+                {
+                    constexpr AABB box(Vector3D(0, 0, 0), Fxp(-2));
+                    static_assert(box.GetHalfExtents().X == 2, "Negative uniform size should be converted to positive");
+                    static_assert(box.GetHalfExtents().Y == 2, "Negative uniform size should be converted to positive");
+                    static_assert(box.GetHalfExtents().Z == 2, "Negative uniform size should be converted to positive");
+                }
+                
+                // Constructor with negative half-extents should use absolute values
+                {
+                    constexpr AABB box(Vector3D(0, 0, 0), Vector3D(-1, -2, -3));
+                    static_assert(box.GetHalfExtents().X == 1, "Negative half-extent X should be converted to positive");
+                    static_assert(box.GetHalfExtents().Y == 2, "Negative half-extent Y should be converted to positive");
+                    static_assert(box.GetHalfExtents().Z == 3, "Negative half-extent Z should be converted to positive");
+                }
+                
+                // FromMinMax with swapped min/max should handle correctly
+                {
+                    constexpr Vector3D min(1, 2, 3);
+                    constexpr Vector3D max(-1, -2, -3);
+                    constexpr AABB box = AABB::FromMinMax(min, max);
+                    static_assert(box.GetMin().X == -1, "FromMinMax should handle swapped X");
+                    static_assert(box.GetMin().Y == -2, "FromMinMax should handle swapped Y");
+                    static_assert(box.GetMin().Z == -3, "FromMinMax should handle swapped Z");
+                    static_assert(box.GetMax().X == 1, "FromMinMax should handle swapped X");
+                    static_assert(box.GetMax().Y == 2, "FromMinMax should handle swapped Y");
+                    static_assert(box.GetMax().Z == 3, "FromMinMax should handle swapped Z");
+                }
+            }
+            
+            // ============================================
+            // IsDegenerate tests (any axis zero)
+            // ============================================
+            {
+                // Box with X = 0 should be degenerate
+                {
+                    constexpr AABB box(Vector3D(0, 0, 0), Vector3D(0, 1, 1));
+                    static_assert(box.IsDegenerate(), "AABB with X half-extent == 0 should be degenerate");
+                }
+                
+                // Box with Y = 0 should be degenerate
+                {
+                    constexpr AABB box(Vector3D(0, 0, 0), Vector3D(1, 0, 1));
+                    static_assert(box.IsDegenerate(), "AABB with Y half-extent == 0 should be degenerate");
+                }
+                
+                // Box with Z = 0 should be degenerate
+                {
+                    constexpr AABB box(Vector3D(0, 0, 0), Vector3D(1, 1, 0));
+                    static_assert(box.IsDegenerate(), "AABB with Z half-extent == 0 should be degenerate");
+                }
+                
+                // Box with all non-zero should not be degenerate
+                {
+                    constexpr AABB box(Vector3D(0, 0, 0), Vector3D(1, 1, 1));
+                    static_assert(!box.IsDegenerate(), "AABB with all non-zero half-extents should not be degenerate");
+                }
+            }
+            
+            // ============================================
+            // Expand with negative margin tests
+            // ============================================
+            {
+                // Expand with negative margin should clamp to zero
+                {
+                    constexpr AABB box(Vector3D(0, 0, 0), Vector3D(1, 2, 3));
+                    constexpr AABB shrunk = box.Expand(Fxp(-1));
+                    static_assert(shrunk.GetHalfExtents().X == 0, "Expand(-1) should clamp X to 0");
+                    static_assert(shrunk.GetHalfExtents().Y == 1, "Expand(-1) should shrink Y to 1");
+                    static_assert(shrunk.GetHalfExtents().Z == 2, "Expand(-1) should shrink Z to 2");
+                    static_assert(shrunk.IsDegenerate(), "Shrunk AABB with any axis 0 should be degenerate");
+                }
+                
+                // Expand with large negative margin should clamp all to zero
+                {
+                    constexpr AABB box(Vector3D(0, 0, 0), Vector3D(1, 2, 3));
+                    constexpr AABB collapsed = box.Expand(Fxp(-100));
+                    static_assert(collapsed.GetHalfExtents() == Vector3D(0, 0, 0), "Expand(large negative) should clamp to zero");
+                    static_assert(collapsed.GetMin() == Vector3D(0, 0, 0), "Collapsed AABB min should equal center");
+                    static_assert(collapsed.GetMax() == Vector3D(0, 0, 0), "Collapsed AABB max should equal center");
+                }
+            }
+            
+            // ============================================
+            // Scale with negative factor tests
+            // ============================================
+            {
+                // Scale with negative factor should use absolute value
+                {
+                    constexpr AABB box(Vector3D(0, 0, 0), Vector3D(1, 2, 3));
+                    constexpr AABB scaled = box.Scale(Fxp(-2));
+                    static_assert(scaled.GetHalfExtents().X == 2, "Scale(-2) should behave like Scale(2)");
+                    static_assert(scaled.GetHalfExtents().Y == 4, "Scale(-2) should behave like Scale(2)");
+                    static_assert(scaled.GetHalfExtents().Z == 6, "Scale(-2) should behave like Scale(2)");
+                }
+            }
         }
         
         // ============================================
