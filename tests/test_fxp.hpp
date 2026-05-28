@@ -58,6 +58,39 @@ namespace SaturnMath::Tests
             static_assert(Fxp::MinValue() < 0, "MinValue should be negative");
             static_assert(Fxp::MaxValue() > 0, "MaxValue should be positive");
             static_assert(Fxp::MinValue() < Fxp::MaxValue(), "MinValue should be less than MaxValue");
+
+            // Test Zero() static method
+            constexpr Fxp zero = Fxp::Zero();
+            static_assert(zero.RawValue() == 0, "Zero() should return 0");
+
+            // Test consteval construction from integer
+            constexpr Fxp five = 5;
+            static_assert(five.RawValue() == (5 << 16), "Construction from integer should shift correctly");
+
+            // Test consteval construction from float
+            constexpr Fxp two_point_five = 2.5f;
+            static_assert(two_point_five.RawValue() == (int32_t)(2.5 * 65536.0), "Construction from float should work");
+
+            // Test BuildRaw
+            constexpr Fxp raw = Fxp::BuildRaw(0x00050000);
+            static_assert(raw.RawValue() == 0x00050000, "BuildRaw should return raw value");
+        }
+
+        // Conversion tests
+        static constexpr void TestConversion()
+        {
+            // Test conversion from integral
+            constexpr Fxp from_int = Fxp::Convert(10);
+            static_assert(from_int.RawValue() == (10 << 16), "Convert from int should work");
+
+            // Test conversion from floating-point
+            constexpr Fxp from_float = Fxp::Convert(3.14);
+            static_assert(from_float.RawValue() == (int32_t)(3.14 * 65536.0), "Convert from float should work");
+
+            // Test conversion between formats
+            constexpr FixedPoint<16, 16> fxp16 = FixedPoint<16, 16>::Convert(10);
+            constexpr FixedPoint<24, 8> hfxp = FixedPoint<24, 8>::Convert(fxp16);
+            static_assert(hfxp.RawValue() == (10 << 8), "Convert between formats should work");
         }
 
         // Basic arithmetic tests
@@ -84,6 +117,18 @@ namespace SaturnMath::Tests
             // Negation
             static_assert(-a == -5, "Negation should work");
 
+            // Runtime-style arithmetic tests
+            constexpr Fxp a2 = Fxp::Convert(10);
+            constexpr Fxp b2 = Fxp::Convert(5);
+
+            // Addition
+            constexpr Fxp sum = a2 + b2;
+            static_assert(sum.RawValue() == ((10 + 5) << 16), "Addition should work with Convert");
+
+            // Subtraction
+            constexpr Fxp diff = a2 - b2;
+            static_assert(diff.RawValue() == ((10 - 5) << 16), "Subtraction should work with Convert");
+
             // Compound assignment
             constexpr auto TestCompound = []()
             {
@@ -106,6 +151,67 @@ namespace SaturnMath::Tests
                 return true;
             };
             static_assert(TestCompound(), "Compound assignment operators should work");
+        }
+
+        // Multiplication tests
+        static constexpr void TestMultiplication()
+        {
+            constexpr Fxp a = Fxp::Convert(4);
+            constexpr Fxp b = Fxp::Convert(3);
+            constexpr Fxp product = a * b;
+            static_assert(product.RawValue() == ((4 * 3) << 16), "Multiplication should work");
+        }
+
+        // Division tests
+        static constexpr void TestDivision()
+        {
+            constexpr Fxp a = Fxp::Convert(10);
+            constexpr Fxp b = Fxp::Convert(2);
+            constexpr Fxp quotient = a / b;
+            static_assert(quotient.RawValue() == ((10 / 2) << 16), "Division should work");
+        }
+
+        // Mixed format operations tests
+        static constexpr void TestMixedOperations()
+        {
+            constexpr FixedPoint<16, 16> fxp = FixedPoint<16, 16>::Convert(10);
+            constexpr FixedPoint<24, 8> hfxp = FixedPoint<24, 8>::Convert(5);
+
+            // Multiplication: HFxp * Fxp -> HFxp
+            constexpr FixedPoint<24, 8> mul_result = hfxp * fxp;
+            static_assert(mul_result.RawValue() == ((10 * 5) << 8), "Mixed multiplication should work");
+
+            // Division: HFxp / Fxp -> HFxp
+            constexpr FixedPoint<24, 8> div_result = hfxp / fxp;
+            static_assert(div_result.RawValue() == 128, "Mixed division should work (5/10 = 0.5 in 24.8)");
+        }
+
+        // Comprehensive format combinations tests
+        static constexpr void TestComprehensiveFormats()
+        {
+            // 8.24 / 12.20 -> 8.24
+            constexpr FixedPoint<8, 24> c824 = FixedPoint<8, 24>::Convert(100.0);
+            constexpr FixedPoint<12, 20> d1220 = FixedPoint<12, 20>::Convert(25.0);
+            constexpr FixedPoint<8, 24> div824 = c824 / d1220;
+            static_assert(div824.RawValue() == (int32_t)(4.0 * (1 << 24)), "8.24 / 12.20 should equal 4.0");
+
+            // 22.10 / 24.8 -> 22.10
+            constexpr FixedPoint<22, 10> g2210 = FixedPoint<22, 10>::Convert(1000.0);
+            constexpr FixedPoint<24, 8> h248 = FixedPoint<24, 8>::Convert(100.0);
+            constexpr FixedPoint<22, 10> div2210 = g2210 / h248;
+            static_assert(div2210.RawValue() == (int32_t)(10.0 * (1 << 10)), "22.10 / 24.8 should equal 10.0");
+
+            // 12.20 / 8.24 -> 12.20
+            constexpr FixedPoint<12, 20> i1220 = FixedPoint<12, 20>::Convert(16.0);
+            constexpr FixedPoint<8, 24> j824 = FixedPoint<8, 24>::Convert(4.0);
+            constexpr FixedPoint<12, 20> div1220 = i1220 / j824;
+            static_assert(div1220.RawValue() == (int32_t)(4.0 * (1 << 20)), "12.20 / 8.24 should equal 4.0");
+
+            // 20.12 / 16.16 -> 20.12
+            constexpr FixedPoint<20, 12> k2012 = FixedPoint<20, 12>::Convert(200.0);
+            constexpr FixedPoint<16, 16> l1616 = FixedPoint<16, 16>::Convert(10.0);
+            constexpr FixedPoint<20, 12> div2012 = k2012 / l1616;
+            static_assert(div2012.RawValue() == (int32_t)(20.0 * (1 << 12)), "20.12 / 16.16 should equal 20.0");
         }
 
         // Comparison tests
@@ -196,6 +302,18 @@ namespace SaturnMath::Tests
             static_assert(5.0 <= a, "float <= Fxp comparison should work with equal values at compile-time");
             static_assert(5.5 >= a, "float >= Fxp comparison should work with greater values at compile-time");
             static_assert(4.5 <= a, "float <= Fxp comparison should work with lesser values at compile-time");
+
+            // Runtime-style comparison tests
+            constexpr FixedPoint<16, 16> a2 = FixedPoint<16, 16>::Convert(10);
+            constexpr FixedPoint<16, 16> b2 = FixedPoint<16, 16>::Convert(5);
+            constexpr FixedPoint<16, 16> c2 = FixedPoint<16, 16>::Convert(10);
+
+            static_assert(a2 > b2, "Greater than should work with Convert");
+            static_assert(b2 < a2, "Less than should work with Convert");
+            static_assert(a2 >= b2, "Greater than or equal should work with Convert");
+            static_assert(b2 <= a2, "Less than or equal should work with Convert");
+            static_assert(a2 == c2, "Equality should work with Convert");
+            static_assert(a2 != b2, "Inequality should work with Convert");
 
             /**
              * @note Runtime comparison limitation:
@@ -413,117 +531,54 @@ namespace SaturnMath::Tests
         }
 
         /**
-         * @brief Tests for precision-specific operations
+         * @brief Tests for square root operations
          *
          * Verifies that:
-         * - Operations with different precision settings work correctly
-         * - Precision trade-offs are as expected
-         *
-         * Note: For square root operations, Fast and Turbo precision modes use the same
-         * algorithm, providing a balance between performance and accuracy. Accurate precision
-         * provides the most accurate results at the cost of performance.
+         * - Square root works correctly for perfect squares
+         * - Square root works reasonably for non-perfect squares
+         * - Square root handles edge cases (zero, small values, large values)
          */
-        static constexpr void TestPrecisionModes()
+        static constexpr void TestSqrt()
         {
-            // Test accurate precision with perfect square
+            // Test with perfect square
             constexpr Fxp a(16);
-            constexpr auto sqrtA = a.Sqrt<Precision::Accurate>();
-            static_assert(sqrtA == 4, "Accurate precision square root should be exact for perfect squares");
+            constexpr auto sqrtA = a.Sqrt();
+            static_assert(sqrtA == 4, "Square root should be exact for perfect squares");
 
             // Test with non-perfect square
             constexpr Fxp b(10);
-            constexpr auto sqrtB = b.Sqrt<Precision::Accurate>();
-            static_assert(sqrtB > 3.15 && sqrtB < 3.17,
-                "Accurate precision square root should be accurate for non-perfect squares");
+            constexpr auto sqrtB = b.Sqrt();
+            static_assert(sqrtB > 3.1 && sqrtB < 3.3,
+                "Square root should be reasonably accurate for non-perfect squares");
 
             // Test with small values
             constexpr Fxp small(0.01);
-            constexpr auto sqrtSmall = small.Sqrt<Precision::Accurate>();
-            static_assert(sqrtSmall > 0.09 && sqrtSmall < 0.11,
-                "Accurate precision square root should work with small values");
-
-            // Test Fast/Turbo precision (they use the same algorithm for square root)
-            // Note: The following tests verify both Fast and Turbo modes since they use identical algorithms
-
-            // Test with perfect square
-            constexpr auto sqrtAFast = a.Sqrt<Precision::Fast>();
-            static_assert(sqrtAFast == 4, "Fast/Turbo precision square root should be exact for perfect squares");
-
-            constexpr auto sqrtATurbo = a.Sqrt<Precision::Turbo>();
-            static_assert(sqrtATurbo == 4, "Fast/Turbo precision square root should be exact for perfect squares");
-
-            // Verify Fast and Turbo produce identical results
-            static_assert(sqrtAFast == sqrtATurbo, "Fast and Turbo precision should produce identical results");
-
-            // Test with non-perfect square
-            constexpr auto sqrtBFast = b.Sqrt<Precision::Fast>();
-            constexpr auto sqrtBTurbo = b.Sqrt<Precision::Turbo>();
-
-            // Fast/Turbo precision may be less accurate but should still be in a reasonable range
-            static_assert(sqrtBFast > 3.1 && sqrtBFast < 3.3,
-                "Fast/Turbo precision square root should be reasonably accurate for non-perfect squares");
-
-            // Verify Fast and Turbo produce identical results
-            static_assert(sqrtBFast == sqrtBTurbo, "Fast and Turbo precision should produce identical results");
-
-            // Test with small values
-            constexpr auto sqrtSmallFast = small.Sqrt<Precision::Fast>();
-            constexpr auto sqrtSmallTurbo = small.Sqrt<Precision::Turbo>();
-
-            static_assert(sqrtSmallFast > 0.08 && sqrtSmallFast < 0.12,
-                "Fast/Turbo precision square root should work with small values");
-
-            // Verify Fast and Turbo produce identical results
-            static_assert(sqrtSmallFast == sqrtSmallTurbo, "Fast and Turbo precision should produce identical results");
-
-            // Additional test cases
+            constexpr auto sqrtSmall = small.Sqrt();
+            static_assert(sqrtSmall > 0.08 && sqrtSmall < 0.12,
+                "Square root should work with small values");
 
             // Test with larger values
             constexpr Fxp large(100);
-            constexpr auto sqrtLargeStd = large.Sqrt<Precision::Accurate>();
-            constexpr auto sqrtLargeFast = large.Sqrt<Precision::Fast>();
-
-            static_assert(sqrtLargeStd > 9.99 && sqrtLargeStd < 10.01,
-                "Accurate precision square root should be accurate for larger values");
-            static_assert(sqrtLargeFast > 9.5 && sqrtLargeFast < 10.5,
-                "Fast/Turbo precision square root should be reasonably accurate for larger values");
-            static_assert(sqrtLargeFast == large.Sqrt<Precision::Turbo>(),
-                "Fast and Turbo precision should produce identical results for larger values");
+            constexpr auto sqrtLarge = large.Sqrt();
+            static_assert(sqrtLarge > 9.5 && sqrtLarge < 10.5,
+                "Square root should be reasonably accurate for larger values");
 
             // Test with fractional perfect square
             constexpr Fxp fractionalPerfect(0.25); // 0.5^2
-            constexpr auto sqrtFracStd = fractionalPerfect.Sqrt<Precision::Accurate>();
-            constexpr auto sqrtFracFast = fractionalPerfect.Sqrt<Precision::Fast>();
-
-            static_assert(sqrtFracStd > 0.499 && sqrtFracStd < 0.501,
-                "Accurate precision square root should be accurate for fractional perfect squares");
-            static_assert(sqrtFracFast > 0.48 && sqrtFracFast < 0.52,
-                "Fast/Turbo precision square root should be reasonably accurate for fractional perfect squares");
-            static_assert(sqrtFracFast == fractionalPerfect.Sqrt<Precision::Turbo>(),
-                "Fast and Turbo precision should produce identical results for fractional perfect squares");
+            constexpr auto sqrtFrac = fractionalPerfect.Sqrt();
+            static_assert(sqrtFrac > 0.48 && sqrtFrac < 0.52,
+                "Square root should be reasonably accurate for fractional perfect squares");
 
             // Test with edge values - small number
             constexpr Fxp verySmall(0.04); // 0.2^2
-            constexpr auto sqrtVerySmallStd = verySmall.Sqrt<Precision::Accurate>();
-            constexpr auto sqrtVerySmallFast = verySmall.Sqrt<Precision::Fast>();
-
-            static_assert(sqrtVerySmallStd > 0.199 && sqrtVerySmallStd < 0.201,
-                "Accurate precision square root should be accurate for small values");
-            static_assert(sqrtVerySmallFast > 0.19 && sqrtVerySmallFast < 0.21,
-                "Fast/Turbo precision square root should handle small values");
-            static_assert(sqrtVerySmallFast == verySmall.Sqrt<Precision::Turbo>(),
-                "Fast and Turbo precision should produce identical results for small values");
+            constexpr auto sqrtVerySmall = verySmall.Sqrt();
+            static_assert(sqrtVerySmall > 0.19 && sqrtVerySmall < 0.21,
+                "Square root should handle small values");
 
             // Test with zero
             constexpr Fxp zero(0);
-            constexpr auto sqrtZeroStd = zero.Sqrt<Precision::Accurate>();
-            constexpr auto sqrtZeroFast = zero.Sqrt<Precision::Fast>();
-            constexpr auto sqrtZeroTurbo = zero.Sqrt<Precision::Turbo>();
-
-            static_assert(sqrtZeroStd == 0, "Square root of zero should be zero in all precision modes");
-            static_assert(sqrtZeroFast == 0, "Square root of zero should be zero in all precision modes");
-            static_assert(sqrtZeroTurbo == 0, "Square root of zero should be zero in all precision modes");
-            static_assert(sqrtZeroFast == sqrtZeroTurbo, "Fast and Turbo precision should produce identical results for zero");
+            constexpr auto sqrtZero = zero.Sqrt();
+            static_assert(sqrtZero == 0, "Square root of zero should be zero");
         }
 
         /**
@@ -986,6 +1041,18 @@ namespace SaturnMath::Tests
             static_assert(ease05 > linear05, "BounceEaseOut at t=0.5 should be above linear Fxp");
         }
 
+        // Aliases tests
+        static constexpr void TestAliases()
+        {
+            // Test Fxp as FixedPoint<16, 16>
+            constexpr FixedPoint<16, 16> fxp = FixedPoint<16, 16>::Convert(10);
+            static_assert(fxp.RawValue() == (10 << 16), "Fxp alias should work");
+
+            // Test HFxp as FixedPoint<24, 8>
+            constexpr FixedPoint<24, 8> hfxp = FixedPoint<24, 8>::Convert(10);
+            static_assert(hfxp.RawValue() == (10 << 8), "HFxp alias should work");
+        }
+
         /**
          * @brief Run all tests in the test suite
          *
@@ -995,14 +1062,20 @@ namespace SaturnMath::Tests
         static constexpr void RunAll()
         {
             TestConstruction();
+            TestConversion();
             TestArithmetic();
+            TestMultiplication();
+            TestDivision();
+            TestMixedOperations();
+            TestComprehensiveFormats();
             TestComparisons();
+            TestAliases();
             TestBitOperations();
             TestTypeConversion();
             TestAdvancedArithmetic();
             TestMixedArithmetic();
             TestEdgeCases();
-            TestPrecisionModes();
+            TestSqrt();
             TestSmallValues();
             TestRoundingConsistency();
             TestBoundaryValues();
