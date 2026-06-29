@@ -45,12 +45,29 @@ Provides mathematical operations and utilities:
 ## Features
 
 ### Core Components
-- **Fixed-Point Arithmetic**: High-performance `Fxp` class with precise fixed-point operations
+- **Fixed-Point Arithmetic**: High-performance template-based `FixedPoint<I, F>` class with precise fixed-point operations
+  - Configurable integer (`I`) and fractional (`F`) bits at compile-time (constraint: `I + F == 32`, `I >= 2`, `F >= 8`)
+  - Built-in aliases for common formats:
+    - `Fxp` / `Fxp16` — `FixedPoint<16, 16>` (default, balanced range/precision)
+    - `Fxp8` — `FixedPoint<24, 8>` (large-world coordinates)
+    - `Fxp24` — `FixedPoint<8, 24>` (high-precision normalized values, rotations)
+    - **Note**: The `Fxp` alias is kept as the general-purpose default and for legacy compatibility; it is identical to `Fxp16` and both can be used interchangeably. Use `Fxp16` in new code for clarity, or continue using `Fxp` if you prefer the shorter name.
   - Power function for integer exponents
   - Value clamping between bounds
   - Comprehensive arithmetic operations
   - MinValue and MaxValue constants for range boundaries
   - Modulo operations for both Fxp and integer types
+  - **Operations between different FixedPoint formats**:
+    - Multiplication and division are supported (result uses left operand's format)
+    - Addition, subtraction, comparison, and modulo are NOT supported between different formats by design
+    - Use `Convert()` for explicit conversion when needed; the safe overload is silent, while the lossy overload (precision loss or overflow risk) is `[[deprecated]]` to warn the developer
+    ```cpp
+    FixedPoint<16, 16> a = 10;
+    FixedPoint<24, 8> b = 5;
+    // auto sum = a + b;                      // ERROR: not allowed
+    auto sum = a + FixedPoint<16, 16>::Convert(b); // OK (deprecation warning if lossy)
+    auto product = a * b;                          // OK: result is FixedPoint<16, 16>
+    ```
   - Flexible value conversion:
     ```cpp
     // Compile-time conversion (preferred)
@@ -399,15 +416,18 @@ auto maxVec = Max(Vector2D(1, 5), Vector2D(3, 2));  // Works with vectors (compo
 ## Performance Considerations
 
 ### Performance Features
-- Template-based precision control for performance-critical operations
+- Template-based `FixedPoint<I, F>` allowing per-use-case format selection (range vs precision)
 - Cache-friendly data layouts
 - Fixed-size containers to avoid dynamic allocation
 - Lookup table-based trigonometry
 - Compile-time constant evaluation
 - Optimized operations for integral types with specialized implementations
-### Precision Control
+- Hardware-optimized multiplication (`dmuls.l`) and division (hardware divider unit) on SH-2
+### Precision Control (Deprecated)
 
-SaturnMath++ provides a template-based precision control system that allows you to balance between accuracy and performance. Each precision level is optimized for different use cases:
+> ⚠️ **Deprecation Notice**: The template-based precision modes (`Precision::Accurate`, `Precision::Fast`, `Precision::Turbo`, `Precision::Default`) are being **deprecated**. In practice they have proven to add significant template complexity and API surface area without delivering meaningful real-world performance benefits to justify the trade-off. The `Fxp::Sqrt` function already implements a single, balanced algorithm regardless of the precision template parameter (the parameter is preserved only to avoid breaking existing call sites). New code should not rely on precision modes; future versions will likely remove them entirely in favour of a single optimized implementation per operation.
+
+SaturnMath++ historically provided a template-based precision control system that allows you to balance between accuracy and performance. Each precision level was optimized for different use cases:
 
 - `Accurate`: Full precision calculations, ideal for critical computations
 - `Fast`: Good approximation with better performance
@@ -479,8 +499,9 @@ auto maxVec = Max(Vector2D(1, 5), Vector2D(3, 2));  // Returns Vector2D(3, 5)
 ```
 
 ### Best Practices
-- Use `Fast` or `Turbo` precision for non-critical calculations where performance is important
-- Keep `Standard` precision (default) for calculations requiring high accuracy
+- ~~Use `Fast` or `Turbo` precision for non-critical calculations where performance is important~~ *(precision modes are deprecated; rely on the default implementation)*
+- Choose the appropriate `FixedPoint<I, F>` format for the job (`Fxp16` for general use, `Fxp8` for large worlds, `Fxp24` for normalized/precision-sensitive values)
+- Avoid implicit conversions between FixedPoint formats — be explicit with `Convert()` and pay attention to the deprecation warning that flags lossy conversions
 - Prefer fixed-size containers (like `MatrixStack`) over dynamic allocation
 - Take advantage of lookup-based trig functions for better performance
 - Leverage compile-time constants with `consteval` methods

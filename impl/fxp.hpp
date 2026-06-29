@@ -9,16 +9,14 @@
 namespace SaturnMath::Types
 {
     /**
-     * @brief Fixed-point arithmetic optimized for Saturn hardware.
+     * @brief Configurable fixed-point arithmetic optimized for Saturn hardware.
      *
-     * Uses a 16.16 fixed-point representation where:
-     * - Upper 16 bits: Integer part
-     * - Lower 16 bits: Fractional part (1/65536 units)
+     * @tparam I Number of integer bits (default: 16, minimum: 2)
+     * @tparam F Number of fractional bits (default: 16, minimum: 8)
      *
-     * Value range:
-     * - Minimum: -32768 (0x80000000)
-     * - Maximum: 32767.99998474 (0x7FFFFFFF)
-     * - Resolution: ~0000152587 (1/65536)
+     * @details Uses a 32-bit signed integer split into I integer bits and F fractional bits,
+     * where I + F must equal 32. The decimal point position is configurable at compile-time
+     * via template parameters, allowing different precision/range trade-offs.
      *
      * Performance features:
      * - Compile-time evaluation with constexpr/consteval
@@ -28,42 +26,82 @@ namespace SaturnMath::Types
      *
      * Example:
      * @code
-     * // Compile-time conversion (preferred)
-     * constexpr Fxp a = 5;              // 5    (0x00050000)
-     * constexpr Fxp b = 2.5;           // 2.5  (0x00028000)
+     * // Default 16.16 format for general use
+     * constexpr Fxp16 a = 5;            // 5    (0x00050000)
+     * constexpr Fxp16 b = 2.5;          // 2.5  (0x00028000)
      *
-     * // Runtime conversion
-     * Fxp c = Fxp::Convert(someInt);    // With range checking
-     * Fxp d = Fxp::Convert(someFloat);  // With performance warning
+     * // Custom formats via aliases
+     * constexpr Fxp8  largeWorld = 100000;      // 24.8 format
+     * constexpr Fxp24 preciseMat = 0.123456789; // 8.24 format
      *
-     * // Arithmetic operations
-     * Fxp result = a * b;               // 12.5 (0x000C8000)
-     * int16_t i = result.As<int16_t>(); // 12
+     * // Runtime conversions
+     * Fxp16 c = Fxp16::Convert(someInt);    // With compile-time range checking
+     * Fxp16 d = Fxp16::Convert(someFloat);  // Will trigger a performance warning!
+     *
+     * // Arithmetic operations (Zero runtime float conversions)
+     * Fxp16 result = a * 3.14;                 // Evaluated safely at compile-time
+     * int16_t i = result.As<int16_t>();        // Extracts integer part
      * @endcode
      *
+     * @note Template constraints enforce that I + F == 32, I >= 2, and F >= 8 to ensure
+     * a valid fixed-point representation with sufficient range and precision.
+     *
      * @note All operations are designed for maximum efficiency on Saturn hardware.
-     *       Avoid runtime floating-point conversions in performance-critical code.
+     * Avoid runtime floating-point conversions in performance-critical code.
      *
      * @note The \#pragma GCC optimize("O2") directive is used to enable optimizations that improve performance,
-     *       specifically for fixed-point arithmetic operations. It ensures that the compiler generates efficient
-     *       code that takes full advantage of the hardware capabilities, particularly in performance-critical sections.
-     *       Without this optimization, the generated code may not perform as expected, leading to slower execution.
-     *       This optimization is crucial for achieving optimal performance in the Fxp class, as it allows the compiler
-     *       to apply various optimizations, such as dead code elimination, register allocation, and instruction scheduling.
-     *       These optimizations can significantly improve the execution speed of the Fxp class, making it suitable for
-     *       performance-critical applications.
+     * specifically for fixed-point arithmetic operations. It ensures that the compiler generates efficient
+     * code that takes full advantage of the hardware capabilities, particularly in performance-critical sections.
+     *
+     * @note Operations between different FixedPoint formats:
+     * - Multiplication and division are supported between different formats (result uses left operand's format)
+     * - Addition, subtraction, comparison, and modulo are NOT supported between different formats
+     * - This is by design to prevent silent precision loss or overflow. Converting between formats
+     *   can cause:
+     *   - Precision loss: converting from more fractional bits to fewer (e.g., 8.24 → 16.16)
+     *   - Overflow risk: converting from fewer integer bits to more (e.g., 24.8 → 16.16)
+     * - To perform these operations, explicitly convert one operand to the other's format using Convert():
+     *   @code
+     *   FixedPoint<16, 16> a = 10;
+     *   FixedPoint<24, 8> b = 5;
+     *   // This will NOT compile:
+     *   // auto sum = a + b;
+     *   // Use explicit conversion instead (you are now aware of potential precision loss):
+     *   auto sum = a + FixedPoint<16, 16>::Convert(b);
+     *   @endcode
      */
 #pragma GCC optimize("O2")
-    class Fxp
+    template<int I = 16, int F = 16>
+        requires (I + F == 32) && (I >= 2) && (F >= 8)
+    class FixedPoint
     {
     private:
-        int32_t value; /**< Raw fixed-point value in 16.16 format */
+        int32_t value; /**< Raw fixed-point value in I.F format */
+
+        // Allow access to private members between different FixedPoint instantiations
+        template<int OI, int OF>
+            requires (OI + OF == 32) && (OI >= 2) && (OF >= 8)
+        friend class FixedPoint;
 
         /**
-         * @brief Private constructor for raw fixed-point values.
-         * @param inValue Raw 16.16 fixed-point value
+         * @brief Private constructor for raw fixed-point values
+         * @param inValue Raw I.F fixed-point value (I integer bits, F fractional bits)
+         * @param unused Boolean flag to differentiate from implicit constructors
          */
-        constexpr Fxp(const int32_t& inValue, const bool& /*unused*/) : value(inValue) {}
+        constexpr FixedPoint(const int32_t& inValue, const bool& /*unused*/) : value(inValue) {}
+
+        /**
+         * @brief Internal silent injection of integral values (no warnings)
+         * @tparam T Integral type
+         * @param value The integral value to inject
+         * @return Fixed-point value with bits directly injected
+         * @details This is for internal use only - bypasses safety checks and warnings
+         */
+        template<std::integral T>
+        static constexpr FixedPoint InternalInject(T value)
+        {
+            return BuildRaw(static_cast<int32_t>(static_cast<uint32_t>(value) << F));
+        }
 
         /* Hardware division unit registers */
         static inline constexpr size_t cpuAddress = 0xFFFFF000UL;
@@ -72,462 +110,403 @@ namespace SaturnMath::Types
         static inline auto& dvdntl = *reinterpret_cast<volatile int32_t*>(cpuAddress + 0x0F14UL); /**< Dividend low register */
 
     public:
-        /** @return Minimum possible value (-32768.0) */
-        static consteval Fxp MinValue() { return BuildRaw(0x80000000); }
-
-        /** @return Maximum possible value (32767.99998474) */
-        static consteval Fxp MaxValue() { return BuildRaw(0x7FFFFFFF); }
-
-        /** @return Small epsilon value (0.0001) for fixed-point comparisons */
-        static consteval Fxp Epsilon() { return Fxp(0.0001f); }
-
-        /** @return The mathematical constant Pi (π) as a fixed-point value */
-        static consteval Fxp Pi() { return Fxp(std::numbers::pi); }
+        static constexpr int IntBits = I;
+        static constexpr int FracBits = F;
+        static constexpr int TotalBits = I + F;
+        static constexpr int FractionScale = 1 << F;
+        static constexpr double FractionScaleDouble = static_cast<double>(1 << F);
 
         /**
-         * @brief Default constructor for Fxp class.
+         * @brief Auxiliary wrapper to force strict compile-time conversion of float literals.
+         *
+         * @details Intercepts floating-point values in mathematical and comparison operators.
+         * Because the constructor is consteval, any attempt to pass a runtime float variable
+         * will cause an immediate compilation error, protecting Saturn's hardware performance.
+         * For explicit runtime conversions, use FixedPoint::Convert().
+         */
+        struct CompileTimeFloat
+        {
+            FixedPoint fxp;
+
+            template <std::floating_point T>
+            consteval CompileTimeFloat(T v) : fxp(v) {}
+        };
+
+        /** @name Core Constants */
+        ///@{
+        /** * @brief Returns the value 0.0
+         * @return Zero value in I.F format 
+         */
+        static consteval FixedPoint Zero() { return BuildRaw(0); }
+
+        /** * @brief Returns a small epsilon value for fixed-point comparisons 
+         * @return Minimum positive representable value
+         */
+        static consteval FixedPoint Epsilon() { return BuildRaw(0x00000001); }
+
+        /** * @brief Returns a value just below 1.0 
+         * @return The largest fractional value less than 1.0
+         */
+        static consteval FixedPoint NearOne() { return BuildRaw(FractionScale - 1); }
+
+        /** * @brief Returns the value 1.0 
+         * @return The value 1.0 in I.F format
+         */
+        static consteval FixedPoint One() { return BuildRaw(FractionScale); }
+
+        /** * @brief Returns the mathematical constant Pi (π)
+         * @return Pi as a fixed-point value
+         */
+        static consteval FixedPoint Pi() { return FixedPoint(std::numbers::pi); }
+
+        /** * @brief Returns the minimum possible value 
+         * @return The most negative representable value
+         */
+        static consteval FixedPoint MinValue() { return BuildRaw(0x80000000); }
+
+        /** * @brief Returns the maximum possible value 
+         * @return The most positive representable value
+         */
+        static consteval FixedPoint MaxValue() { return BuildRaw(0x7FFFFFFF); }
+        ///@}
+
+        /** @name Constructors & Conversions */
+        ///@{
+        /**
+         * @brief Default constructor for FixedPoint class.
          * Initializes the fixed-point number to zero.
          */
-        constexpr Fxp() : value(0) {}
+        constexpr FixedPoint() : value(0) {}
 
         /**
-         * @brief Copy constructor for Fxp class.
-         * @param fxp The Fxp object to copy.
+         * @brief Copy constructor for FixedPoint class.
+         * @param fxp The FixedPoint object to copy.
          */
-        constexpr Fxp(const Fxp& fxp) : value(fxp.value) {}
+        constexpr FixedPoint(const FixedPoint& fxp) : value(fxp.value) {}
 
         /**
-         * @brief Constructor for Fxp class from a 16-bit signed integer.
-         * @param value The integer value to convert to fixed-point.
+         * @brief Constructor for FixedPoint class from small integral types.
+         * @tparam T Integral type that fits within I integer bits
+         * @param inValue The integer value to convert to fixed-point.
          *
-         * @details This is the primary runtime constructor for integer values.
-         * For runtime conversion from other numeric types, use Convert():
-         * @code
-         * // Convert with compile-time range validation
-         * Fxp a = Fxp::Convert(someValue);     // Warns at compile-time if value exceeds int16_t range
-         * @endcode
-         *
-         * @note Converts to 16.16 fixed-point format (e.g., 10 becomes 10.0).
-         *
-         * @warning For advanced users who understand the risks of precision loss or overflow,
-         * manual casting is allowed. However, use the Convert function for safer conversions.
-         *
-         * @code
-         * // Manual casting (advanced users only)
-         * Fxp b = static_cast<int32_t>(someValue << 16); // No warnings, but risks overflow
-         * @endcode
+         * @details This is the primary runtime constructor for small integer values.
+         * Uses direct shift by F bits for efficient conversion (no floating-point operations).
          */
-        constexpr Fxp(const int16_t& value) : value(static_cast<int32_t>(value) << 16) {}
+        template<std::integral T>
+            requires (std::is_signed_v<T> ? (sizeof(T) * 8 <= I) : (sizeof(T) * 8 + 1 <= I))
+        constexpr FixedPoint(T inValue) : value(static_cast<int32_t>(static_cast<uint32_t>(inValue) << F)) {}
 
         /**
-         * @brief Compile-time constructor for numeric types other than int16_t.
-         * @tparam T Numeric type (e.g., float, double, int32_t)
-         * @param value The value to convert to fixed-point
+         * @brief Compile-time constructor for floating-point and large integral types.
+         * @tparam T Numeric type (float, double, or large integral types)
+         * @param inValue The value to convert to fixed-point
          *
-         * @details This constructor is only available at compile time. For runtime
-         * conversions, use Convert():
-         * @code
-         * // Compile-time conversion (preferred when possible)
-         * constexpr Fxp a = 3.14159;     // Exact conversion at compile-time
-         *
-         * // Runtime conversion
-         * Fxp b = Fxp::Convert(someFloat);    // Will warn about floating-point performance
-         * @endcode
-         *
-         * @note Only available at compile time (consteval).
-         * @warning Values outside the valid fixed-point range may cause overflow.
+         * @details This constructor is only available at compile time for floating-point
+         * types and integral types that don't fit within I integer bits.
          */
-        template<typename T> requires (!std::is_same_v<T, int16_t>)
-            consteval Fxp(const T& value) : value(value * 65536.0) {}
+        template<typename T>
+            requires (!(std::is_signed_v<T> ? (sizeof(T) * 8 <= I) : (sizeof(T) * 8 + 1 <= I)))
+        consteval FixedPoint(T inValue) : value(static_cast<int32_t>(inValue * FractionScaleDouble)) {}
 
         /**
-         * @brief Convert integral type to fixed-point with compile-time range validation.
-         * @tparam T Integral type (e.g., int, int32_t)
-         * @param value The value to convert
-         * @return Fixed-point value
-         *
-         * @details Converts an integral value to 16.16 fixed-point format with compile-time validation.
-         * Using int16_t{value} ensures the value fits within the valid range (-32768 to 32767).
-         * The compiler will warn if the value is outside this range.
-         *
-         * This is a RUNTIME conversion method. For compile-time conversion, prefer using
-         * the Fxp constructor directly with constexpr when possible.
-         *
-         * Example:
-         * @code
-         * auto a = Fxp::Convert(5);      // OK: 5 fits in int16_t
-         * auto b = Fxp::Convert(50000);  // Warning: value exceeds int16_t range
-         * @endcode
+         * @brief Convert from integral type (safe conversion)
+         * @tparam T Integral type that fits within I integer bits
+         * @param value Integral value to convert
+         * @return FixedPoint value
          */
-        template <std::integral T>
-        static constexpr Fxp Convert(const T& value) { return BuildRaw(static_cast<int32_t>(int16_t{ value }) << 16); }
+        template<std::integral T>
+            requires (std::is_signed_v<T> ? (sizeof(T) * 8 <= I) : (sizeof(T) * 8 + 1 <= I))
+        static constexpr FixedPoint Convert(T value)
+        {
+            return BuildRaw(static_cast<int32_t>(static_cast<uint32_t>(value) << F));
+        }
+
+        /**
+         * @brief Convert from integral type (may cause narrowing)
+         * @tparam T Integral type that may not fit within I integer bits
+         * @param value Integral value to convert
+         * @return FixedPoint value
+         * @deprecated Type does not fit within I integer bits - narrowing may occur
+         */
+        template<std::integral T>
+            requires (! (std::is_signed_v<T> ? (sizeof(T) * 8 <= I) : (sizeof(T) * 8 + 1 <= I)))
+        [[deprecated("Type does not fit within integer bits - narrowing may occur")]]
+        static constexpr FixedPoint Convert(T value)
+        {
+            return BuildRaw(static_cast<int32_t>(static_cast<uint32_t>(value) << F));
+        }
 
         /**
          * @brief Convert floating-point to fixed-point with performance warning.
          * @tparam T Floating-point type (float, double)
          * @param value The value to convert
          * @return Fixed-point value
-         *
-         * @details Converts a floating-point value to 16.16 fixed-point format.
-         * This operation involves floating-point multiplication which is relatively expensive
-         * on Saturn hardware. The compiler will emit a warning when this function is used
-         * to help identify potential performance bottlenecks.
-         *
-         * This is a RUNTIME conversion method. For compile-time conversion, prefer using
-         * the Fxp constructor directly with constexpr when possible.
-         *
-         * For better performance:
-         * - Use integral types when possible
-         * - Perform conversions at compile time with constexpr
-         * - Cache converted values instead of converting in tight loops
-         *
-         * Example:
-         * @code
-         * // Preferred: Compile-time conversion
-         * constexpr Fxp a = 3.14159;  // Conversion done at compile time
-         *
-         * // Runtime conversion (will trigger warning)
-         * float f = get_value();
-         * Fxp b = Fxp::Convert(f);    // Warning: heavy operation
-         * @endcode
-         *
-         * @note The performance warning can be disabled by defining DISABLE_PERFORMANCE_WARNINGS
-         *       before including this header. This is useful for code sections where you have
-         *       already considered and accepted the performance implications.
-         *
-         * @warning Converting from floating-point is a heavy operation.
-         * Avoid in performance-critical code paths.
          */
         template <std::floating_point T>
 #ifndef DISABLE_PERFORMANCE_WARNINGS
         [[gnu::warning("Converting from floating-point is a heavy operation - avoid in performance-critical code")]]
 #endif
-        static Fxp Convert(const T& value) { return BuildRaw(static_cast<int32_t>(value * 65536.0)); }
+        static constexpr FixedPoint Convert(const T& value) { return BuildRaw(static_cast<int32_t>(value * FractionScaleDouble)); }
 
-        /***********Static Functions************/
+        /**
+         * @brief Convert from another FixedPoint format (safe conversion)
+         * @tparam OtherI Other integer bits
+         * @tparam OtherF Other fractional bits
+         * @param other FixedPoint value to convert
+         * @return Fixed-point value
+         * @details This version is for conversions that do not risk precision loss or overflow.
+         * Use when the destination format has equal or more integer bits and equal or more fractional bits.
+         * Example: Converting from 24.8 to 16.16 is safe (more fractional bits, fewer integer bits).
+         */
+        template<int OtherI, int OtherF>
+            requires (OtherI <= I && OtherF <= F)
+        static constexpr FixedPoint Convert(const FixedPoint<OtherI, OtherF>& other)
+        {
+            if constexpr (OtherF > F)
+                return BuildRaw(other.value >> (OtherF - F));
+            else if constexpr (F > OtherF)
+                return BuildRaw(other.value << (F - OtherF));
+            else
+                return BuildRaw(other.value);
+        }
 
+        /**
+         * @brief Convert from another FixedPoint format (may cause precision loss or overflow)
+         * @tparam OtherI Other integer bits
+         * @tparam OtherF Other fractional bits
+         * @param other FixedPoint value to convert
+         * @return Fixed-point value
+         * @deprecated Conversion may cause precision loss (fewer fractional bits) or overflow (fewer integer bits)
+         * @details This version is for conversions that may lose precision or overflow.
+         * Be aware of the risks when using this conversion.
+         * Example: Converting from 16.16 to 24.8 may lose fractional precision.
+         * Example: Converting from 8.24 to 16.16 may overflow if the integer part is too large.
+         */
+        template<int OtherI, int OtherF>
+            requires (!(OtherI <= I && OtherF <= F))
+        [[deprecated("Conversion may cause precision loss (fewer fractional bits) or overflow (fewer integer bits)")]]
+        static constexpr FixedPoint Convert(const FixedPoint<OtherI, OtherF>& other)
+        {
+            if constexpr (OtherF > F)
+                return BuildRaw(other.value >> (OtherF - F));
+            else if constexpr (F > OtherF)
+                return BuildRaw(other.value << (F - OtherF));
+            else
+                return BuildRaw(other.value);
+        }
+        ///@}
+
+        /** @name Static Constructors & Utilities */
+        ///@{
         /**
          * @brief Returns the larger of two fixed-point values.
          * @param a First value
          * @param b Second value
-         * @return max(a, b)
+         * @return The maximum of the two values
          */
-        static constexpr Fxp Max(const Fxp& a, const Fxp& b)
-        {
-            return (a > b) ? a : b;
-        }
+        static constexpr FixedPoint Max(FixedPoint a, FixedPoint b) { return (a > b) ? a : b; }
 
         /**
          * @brief Returns the smaller of two fixed-point values.
          * @param a First value
          * @param b Second value
-         * @return min(a, b)
+         * @return The minimum of the two values
          */
-        static constexpr Fxp Min(const Fxp& a, const Fxp& b)
-        {
-            return (a < b) ? a : b;
-        }
+        static constexpr FixedPoint Min(FixedPoint a, FixedPoint b) { return (a < b) ? a : b; }
 
         /**
-         * @brief Creates fixed-point from raw 16.16 value.
-         * @param rawValue Raw fixed-point bits
-         * @return Fixed-point value
+         * @brief Creates fixed-point from raw I.F value (unrestricted)
+         * @param rawValue The raw 32-bit integer representation
+         * @return Fixed-point value constructed from raw bits
+         * @details This is the only unrestricted way to create a FixedPoint without any validation
          */
-        static constexpr Fxp BuildRaw(const int32_t& rawValue) { return Fxp(rawValue, true); }
+        static constexpr FixedPoint BuildRaw(const int32_t& rawValue) { return FixedPoint(rawValue, true); }
+        ///@}
 
+        /** @name Hardware Division (Saturn Divider Unit) */
+        ///@{
         /**
          * @brief Sets up hardware division unit for fixed-point division.
-         *
-         * Prepares the Saturn's hardware divider unit for fixed-point division:
-         * result = (dividend << 16) / divisor
-         *
          * @param dividend Numerator
          * @param divisor Denominator
-         * @note Division result must be retrieved with AsyncDivGetResult()
          */
-        static void AsyncDivSet(const Fxp& dividend, const Fxp& divisor)
+        static void AsyncDivSet(FixedPoint dividend, FixedPoint divisor)
         {
             dvsr = divisor.value;
-            dvdnth = dividend.value >> 16;
-            dvdntl = dividend.value << 16;
+            dvdnth = dividend.value >> (32 - F);
+            dvdntl = static_cast<int32_t>(static_cast<uint32_t>(dividend.value) << F);
         }
 
         /**
          * @brief Retrieves result from hardware division unit.
          * @return Fixed-point result from previous AsyncDivSet()
-         * @note Must be called after AsyncDivSet()
          */
-        static Fxp AsyncDivGetResult()
-        {
-            return BuildRaw(static_cast<int32_t>(dvdntl));
-        }
+        static FixedPoint AsyncDivGetResult() { return BuildRaw(static_cast<int32_t>(dvdntl)); }
 
         /**
          * @brief Retrieves remainder from hardware division unit.
          * @return Fixed-point remainder from previous AsyncDivSet()
-         * @note Must be called after AsyncDivSet()
          */
-        static Fxp AsyncDivGetRemainder()
-        {
-            return BuildRaw(static_cast<int32_t>(dvdnth));
-        }
+        static FixedPoint AsyncDivGetRemainder() { return BuildRaw(static_cast<int32_t>(dvdnth)); }
+        ///@}
 
+        /** @name Mathematical Operations */
+        ///@{
         /**
          * @brief Removes fractional part, keeping only integer portion.
-         * @return Fixed-point value with zeroed fractional bits
+         * @return Fixed-point value with zeroed F fractional bits
          */
-        constexpr Fxp TruncateFraction() const
+        constexpr FixedPoint TruncateFraction() const
         {
-               if (value >= 0)
-                return BuildRaw(static_cast<int32_t>(0xFFFF0000) & value);
-            else
-                return -BuildRaw(static_cast<int32_t>(0xFFFF0000) & (-value));
+            constexpr int32_t mask = ~((1 << F) - 1);
+            if (value >= 0) return BuildRaw(mask & value);
+            else return -BuildRaw(mask & (-value));
         }
 
         /**
          * @brief Extracts the fractional part of the fixed-point value.
-         * @return Fixed-point value containing only the fractional part (0.xxxx)
-         *
-         * @details Returns the fractional component as a value between 0 and 0.999969.
-         * The integer part is discarded.
+         * @return Fixed-point value containing only the F fractional bits (0.xxxx)
          */
-        constexpr Fxp GetFraction() const
+        constexpr FixedPoint GetFraction() const
         {
-            if (value >= 0)
-                return BuildRaw(static_cast<int32_t>(0xFFFF) & value);
-            else
-                return -BuildRaw(static_cast<int32_t>(0xFFFF) & (-value));
+            constexpr int32_t mask = (1 << F) - 1;
+            if (value >= 0) return BuildRaw(mask & value);
+            else return -BuildRaw(mask & (-value));
         }
+
         /**
          * @brief Rounds down to the nearest integer.
          * @return Fixed-point value rounded down to nearest integer.
-         *
-         * @details Returns the largest integer that is less than or equal to this value.
-         * For negative values, this rounds further away from zero.
          */
-        constexpr Fxp Floor() const
+        constexpr FixedPoint Floor() const
         {
-            // Masking away the fractional bits yields correct floor semantics in two's complement
-            // for both positive and negative values.
-            return BuildRaw(value & 0xFFFF0000);
+            constexpr int32_t mask = ~((1 << F) - 1);
+            return BuildRaw(value & mask);
         }
 
         /**
          * @brief Rounds up to the nearest integer.
          * @return Fixed-point value rounded up to nearest integer.
-         *
-         * @details Returns the smallest integer that is greater than or equal to this value.
-         * For negative values, this rounds toward zero.
          */
-        constexpr Fxp Ceil() const
+        constexpr FixedPoint Ceil() const
         {
-            const int32_t truncated = value & 0xFFFF0000;
-            const int32_t frac = value & 0x0000FFFF;
-
-            // If already integral, return unchanged.
-            if (frac == 0)
-                return BuildRaw(truncated);
-
-            // Otherwise move to the next integer toward +infinity.
-            return BuildRaw(truncated + 0x00010000);
-                
+            constexpr int32_t mask = ~((1 << F) - 1);
+            return BuildRaw((value + ((1 << F) - 1)) & mask);
         }
 
         /**
          * @brief Rounds to the nearest integer.
          * @return Fixed-point value rounded to nearest integer.
-         *
-         * @details Rounds to the nearest integer, with halfway cases rounded away from zero.
-         * This matches the common mathematical rounding behavior.
          */
-        constexpr Fxp Round() const
+        constexpr FixedPoint Round() const
         {
-            // Round to nearest integer, with halfway cases rounded away from zero
-            if (value >= 0) {
-                // For positive values, add 0x8000 (0.5) and truncate
-                return BuildRaw((value + 0x8000) & 0xFFFF0000);
-            } else {
-                // For negative values, add 0x8000 (0.5) to the absolute value and negate
-                return -BuildRaw(((-value) + 0x8000) & 0xFFFF0000);
+            constexpr int32_t half = 1 << (F - 1);
+            constexpr int32_t fracMask = (1 << F) - 1;
+
+            if (value >= 0)
+                return BuildRaw((value + half) & ~fracMask);
+            else
+            {
+                FixedPoint frac = GetFraction();
+                int32_t fracValue = (frac.value >= 0) ? frac.value : -frac.value;
+                if (fracValue < half) return BuildRaw(value + half).Floor();
+                else return BuildRaw(value - half).Floor();
             }
         }
 
         /**
-         * @brief Calculate square root with configurable precision
-         * @tparam P Precision level for calculation
-         * @return Square root with specified precision
-         *
-         * @details Provides two precision levels with different performance and accuracy trade-offs:
-         * - Accurate: Full precision calculation using the digit-by-digit algorithm
-         * - Fast: Approximation with varying error rates:
-         *   • Maximum error of ~42% observed at very small values (~0.000046)
-         *   • Error decreases as values increase, with most values below 0.0015 having errors between 6-20%
-         *   • For values above 0.0015, maximum error stabilizes around 6.3%
-         *
-         * Choose the appropriate precision based on your requirements:
-         * - Accurate: Full or critical calculations where accuracy is essential
-         * - Fast: Best for non-critical real-time effects where performance is paramount
-         *
-         * @note Turbo precision mode defaults to Fast for this function.
+         * @brief Calculate square root
+         * @return Square root of the value in I.F format
          */
-        template<Precision P = Precision::Default>
-        constexpr Fxp Sqrt() const
+        constexpr FixedPoint Sqrt() const
         {
-            if constexpr (P == Precision::Accurate)
+            if (value <= 0) return BuildRaw(0);
+
+            uint32_t baseEstimation = 1 << ((F / 2) - 1);
+            uint32_t estimation = value;
+            uint32_t iterationValue = value >> 1;
+
+            if (value >= (1 << F))
             {
-                if (value <= 0) return BuildRaw(0);
-
-                uint32_t remainderHi = static_cast<uint32_t>(value) >> 16;
-                uint32_t remainderLo = static_cast<uint32_t>(value) << 16;
-
-                uint32_t rootHi = 0;
-                uint32_t rootLo = 0;
-
-                uint32_t bitHi = 0x00004000u;
-                uint32_t bitLo = 0u;
-
-                while ((bitHi | bitLo) != 0)
-                {
-                    // trial = res + bit
-                    uint32_t trialLo = rootLo + bitLo;
-                    uint32_t trialHi = rootHi + bitHi + (trialLo < rootLo ? 1u : 0u);
-
-                    const bool ge = (remainderHi > trialHi) || (remainderHi == trialHi && remainderLo >= trialLo);
-
-                    if (ge)
-                    {
-                        // n -= trial
-                        const uint32_t newRemainderLo = remainderLo - trialLo;
-                        remainderHi = remainderHi - trialHi - (remainderLo < trialLo ? 1u : 0u);
-                        remainderLo = newRemainderLo;
-
-                        // res = (res >> 1) + bit
-                        const uint32_t shrRootLo = (rootLo >> 1) | (rootHi << 31);
-                        const uint32_t shrRootHi = (rootHi >> 1);
-
-                        uint32_t newRootLo = shrRootLo + bitLo;
-                        uint32_t newRootHi = shrRootHi + bitHi + (newRootLo < shrRootLo ? 1u : 0u);
-                        rootLo = newRootLo;
-                        rootHi = newRootHi;
-                    }
-                    else
-                    {
-                        // res >>= 1
-                        rootLo = (rootLo >> 1) | (rootHi << 31);
-                        rootHi = (rootHi >> 1);
-                    }
-
-                    // bit >>= 2
-                    bitLo = (bitLo >> 2) | (bitHi << 30);
-                    bitHi >>= 2;
-                }
-
-                return BuildRaw(static_cast<int32_t>(rootLo));
+                baseEstimation <<= (F / 2);
+                estimation >>= (F / 2);
+                iterationValue >>= F;
             }
-            else // P == Precision::Fast || P == Precision::Turbo
+
+            while (iterationValue)
             {
-                if (value <= 0) return BuildRaw(0);
-
-                int32_t baseEstimation = 1 << 7;
-                int32_t estimation = value >> 1;
-                uint32_t iterationValue = estimation;
-
-                do
-                {
-                    estimation >>= 1;
-                    baseEstimation <<= 1;
-                } while (iterationValue >>= 2);
-
-                estimation <<= 8;
-                return BuildRaw(baseEstimation + estimation);
+                estimation >>= 1;
+                baseEstimation <<= 1;
+                iterationValue >>= 2;
             }
+            estimation <<= ((F / 2) - 1);
+            return BuildRaw(static_cast<int32_t>(baseEstimation + estimation));
         }
+
+        /**
+         * @brief Calculate square root with configurable precision (deprecated)
+         * @tparam P Precision level for calculation (ignored)
+         * @return Square root of the value
+         */
+        template<SaturnMath::Precision P = SaturnMath::Precision::Default>
+        [[deprecated("Use Sqrt() instead - precision parameter is ignored")]]
+        constexpr FixedPoint Sqrt() const { return Sqrt(); }
 
         /**
          * @brief Squares the value (x²).
          * @return x * x in fixed-point
-         * @note Can be evaluated at compile time
          */
-        constexpr Fxp Square() const { return *this * *this; }
+        constexpr FixedPoint Square() const { return *this * *this; }
 
         /**
          * @brief Absolute value (|x|).
          * @return |x| in fixed-point
-         * @note Can be evaluated at compile time
          */
-        constexpr Fxp Abs() const { return BuildRaw(value > 0 ? value : -value); }
+        constexpr FixedPoint Abs() const { return BuildRaw(value > 0 ? value : -value); }
 
         /**
          * @brief Returns a const reference to the internal raw fixed-point value.
          * @return const reference to the internal 32-bit representation
-         * @note Can be evaluated at compile time
          */
         constexpr const int32_t& RawValue() const { return value; }
+
+        /**
+         * @brief Returns a const reference to the internal raw fixed-point value (deprecated).
+         * @return const reference to the internal 32-bit representation
+         * @deprecated Use RawValue() instead
+         */
+        [[deprecated("Use RawValue() instead")]]
+        constexpr const int32_t& Raw() const { return RawValue(); }
 
         /**
          * @brief Converts to the specified integer type.
          * @tparam T The target integer type
          * @return Value as the specified type
-         *
-         * Example:
-         * @code
-         * Fxp x = 3.14_fxp;
-         * auto i = x.As<int16_t>();  // Convert to int
-         * @endcode
          */
         template<typename T> requires std::integral<T>
-        constexpr T As() const
-        {
-            return static_cast<T>(value >> 16);
-        }
+        constexpr T As() const { return static_cast<T>(value >> F); }
 
         /**
          * @brief Converts to the specified floating-point type.
          * @tparam T The target floating-point type (float or double)
          * @return Value as the specified type
-         *
-         * Example:
-         * @code
-         * Fxp x = 3.14_fxp;
-         * auto f = x.As<float>();    // Convert to float (heavy operation)
-         * auto d = x.As<double>();   // Convert to double (heavy operation)
-         * @endcode
-         *
-         * @note The performance warning can be disabled by defining DISABLE_PERFORMANCE_WARNINGS
-         *       before including this header. This is useful for code sections where you have
-         *       already considered and accepted the performance implications.
-         *
-         * @warning Converting to floating-point is a heavy operation.
-         * Avoid in performance-critical code paths.
          */
         template<typename T> requires std::floating_point<T>
 #ifndef DISABLE_PERFORMANCE_WARNINGS
         [[gnu::warning("Converting to floating-point is a heavy operation - avoid in performance-critical code")]]
 #endif
-        constexpr T As() const
-        {
-            return value / T{ 65536.0 };
-        }
+        constexpr T As() const { return value / T{ FractionScaleDouble }; }
 
         /**
          * @brief Clears the MAC (Multiply-and-Accumulate) registers.
-         *
-         * This static function generates inline assembly to clear both MACH and MACL registers
-         * before starting a new MAC operation sequence.
          */
         static void ClearMac() { __asm__ volatile("\tclrmac\n" ::: "mach", "macl"); }
 
         /**
          * @brief Extracts the result from MAC registers into a fixed-point value.
-         *
-         * This static function generates inline assembly to:
-         * 1. Store MACH and MACL values into temporary registers
-         * 2. Extract the final result using xtrct instruction
-         * 3. Return the result as a fixed-point value
-         *
          * @return Fixed-point value containing the MAC operation result
          */
-        static Fxp ExtractMac()
+        static FixedPoint ExtractMac()
         {
             int32_t aux0, aux1;
             __asm__ volatile(
@@ -541,175 +520,245 @@ namespace SaturnMath::Types
                 );
             return BuildRaw(aux1);
         }
+        ///@}
 
-        /**************Operators****************/
+        /** @name Arithmetic Operators */
+        ///@{
+        /**
+         * @brief Float literal operations assignment.
+         */
+        // Apagados os += e -= (o compilador resolve via construtor implícito)
+        constexpr FixedPoint& operator*=(CompileTimeFloat other) { return *this *= other.fxp; }
+
+        /**
+         * @brief Divide this object by a compile-time float literal.
+         * @param other The compile-time float literal.
+         * @return Reference to this object.
+         */
+        constexpr FixedPoint& operator/=(CompileTimeFloat other) { return *this /= other.fxp; }
 
         /**
          * @brief Fixed-point addition (a += b).
-         * @param fxp Value to add
+         * @param other Value to add
          * @return Reference to this
          */
-        constexpr Fxp& operator+=(const Fxp& fxp) { value += fxp.value; return *this; }
+        constexpr FixedPoint& operator+=(FixedPoint other) { value += other.value; return *this; }
 
         /**
          * @brief Fixed-point subtraction (a -= b).
-         * @param fxp Value to subtract
+         * @param other Value to subtract
          * @return Reference to this
          */
-        constexpr Fxp& operator-=(const Fxp& fxp) { value -= fxp.value; return *this; }
+        constexpr FixedPoint& operator-=(FixedPoint other) { value -= other.value; return *this; }
 
         /**
          * @brief Multiplies the current fixed-point value by another fixed-point value (a *= b).
-         *
-         * This operator performs a 64-bit multiplication of the current fixed-point value and the provided
-         * fixed-point value, followed by a right shift of 16 bits. This operation effectively scales the
-         * result to fit within the 16.16 fixed-point format, where the first 16 bits represent the integer
-         * part and the last 16 bits represent the fractional part.
-         *
-         * @param fxp The fixed-point value to multiply with.
-         * @return A reference to the current instance after performing the multiplication, allowing for
-         *         chaining of operations.
-         *
-         * @note This operation modifies the current instance in place. Ensure that the input values are
-         *       within the valid range to avoid overflow.
+         * @param other The fixed-point value to multiply with.
+         * @return A reference to the current instance.
          */
-        constexpr Fxp& operator*=(const Fxp& fxp)
+        template<int OI, int OF>
+        constexpr FixedPoint& operator*=(const FixedPoint<OI, OF>& other)
         {
-            value = (static_cast<uint64_t>(value) * static_cast<uint64_t>(fxp.value)) >> 16;
-            return *this;
-        }
+            constexpr int shift = OF;
+            static_assert(shift >= 0 && shift < 32, "Shift out of bounds");
 
-        /**
-         * @brief Fixed-point multiplication (a * b).
-         * @param fxp Value to multiply by
-         * @return Product as Fxp
-         */
-        constexpr Fxp operator*(const Fxp& fxp) const
-        {
-            return Fxp(*this) *= fxp;
+            if consteval
+            {
+                value = static_cast<int32_t>(
+                    (static_cast<int64_t>(value) * static_cast<int64_t>(other.value)) >> shift
+                );
+                return *this;
+            }
+
+            int32_t mach, macl;
+
+            __asm__ volatile(
+                "dmuls.l %[a], %[b]\n\t"
+                "sts mach, %[mach]\n\t"
+                "sts macl, %[macl]\n\t"
+                : [mach] "=&r"(mach), [macl] "=&r"(macl)
+                : [a] "r"(value), [b] "r"(other.value)
+                : "mach", "macl"
+            );
+
+            if constexpr (shift == 0)
+            {
+                value = macl;
+            }
+            else if constexpr (shift == 16)
+            {
+                __asm__ volatile("xtrct %[H], %[L]\n\t" : [L] "+r"(macl) : [H] "r"(mach));
+                value = macl;
+            }
+            else if constexpr (shift > 16)
+            {
+                __asm__ volatile("xtrct %[H], %[L]\n\t" : [L] "+r"(macl) : [H] "r"(mach));
+                constexpr int remainingRightShift = shift - 16;
+                if constexpr (remainingRightShift == 15) { __asm__ volatile("shlr8 %[reg]\n\t add %[reg], %[reg]\n\t shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
+                else if constexpr (remainingRightShift == 14) { __asm__ volatile("shlr8 %[reg]\n\t shll2 %[reg]\n\t shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
+                else {
+                    if constexpr (remainingRightShift >= 8) { __asm__ volatile("shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
+                    constexpr int remainingRightShift2 = (remainingRightShift >= 8) ? remainingRightShift - 8 : remainingRightShift;
+                    if constexpr (remainingRightShift2 >= 4) { __asm__ volatile("shlr2 %[reg]\n\t shlr2 %[reg]\n\t" : [reg] "+r"(macl)); }
+                    else if constexpr (remainingRightShift2 >= 2) { __asm__ volatile("shlr2 %[reg]\n\t" : [reg] "+r"(macl)); }
+                    if constexpr (remainingRightShift2 % 2 != 0) { __asm__ volatile("shlr %[reg]\n\t" : [reg] "+r"(macl)); }
+                }
+                value = macl;
+            }
+            else
+            {
+                if constexpr (shift == 15) { __asm__ volatile("shlr8 %[reg]\n\t add %[reg], %[reg]\n\t shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
+                else if constexpr (shift == 14) { __asm__ volatile("shlr8 %[reg]\n\t shll2 %[reg]\n\t shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
+                else {
+                    if constexpr (shift >= 8) { __asm__ volatile("shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
+                    constexpr int remainingRightShift = (shift >= 8) ? shift - 8 : shift;
+                    if constexpr (remainingRightShift >= 4) { __asm__ volatile("shlr2 %[reg]\n\t shlr2 %[reg]\n\t" : [reg] "+r"(macl)); }
+                    else if constexpr (remainingRightShift >= 2) { __asm__ volatile("shlr2 %[reg]\n\t" : [reg] "+r"(macl)); }
+                    if constexpr (remainingRightShift % 2 != 0) { __asm__ volatile("shlr %[reg]\n\t" : [reg] "+r"(macl)); }
+                }
+
+                constexpr int remainingLeftShift = 32 - shift;
+                if constexpr (remainingLeftShift >= 16) { __asm__ volatile("shll16 %[reg]\n\t" : [reg] "+r"(mach)); }
+                constexpr int remainingLeftShift2 = (remainingLeftShift >= 16) ? remainingLeftShift - 16 : remainingLeftShift;
+                if constexpr (remainingLeftShift2 >= 8) { __asm__ volatile("shll8 %[reg]\n\t" : [reg] "+r"(mach)); }
+                constexpr int remainingLeftShift3 = (remainingLeftShift2 >= 8) ? remainingLeftShift2 - 8 : remainingLeftShift2;
+                if constexpr (remainingLeftShift3 >= 4) { __asm__ volatile("shll2 %[reg]\n\t shll2 %[reg]\n\t" : [reg] "+r"(mach)); }
+                else if constexpr (remainingLeftShift3 >= 2) { __asm__ volatile("shll2 %[reg]\n\t" : [reg] "+r"(mach)); }
+                if constexpr (remainingLeftShift3 % 2 != 0) { __asm__ volatile("add %[reg], %[reg]\n\t" : [reg] "+r"(mach)); }
+
+                value = macl | mach;
+            }
+            return *this;
         }
 
         /**
          * @brief Multiplies the current fixed-point value by an integer (a *= b).
-         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @tparam T The type of the integer.
          * @param value The integer value to multiply with.
-         * @return A reference to this object after performing the multiplication,
-         *         allowing for chaining of operations.
-         *
-         * @note This operation modifies the current instance in place. Ensure that
-         *       the input value is within the valid range to avoid overflow.
+         * @return A reference to this object.
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Fxp& operator*=(const T& value)
-        {
-            this->value *= value;
-            return *this;
-        }
+        template<typename T> requires std::is_integral_v<T>
+        constexpr FixedPoint& operator*=(const T& value) { this->value *= value; return *this; }
+
+        /**
+         * @brief Fixed-point multiplication (a * b).
+         * @param other Value to multiply by.
+         * @return Product as FixedPoint.
+         */
+        template<int OI, int OF>
+        constexpr FixedPoint operator*(FixedPoint<OI, OF> other) const { return FixedPoint(*this) *= other; }
+
+        /**
+         * @brief Float literal operations right side.
+         */
+        // Apagados os + e - (o compilador resolve via construtor implícito)
+        constexpr FixedPoint operator*(CompileTimeFloat other) const { return *this * other.fxp; }
+        
+        /**
+         * @brief Divides this object by a compile-time float literal.
+         * @param other The compile-time float literal.
+         * @return The quotient as a new FixedPoint object.
+         */
+        constexpr FixedPoint operator/(CompileTimeFloat other) const { return *this / other.fxp; }
 
         /**
          * @brief Multiplies the current fixed-point value by an integer (a * b).
-         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @tparam T The type of the integer.
          * @param value The integer value to multiply with.
-         * @return The product as a new Fxp object.
-         *
-         * @note This operation does not modify the current instance. It returns a new
-         *       Fxp object representing the result of the multiplication.
+         * @return The product as a new FixedPoint object.
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Fxp operator*(const T& value) const
-        {
-            return BuildRaw(value * this->value);
-        }
+        template<typename T> requires (std::is_integral_v<T>)
+        constexpr FixedPoint operator*(const T& value) const { return BuildRaw(value * this->value); }
 
         /**
-         * @brief Multiplies an integer by a fixed-point value (lhs * rhs).
-         * @tparam T The type of the integer (e.g., int, int32_t).
-         * @param lhs The integer value to multiply.
-         * @param rhs The fixed-point value to multiply with.
-         * @return The product as a new Fxp object.
-         *
-         * @note This operation does not modify the current instance. It returns a new
-         *       Fxp object representing the result of the multiplication.
+         * @brief Adds an object to a compile-time float literal.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return The sum as a new FixedPoint object.
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr friend Fxp operator*(T lhs, const Fxp& rhs)
-        {
-            return rhs * lhs;
-        }
+        constexpr friend FixedPoint operator+(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp + rhs; }
+        
+        /**
+         * @brief Subtracts an object from a compile-time float literal.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return The difference as a new FixedPoint object.
+         */
+        constexpr friend FixedPoint operator-(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp - rhs; }
+        
+        /**
+         * @brief Multiplies a compile-time float literal by an object.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return The product as a new FixedPoint object.
+         */
+        constexpr friend FixedPoint operator*(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp * rhs; }
+        
+        /**
+         * @brief Divides a compile-time float literal by an object.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return The quotient as a new FixedPoint object.
+         */
+        constexpr friend FixedPoint operator/(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp / rhs; }
+
+        /**
+         * @brief Multiplies an integral value by a fixed-point value (lhs * rhs).
+         * @tparam T The type of the integer.
+         * @param lhs The value to multiply.
+         * @param rhs The fixed-point value.
+         * @return The product as a new FixedPoint object.
+         */
+        template<typename T> requires std::is_integral_v<T>
+        constexpr friend FixedPoint operator*(T lhs, const FixedPoint& rhs) { return rhs * lhs; }
 
         /**
          * @brief Divides the current fixed-point value by another fixed-point value (a /= b).
-         *
-         * Uses Saturn's hardware divider unit at runtime for optimal performance.
-         * Falls back to double math at compile time.
-         *
-         * @param fxp Value to divide by
-         * @return Reference to this
+         * @param other Value to divide by.
+         * @return Reference to this object.
          */
-        constexpr Fxp& operator/=(const Fxp& fxp)
+        template<int OI, int OF>
+        constexpr FixedPoint& operator/=(FixedPoint<OI, OF> other)
         {
             if consteval
             {
-                // Convert to double for compile-time calculation
-                double a = this->value / 65536.0;
-                double b = fxp.value / 65536.0;
-                // Handle division by zero by returning maximum positive/negative value
-                if (b == 0.0)
-                {
-                    this->value = (a >= 0.0) ? INT32_MAX : INT32_MIN;
-                }
-                else
-                {
-                    this->value = static_cast<int32_t>((a / b) * 65536.0);
-                }
+                double a = value / FractionScaleDouble;
+                double b = other.value / static_cast<double>(1 << OF);
+                if (b == 0.0) this->value = (a >= 0.0) ? MaxValue().value : MinValue().value;
+                else this->value = static_cast<int32_t>((a / b) * FractionScaleDouble);
             }
             else
             {
-                AsyncDivSet(*this, fxp);
-                value = static_cast<int32_t>(dvdntl);
+                dvsr = other.value;
+                dvdnth = value >> (32 - OF);
+                dvdntl = static_cast<int32_t>(static_cast<uint32_t>(value) << OF);
+                this->value = static_cast<int32_t>(dvdntl);
             }
             return *this;
         }
 
         /**
          * @brief Divides the current fixed-point value by another fixed-point value (a / b).
-         * @param fxp Value to divide by
-         * @return Quotient as Fxp
+         * @param other Value to divide by.
+         * @return Quotient as a new FixedPoint object.
          */
-        constexpr Fxp operator/(const Fxp& fxp) const
-        {
-            return Fxp(*this) /= fxp;
-        }
+        template<int OI, int OF>
+        constexpr FixedPoint operator/(FixedPoint<OI, OF> other) const { return FixedPoint(*this) /= other; }
 
         /**
          * @brief Divides the current fixed-point value by an integer (a /= b).
-         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @tparam T The type of the integer.
          * @param value The integer value to divide by.
-         * @return A reference to this object after performing the division,
-         *         allowing for chaining of operations.
-         *
-         * @note This operation modifies the current instance in place. Ensure that
-         *       the input value is non-zero to avoid division by zero errors.
+         * @return A reference to this object.
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Fxp& operator/=(const T& value)
+        template<typename T> requires std::is_integral_v<T>
+        constexpr FixedPoint& operator/=(const T& value)
         {
             if consteval
             {
-                double a = this->value / 65536.0;
-                double b = value;
-                if (b == 0)
-                {
-                    this->value = (this->value >= 0) ? INT32_MAX : INT32_MIN;
-                }
-                else
-                {
-                    this->value = static_cast<int32_t>((a / b) * 65536.0);
-                }
+                double a = this->value / FractionScaleDouble;
+                if (value == 0) this->value = (this->value >= 0) ? INT32_MAX : INT32_MIN;
+                else this->value = static_cast<int32_t>((a / static_cast<double>(value)) * FractionScaleDouble);
             }
             else
             {
@@ -720,375 +769,373 @@ namespace SaturnMath::Types
 
         /**
          * @brief Divides the current fixed-point value by an integer (a / b).
-         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @tparam T The type of the integer.
          * @param value The integer value to divide by.
-         * @return The quotient as a new Fxp object.
-         *
-         * @note This operation does not modify the current instance. It returns a new
-         *       Fxp object representing the result of the division.
+         * @return The quotient as a new FixedPoint object.
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Fxp operator/(const T& value) const
-        {
-            return BuildRaw(this->value / value);
-        }
+        template<typename T> requires std::is_integral_v<T>
+        constexpr FixedPoint operator/(const T& value) const { return BuildRaw(this->value / value); }
 
         /**
-         * @brief Divides an integer by a fixed-point value (lhs / rhs).
+         * @brief Divides an integral value by a fixed-point value (lhs / rhs).
+         * @tparam T The type of the integer.
          * @param lhs The integer value to divide.
-         * @param rhs The fixed-point value to divide by.
-         * @return The quotient as a new Fxp object.
-         *
-         * @note This operation does not modify the current instance. It returns a new
-         *       Fxp object representing the result of the division.
+         * @param rhs The fixed-point value.
+         * @return The quotient as a new FixedPoint object.
          */
-        constexpr friend Fxp operator/(const int16_t& lhs, const Fxp& rhs)
-        {
-            return Fxp(lhs) / rhs;
-        }
+        template<typename T> requires std::is_integral_v<T>
+        constexpr friend FixedPoint operator/(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) / rhs; }
+
         /**
          * @brief Computes the modulo of the current fixed-point value with another fixed-point value (a % b).
-         * @param fxp The fixed-point value to use as the modulus.
-         * @return The result of the modulo operation as a new Fxp object.
-         *
-         * @note This operation does not modify the current instance. It returns a new
-         *       Fxp object representing the result of the modulo operation.
+         * @param other The fixed-point value to use as the modulus.
+         * @return The result of the modulo operation.
          */
-        constexpr Fxp operator%(const Fxp& fxp) const
-        {
-            return BuildRaw(value % fxp.value);
-        }
+        constexpr FixedPoint operator%(FixedPoint other) const { return BuildRaw(value % other.value); }
 
         /**
          * @brief Computes the modulo of an integer with a fixed-point value (lhs % rhs).
-         * @tparam T The type of the integer (e.g., int, int32_t).
+         * @tparam T The type of the integer.
          * @param lhs The integer value.
          * @param rhs The fixed-point value to use as the modulus.
-         * @return The result of the modulo operation as a new Fxp object.
-         *
-         * @note This operation does not modify the current instance. It returns a new
-         *       Fxp object representing the result of the modulo operation.
+         * @return The result of the modulo operation.
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr friend Fxp operator%(const T& lhs, const Fxp& rhs)
-        {
-            return Fxp::Convert(lhs) %= rhs;
-        }
+        template<typename T> requires std::is_integral_v<T>
+        constexpr friend FixedPoint operator%(T lhs, FixedPoint rhs) { return InternalInject(lhs) %= rhs; }
 
         /**
          * @brief Computes the modulo of the current fixed-point value with another fixed-point value (a %= b).
-         * @param fxp The fixed-point value to use as the modulus.
-         * @return A reference to this object after performing the modulo operation.
-         *z
-         * @note This operation modifies the current instance in place.
+         * @param other The fixed-point value to use as the modulus.
+         * @return A reference to this object.
          */
-        constexpr Fxp& operator%=(const Fxp& fxp)
-        {
-            this->value %= fxp.value;
-            return *this;
-        }
+        constexpr FixedPoint& operator%=(FixedPoint other) { this->value %= other.value; return *this; }
 
         /**
          * @brief Copy assignment operator.
          * @return A reference to this object.
          */
-        constexpr Fxp& operator=(const Fxp&) = default;
+        constexpr FixedPoint& operator=(const FixedPoint&) = default;
 
         /**
          * @brief Negate the value.
-         * @return The negated value as an Fxp object.
+         * @return The negated value as an FixedPoint object.
          */
-        constexpr Fxp operator-() const { return BuildRaw(-value); }
+        constexpr FixedPoint operator-() const { return BuildRaw(-value); }
 
         /**
-         * @brief Add another Fxp object to this object.
-         * @param fxp The Fxp object to add.
-         * @return The sum as an Fxp object.
+         * @brief Add another FixedPoint object to this object.
+         * @param other The FixedPoint object to add.
+         * @return The sum as a new FixedPoint object.
          */
-        constexpr Fxp operator+(const Fxp& fxp) const
+        constexpr FixedPoint operator+(FixedPoint other) const
         {
             if consteval
             {
-                int64_t result = static_cast<int64_t>(value) + static_cast<int64_t>(fxp.value);
+                int64_t result = static_cast<int64_t>(value) + static_cast<int64_t>(other.value);
                 if (result > INT32_MAX) return MaxValue();
                 if (result < INT32_MIN) return MinValue();
                 return BuildRaw(static_cast<int32_t>(result));
             }
             else
             {
-                return BuildRaw(value + fxp.value);
+                return BuildRaw(value + other.value);
             }
         }
 
         /**
          * @brief Add a fixed-point value to an integer (lhs + rhs).
+         * @tparam T The type of the integer.
          * @param lhs The integer value to add.
          * @param rhs The fixed-point value to add.
-         * @return The sum as a new Fxp object.
+         * @return The sum as a new FixedPoint object.
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr friend Fxp operator+(const T& lhs, const Fxp& rhs) { return Fxp::Convert(lhs) + rhs; }
+        template<typename T> requires std::is_integral_v<T>
+        constexpr friend FixedPoint operator+(const T& lhs, const FixedPoint& rhs) { return InternalInject(lhs) + rhs; }
 
         /**
-         * @brief Subtract another Fxp object from this object.
-         * @param fxp The Fxp object to subtract.
-         * @return The difference as an Fxp object.
+         * @brief Subtract another FixedPoint object from this object.
+         * @param other The FixedPoint object to subtract.
+         * @return The difference as a new FixedPoint object.
          */
-        constexpr Fxp operator-(const Fxp& fxp) const
+        constexpr FixedPoint operator-(FixedPoint other) const
         {
             if consteval
             {
-                int64_t result = static_cast<int64_t>(value) - static_cast<int64_t>(fxp.value);
+                int64_t result = static_cast<int64_t>(value) - static_cast<int64_t>(other.value);
                 if (result > INT32_MAX) return MaxValue();
                 if (result < INT32_MIN) return MinValue();
                 return BuildRaw(static_cast<int32_t>(result));
             }
             else
             {
-                return BuildRaw(value - fxp.value);
+                return BuildRaw(value - other.value);
             }
         }
 
         /**
          * @brief Subtract a fixed-point value from an integer (lhs - rhs).
+         * @tparam T The type of the integer.
          * @param lhs The integer value.
          * @param rhs The fixed-point value to subtract.
-         * @return The difference as a new Fxp object.
+         * @return The difference as a new FixedPoint object.
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr friend Fxp operator-(const T& lhs, const Fxp& rhs) { return Fxp::Convert(lhs) - rhs; }
-
-
-        /**
-         * @brief Compare two Fxp objects for greater than.
-         * @param fxp The Fxp object to compare with.
-         * @return `true` if this object is greater than the other; otherwise, `false`.
-         */
-        constexpr bool operator>(const Fxp& fxp) const { return value > fxp.value; }
-
-        /**
-         * @brief Compare two Fxp objects for less than.
-         * @param fxp The Fxp object to compare with.
-         * @return `true` if this object is less than the other; otherwise, `false`.
-         */
-        constexpr bool operator<(const Fxp& fxp) const { return value < fxp.value; }
-
-        /**
-         * @brief Compare two Fxp objects for greater than or equal to.
-         * @param fxp The Fxp object to compare with.
-         * @return `true` if this object is greater than or equal to the other; otherwise, `false`.
-         */
-        constexpr bool operator>=(const Fxp& fxp) const { return value >= fxp.value; }
-
-        /**
-         * @brief Compare two Fxp objects for less than or equal to.
-         * @param fxp The Fxp object to compare with.
-         * @return `true` if this object is less than or equal to the other; otherwise, `false`.
-         */
-        constexpr bool operator<=(const Fxp& fxp) const { return value <= fxp.value; }
-
-        /**
-         * @brief Compare two Fxp objects for equality.
-         * @param fxp The Fxp object to compare with.
-         * @return `true` if this object is equal to the other; otherwise, `false`.
-         */
-        constexpr bool operator==(const Fxp& fxp) const { return value == fxp.value; }
-
-        /**
-         * @brief Compare two Fxp objects for inequality.
-         * @param fxp The Fxp object to compare with.
-         * @return `true` if this object is not equal to the other; otherwise, `false`.
-         */
-        constexpr bool operator!=(const Fxp& fxp) const { return value != fxp.value; }
-
-        /**
-         * @brief Compare a value with a fixed-point value for less than (lhs < rhs).
-         * @tparam T The type of the value to compare.
-         * @param lhs The value to compare.
-         * @param rhs The fixed-point value to compare with.
-         * @return `true` if lhs is less than rhs; otherwise, `false`.
-         * 
-         * @note This operator only works at compile-time. Due to C++ language limitations,
-         * built-in types cannot be overloaded to work with user-defined types at runtime.
-         * Use explicit conversion instead: `Fxp(lhs) < rhs`
-         */
-        template<typename T>
-        constexpr friend bool operator<(const T& lhs, const Fxp& rhs)
-        {
-            if consteval
-            {
-                return double{ lhs } < double{ rhs.value / 65536.0 };
-            }
-            else
-            {
-                static_assert(
-                    false,
-                    "COMPARISON ERROR: 'otherValue < fxpValue' doesn't work at runtime. "
-                    "Please use this alternative instead: "
-                    "Explicit conversion: 'Fxp(otherValue) < fxpValue' "
-                    "This is due to C++ operator overloading limitations with implicit conversion." 
-                    );
-                return false;
-            }
-        }
-
-        /**
-         * @brief Compare a value with a fixed-point value for greater than (lhs > rhs).
-         * @tparam T The type of the value to compare.
-         * @param lhs The value to compare.
-         * @param rhs The fixed-point value to compare with.
-         * @return `true` if lhs is greater than rhs; otherwise, `false`.
-         * 
-         * @note This operator only works at compile-time. Due to C++ language limitations,
-         * built-in types cannot be overloaded to work with user-defined types at runtime.
-         * Use explicit conversion instead: `Fxp(lhs) > rhs`
-         */
-        template<typename T>
-        constexpr friend bool operator>(const T& lhs, const Fxp& rhs)
-        {
-            if consteval
-            {
-                return double{ lhs } > double{ rhs.value / 65536.0 };
-            }
-            else
-            {
-                static_assert(
-                    false,
-                    "COMPARISON ERROR: 'otherValue > fxpValue' doesn't work at runtime. "
-                    "Please use this alternative instead: "
-                    "Explicit conversion: 'Fxp(otherValue) > fxpValue' "
-                    "This is due to C++ operator overloading limitations with implicit conversion." 
-                    );
-                return false;
-            }
-        }
-
-        /**
-         * @brief Compare a value with a fixed-point value for less than or equal to (lhs <= rhs).
-         * @tparam T The type of the value to compare.
-         * @param lhs The value to compare.
-         * @param rhs The fixed-point value to compare with.
-         * @return `true` if lhs is less than or equal to rhs; otherwise, `false`.
-         * 
-         * @note This operator only works at compile-time. Due to C++ language limitations,
-         * built-in types cannot be overloaded to work with user-defined types at runtime.
-         * Use explicit conversion instead: `Fxp(lhs) <= rhs`
-         */
-        template<typename T>
-        constexpr friend bool operator<=(const T& lhs, const Fxp& rhs)
-        {
-            if consteval
-            {
-                return double{ lhs } <= double{ rhs.value / 65536.0 };
-            }
-            else
-            {
-                static_assert(
-                    false,
-                    "COMPARISON ERROR: 'otherValue <= fxpValue' doesn't work at runtime. "
-                    "Please use this alternative instead: "
-                    "Explicit conversion: 'Fxp(otherValue) <= fxpValue' "
-                    "This is due to C++ operator overloading limitations with implicit conversion." 
-                    );
-                return false;
-            }
-        }
-
-        /**
-         * @brief Compare a value with a fixed-point value for greater than or equal to (lhs >= rhs).
-         * @tparam T The type of the value to compare.
-         * @param lhs The value to compare.
-         * @param rhs The fixed-point value to compare with.
-         * @return `true` if lhs is greater than or equal to rhs; otherwise, `false`.
-         * 
-         * @note This operator only works at compile-time. Due to C++ language limitations,
-         * built-in types cannot be overloaded to work with user-defined types at runtime.
-         * Use explicit conversion instead: `Fxp(lhs) >= rhs`
-         */
-        template<typename T>
-        constexpr friend bool operator>=(const T& lhs, const Fxp& rhs)
-        {
-            if consteval
-            {
-                return double{ lhs } >= double{ rhs.value / 65536.0 };
-            }
-            else
-            {
-                static_assert(
-                    false,
-                    "COMPARISON ERROR: 'otherValue >= fxpValue' doesn't work at runtime. "
-                    "Please use this alternative instead: "
-                    "Explicit conversion: 'Fxp(otherValue) >= fxpValue' "
-                    "This is due to C++ operator overloading limitations with implicit conversion." 
-                    );
-                return false;
-            }
-        }
+        template<typename T> requires std::is_integral_v<T>
+        constexpr friend FixedPoint operator-(T lhs, FixedPoint rhs) { return InternalInject(lhs) - rhs; }
 
         /**
          * @brief Right shift operator for logical right shift.
          * @param shiftAmount The number of bits to shift.
-         * @return The result of the logical right shift as an Fxp object.
+         * @return The result of the logical right shift as an FixedPoint object.
          */
-        constexpr Fxp operator>>(const size_t& shiftAmount) const { return BuildRaw(value >> shiftAmount); }
+        constexpr FixedPoint operator>>(const size_t& shiftAmount) const { return BuildRaw(value >> shiftAmount); }
 
         /**
          * @brief Right shift and assign operator for logical right shift.
          * @param shiftAmount The number of bits to shift.
          * @return A reference to this object after the logical right shift.
          */
-        constexpr Fxp& operator>>=(const size_t& shiftAmount) { value >>= shiftAmount; return *this; }
+        constexpr FixedPoint& operator>>=(const size_t& shiftAmount) { value >>= shiftAmount; return *this; }
 
         /**
          * @brief Left shift operator for shifting the internal value by a specified number of bits.
          * @param shiftAmount The number of bits to shift the internal value to the left.
-         * @return A new Fxp object with the internal value left-shifted by the specified amount.
+         * @return A new FixedPoint object with the internal value left-shifted by the specified amount.
          */
-        constexpr Fxp operator<<(const size_t& shiftAmount) const { return BuildRaw(value << shiftAmount); }
+        constexpr FixedPoint operator<<(const size_t& shiftAmount) const { return BuildRaw(value << shiftAmount); }
 
         /**
          * @brief In-place left shift operator for shifting the internal value by a specified number of bits.
          * @param shiftAmount The number of bits to shift the internal value to the left.
-         * @return A reference to this Fxp object after left-shifting the internal value in place.
+         * @return A reference to this FixedPoint object after left-shifting the internal value in place.
          */
-        constexpr Fxp& operator<<=(const size_t& shiftAmount) { value <<= shiftAmount; return *this; }
+        constexpr FixedPoint& operator<<=(const size_t& shiftAmount) { value <<= shiftAmount; return *this; }
+        ///@}
 
-        /**************Utility****************/
-        
+        /** @name Comparison Operators */
+        ///@{
+        /**
+         * @brief Compare two FixedPoint objects for greater than.
+         * @param other The FixedPoint object to compare with.
+         * @return `true` if this object is greater than the other; otherwise, `false`.
+         */
+        constexpr bool operator>(FixedPoint other) const { return value > other.value; }
+
+        /**
+         * @brief Compare two FixedPoint objects for less than.
+         * @param other The FixedPoint object to compare with.
+         * @return `true` if this object is less than the other; otherwise, `false`.
+         */
+        constexpr bool operator<(FixedPoint other) const { return value < other.value; }
+
+        /**
+         * @brief Compare two FixedPoint objects for greater than or equal to.
+         * @param other The FixedPoint object to compare with.
+         * @return `true` if this object is greater than or equal to the other; otherwise, `false`.
+         */
+        constexpr bool operator>=(FixedPoint other) const { return value >= other.value; }
+
+        /**
+         * @brief Compare two FixedPoint objects for less than or equal to.
+         * @param other The FixedPoint object to compare with.
+         * @return `true` if this object is less than or equal to the other; otherwise, `false`.
+         */
+        constexpr bool operator<=(FixedPoint other) const { return value <= other.value; }
+
+        /**
+         * @brief Compare two FixedPoint objects for equality.
+         * @param other The FixedPoint object to compare with.
+         * @return `true` if this object is equal to the other; otherwise, `false`.
+         */
+        constexpr bool operator==(FixedPoint other) const { return value == other.value; }
+
+        /**
+         * @brief Compare two FixedPoint objects for inequality.
+         * @param other The FixedPoint object to compare with.
+         * @return `true` if this object is not equal to the other; otherwise, `false`.
+         */
+        constexpr bool operator!=(FixedPoint other) const { return value != other.value; }
+
+
+        /**
+         * @brief Compare a compile-time float literal with a FixedPoint object for greater than.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the float literal is greater than the object; otherwise, `false`.
+         */
+        constexpr friend bool operator>(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp.value > rhs.value; }
+
+        /**
+         * @brief Compare a compile-time float literal with a FixedPoint object for less than.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the float literal is less than the object; otherwise, `false`.
+         */
+        constexpr friend bool operator<(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp.value < rhs.value; }
+
+        /**
+         * @brief Compare a compile-time float literal with a FixedPoint object for greater than or equal to.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the float literal is greater than or equal to the object; otherwise, `false`.
+         */
+        constexpr friend bool operator>=(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp.value >= rhs.value; }
+
+        /**
+         * @brief Compare a compile-time float literal with a FixedPoint object for less than or equal to.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the float literal is less than or equal to the object; otherwise, `false`.
+         */
+        constexpr friend bool operator<=(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp.value <= rhs.value; }
+
+        /**
+         * @brief Compare a compile-time float literal with a FixedPoint object for equality.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the float literal is equal to the object; otherwise, `false`.
+         */
+        constexpr friend bool operator==(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp.value == rhs.value; }
+
+        /**
+         * @brief Compare a compile-time float literal with a FixedPoint object for inequality.
+         * @param lhs The compile-time float literal.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the float literal is not equal to the object; otherwise, `false`.
+         */
+        constexpr friend bool operator!=(CompileTimeFloat lhs, const FixedPoint& rhs) { return lhs.fxp.value != rhs.value; }
+
+        /**
+         * @brief Compare a FixedPoint object with an integer for greater than.
+         * @tparam T The type of the integer.
+         * @param other The integer to compare with.
+         * @return `true` if this object is greater than the integer; otherwise, `false`.
+         */
+        template<std::integral T> constexpr bool operator>(const T& other) const { return *this > InternalInject(other); }
+
+        /**
+         * @brief Compare a FixedPoint object with an integer for less than.
+         * @tparam T The type of the integer.
+         * @param other The integer to compare with.
+         * @return `true` if this object is less than the integer; otherwise, `false`.
+         */
+        template<std::integral T> constexpr bool operator<(const T& other) const { return *this < InternalInject(other); }
+
+        /**
+         * @brief Compare a FixedPoint object with an integer for greater than or equal to.
+         * @tparam T The type of the integer.
+         * @param other The integer to compare with.
+         * @return `true` if this object is greater than or equal to the integer; otherwise, `false`.
+         */
+        template<std::integral T> constexpr bool operator>=(const T& other) const { return *this >= InternalInject(other); }
+
+        /**
+         * @brief Compare a FixedPoint object with an integer for less than or equal to.
+         * @tparam T The type of the integer.
+         * @param other The integer to compare with.
+         * @return `true` if this object is less than or equal to the integer; otherwise, `false`.
+         */
+        template<std::integral T> constexpr bool operator<=(const T& other) const { return *this <= InternalInject(other); }
+
+        /**
+         * @brief Compare a FixedPoint object with an integer for equality.
+         * @tparam T The type of the integer.
+         * @param other The integer to compare with.
+         * @return `true` if this object is equal to the integer; otherwise, `false`.
+         */
+        template<std::integral T> constexpr bool operator==(const T& other) const { return *this == InternalInject(other); }
+
+        /**
+         * @brief Compare a FixedPoint object with an integer for inequality.
+         * @tparam T The type of the integer.
+         * @param other The integer to compare with.
+         * @return `true` if this object is not equal to the integer; otherwise, `false`.
+         */
+        template<std::integral T> constexpr bool operator!=(const T& other) const { return *this != InternalInject(other); }
+
+        /**
+         * @brief Compare an integer with a FixedPoint object for greater than.
+         * @tparam T The type of the integer.
+         * @param lhs The integer.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the integer is greater than the object; otherwise, `false`.
+         */
+        template<std::integral T> constexpr friend bool operator>(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) > rhs; }
+
+        /**
+         * @brief Compare an integer with a FixedPoint object for less than.
+         * @tparam T The type of the integer.
+         * @param lhs The integer.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the integer is less than the object; otherwise, `false`.
+         */
+        template<std::integral T> constexpr friend bool operator<(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) < rhs; }
+
+        /**
+         * @brief Compare an integer with a FixedPoint object for greater than or equal to.
+         * @tparam T The type of the integer.
+         * @param lhs The integer.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the integer is greater than or equal to the object; otherwise, `false`.
+         */
+        template<std::integral T> constexpr friend bool operator>=(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) >= rhs; }
+
+        /**
+         * @brief Compare an integer with a FixedPoint object for less than or equal to.
+         * @tparam T The type of the integer.
+         * @param lhs The integer.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the integer is less than or equal to the object; otherwise, `false`.
+         */
+        template<std::integral T> constexpr friend bool operator<=(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) <= rhs; }
+
+        /**
+         * @brief Compare an integer with a FixedPoint object for equality.
+         * @tparam T The type of the integer.
+         * @param lhs The integer.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the integer is equal to the object; otherwise, `false`.
+         */
+        template<std::integral T> constexpr friend bool operator==(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) == rhs; }
+
+        /**
+         * @brief Compare an integer with a FixedPoint object for inequality.
+         * @tparam T The type of the integer.
+         * @param lhs The integer.
+         * @param rhs The FixedPoint object.
+         * @return `true` if the integer is not equal to the object; otherwise, `false`.
+         */
+        template<std::integral T> constexpr friend bool operator!=(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) != rhs; }
+        ///@}
+
+        /** @name Interpolation & Easing Functions */
+        ///@{
         /**
          * @brief Power function for fixed-point numbers.
          *
          * Calculates this value raised to the power of exponent.
          * Uses repeated multiplication for integer exponents.
          *
-         * @param exponent The power to raise this value to
-         * @return The result of this^exponent
+         * @param exponent The power to raise this value to (as I.F fixed-point)
+         * @return The result of this^exponent in I.F format
          *
-         * @note Only supports non-negative integer exponents for efficiency
+         * @note Only supports non-negative integer exponents for efficiency.
+         * The exponent is converted to integer by shifting right by F bits.
          */
-        constexpr Fxp Pow(const Fxp& exponent) const
+        constexpr FixedPoint Pow(FixedPoint exponent) const
         {
-            // Handle special cases
-            if (exponent == 0) return 1;
-            if (exponent == 1) return *this;
+            if (exponent == 0) return One();
+            if (exponent == One()) return *this;
 
-            // Convert to integer for efficient calculation
-            int32_t intExp = exponent.RawValue() >> 16;
-            Fxp result(1);
-            Fxp base = *this;
+            int32_t intExp = exponent.RawValue() >> F;
+            FixedPoint result = One();
+            FixedPoint base = *this;
 
             while (intExp > 0)
             {
-                if (intExp & 1)
-                    result = result * base;
+                if (intExp & 1) result = result * base;
                 base = base * base;
                 intExp >>= 1;
             }
-
             return result;
         }
 
@@ -1116,12 +1163,9 @@ namespace SaturnMath::Types
          *
          * @note Assumes min <= max
          */
-        static constexpr Fxp Clamp(const Fxp& value, const Fxp& min, const Fxp& max)
-        {
-            return (value < min) ? min : ((value > max) ? max : value);
-        }
-
-                /**
+        static constexpr FixedPoint Clamp(FixedPoint value, FixedPoint min, FixedPoint max) { return (value < min) ? min : ((value > max) ? max : value); }
+        
+        /**
          * @brief Linear interpolation between two fixed-point values.
          *
          * Performs linear interpolation (lerp) between start and end values using the formula:
@@ -1138,18 +1182,15 @@ namespace SaturnMath::Types
          * - Color blending
          * - Position interpolation
          *
-         * @param start Starting value of the interpolation
-         * @param end Ending value of the interpolation
-         * @param t Interpolation factor in range [0,1]
+         * @param start Starting value of the interpolation (I.F format)
+         * @param end Ending value of the interpolation (I.F format)
+         * @param t Interpolation factor in range [0,1] (I.F format)
          * @return Interpolated value
          *
          * @note For best performance, ensure t is pre-clamped to [0,1]
          */
-        static constexpr Fxp Lerp(const Fxp& start, const Fxp& end, const Fxp& t)
-        {
-            return start + (end - start) * t;
-        }
-
+        static constexpr FixedPoint Lerp(FixedPoint start, FixedPoint end, FixedPoint t) { return start + (end - start) * t; }
+        
         /**
          * @brief Smoothstep interpolation for smooth acceleration and deceleration.
          *
@@ -1174,10 +1215,10 @@ namespace SaturnMath::Types
          *
          * @note Automatically clamps input t to [0,1] for safety
          */
-        static constexpr Fxp Smoothstep(const Fxp& start, const Fxp& end, const Fxp& t)
+        static constexpr FixedPoint Smoothstep(FixedPoint start, FixedPoint end, FixedPoint t)
         {
-            Fxp x = (t < 0) ? 0 : ((t > 1) ? 1 : t);
-            Fxp factor = x * x * (Fxp(3) - Fxp(2) * x);
+            FixedPoint clampedT = Clamp(t, Zero(), One());
+            FixedPoint factor = clampedT * clampedT * (FixedPoint(3) - FixedPoint(2) * clampedT);
             return Lerp(start, end, factor);
         }
 
@@ -1206,14 +1247,12 @@ namespace SaturnMath::Types
          * @note Automatically clamps input t to [0,1] for safety
          * @note More computationally expensive than smoothstep
          */
-        static constexpr Fxp Smootherstep(const Fxp& start, const Fxp& end, const Fxp& t)
+        static constexpr FixedPoint Smootherstep(const FixedPoint& start, const FixedPoint& end, const FixedPoint& t)
         {
-            Fxp x = (t < 0) ? 0 : ((t > 1) ? 1 : t);
-            // 6x⁵ - 15x⁴ + 10x³ = x³(x(x(6x - 15) + 10))
-            // This form is more efficient to compute
-            Fxp x2 = x * x;
-            Fxp x3 = x2 * x;
-            Fxp factor = x3 * (x * (Fxp(6) * x - Fxp(15)) + Fxp(10));
+            FixedPoint x = (t < 0) ? 0 : ((t > 1) ? 1 : t);
+            FixedPoint x2 = x * x;
+            FixedPoint x3 = x2 * x;
+            FixedPoint factor = x3 * (x * (FixedPoint(6) * x - FixedPoint(15)) + FixedPoint(10));
             return Lerp(start, end, factor);
         }
 
@@ -1222,6 +1261,11 @@ namespace SaturnMath::Types
          *
          * Implements quadratic easing using the formula:
          * t²
+         *
+         * @param start Starting value (I.F format)
+         * @param end Ending value (I.F format)
+         * @param t Interpolation factor in range [0,1] (I.F format)
+         * @return Eased value in I.F format
          *
          * @details The easing produces this motion:
          * - Starts slow (zero velocity)
@@ -1234,24 +1278,20 @@ namespace SaturnMath::Types
          * - Zoom-in effects
          * - Power-up animations
          *
-         * @param start Starting value of the interpolation
-         * @param end Ending value of the interpolation
-         * @param t Interpolation factor in range [0,1]
-         * @return Eased value
-         *
          * @note For symmetric animation, pair with EaseOut
          */
-        static constexpr Fxp EaseIn(const Fxp& start, const Fxp& end, const Fxp& t)
-        {
-            Fxp factor = t * t;
-            return Lerp(start, end, factor);
-        }
-
+        static constexpr FixedPoint EaseIn(FixedPoint start, FixedPoint end, FixedPoint t) { return Lerp(start, end, t * t); }
+        
         /**
          * @brief Quadratic ease-out interpolation for decelerating motion.
          *
          * Implements quadratic easing using the formula:
          * -t * (t - 2)
+         *
+         * @param start Starting value (I.F format)
+         * @param end Ending value (I.F format)
+         * @param t Interpolation factor in range [0,1] (I.F format)
+         * @return Eased value in I.F format
          *
          * @details The easing produces this motion:
          * - Starts at full velocity
@@ -1264,24 +1304,20 @@ namespace SaturnMath::Types
          * - Zoom-out effects
          * - Landing animations
          *
-         * @param start Starting value of the interpolation
-         * @param end Ending value of the interpolation
-         * @param t Interpolation factor in range [0,1]
-         * @return Eased value
-         *
          * @note For symmetric animation, pair with EaseIn
          */
-        static constexpr Fxp EaseOut(const Fxp& start, const Fxp& end, const Fxp& t)
-        {
-            Fxp factor = -t * (t - Fxp(2));
-            return Lerp(start, end, factor);
-        }
-
+        static constexpr FixedPoint EaseOut(FixedPoint start, FixedPoint end, FixedPoint t) { return Lerp(start, end, -t * (t - FixedPoint(2))); }
+        
         /**
          * @brief Cubic ease-in interpolation for stronger acceleration.
          *
          * Implements cubic easing using the formula:
          * t³
+         *
+         * @param start Starting value (I.F format)
+         * @param end Ending value (I.F format)
+         * @param t Interpolation factor in range [0,1] (I.F format)
+         * @return Eased value in I.F format
          *
          * @details The easing produces this motion:
          * - Very slow start
@@ -1294,24 +1330,20 @@ namespace SaturnMath::Types
          * - Explosion start
          * - Heavy object movement
          *
-         * @param start Starting value of the interpolation
-         * @param end Ending value of the interpolation
-         * @param t Interpolation factor in range [0,1]
-         * @return Eased value
-         *
          * @note More pronounced than quadratic EaseIn
          */
-        static constexpr Fxp CubicEaseIn(const Fxp& start, const Fxp& end, const Fxp& t)
-        {
-            Fxp factor = t * t * t;
-            return Lerp(start, end, factor);
-        }
-
+        static constexpr FixedPoint CubicEaseIn(FixedPoint start, FixedPoint end, FixedPoint t) { return Lerp(start, end, t * t * t); }
+        
         /**
          * @brief Cubic ease-out interpolation for stronger deceleration.
          *
          * Implements cubic easing using the formula:
          * (t - 1)³ + 1
+         *
+         * @param start Starting value (I.F format)
+         * @param end Ending value (I.F format)
+         * @param t Interpolation factor in range [0,1] (I.F format)
+         * @return Eased value in I.F format
          *
          * @details The easing produces this motion:
          * - Maximum velocity at start
@@ -1324,25 +1356,24 @@ namespace SaturnMath::Types
          * - Explosion end
          * - Heavy object stopping
          *
-         * @param start Starting value of the interpolation
-         * @param end Ending value of the interpolation
-         * @param t Interpolation factor in range [0,1]
-         * @return Eased value
-         *
          * @note More pronounced than quadratic EaseOut
          */
-        static constexpr Fxp CubicEaseOut(const Fxp& start, const Fxp& end, const Fxp& t)
+        static constexpr FixedPoint CubicEaseOut(FixedPoint start, FixedPoint end, FixedPoint t)
         {
-            Fxp tmp = t - 1;
-            Fxp factor = tmp * tmp * tmp + 1;
-            return Lerp(start, end, factor);
+            FixedPoint tmp = t - One();
+            return Lerp(start, end, tmp * tmp * tmp + One());
         }
 
         /**
          * @brief Elastic ease-in interpolation for spring-like motion.
          *
          * Implements elastic easing with configurable period and amplitude.
-         * Uses quadratic approximation of sine for efficiency.
+         * Uses quadratic approximation for efficiency.
+         *
+         * @param start Starting value (I.F format)
+         * @param end Ending value (I.F format)
+         * @param t Interpolation factor in range [0,1] (I.F format)
+         * @return Eased value in I.F format
          *
          * @details The easing produces this motion:
          * - Multiple overshoots
@@ -1355,30 +1386,14 @@ namespace SaturnMath::Types
          * - Projectile charge-up
          * - Spring animations
          *
-         * @param start Starting value of the interpolation
-         * @param end Ending value of the interpolation
-         * @param t Interpolation factor in range [0,1]
-         * @return Eased value
-         *
          * @note Uses approximated sine to avoid trigonometric tables
          */
-        static constexpr Fxp ElasticEaseIn(const Fxp& start, const Fxp& end, const Fxp& t)
+        static constexpr FixedPoint ElasticEaseIn(FixedPoint start, FixedPoint end, FixedPoint t)
         {
-            if (t <= 0) return start;
-            if (t >= 1) return end;
-
-            constexpr Fxp period = 0.3;
-            constexpr Fxp s = period / 4;
-
-            Fxp tmp = t - 1;
-            Fxp postFactor = tmp * tmp;
-            Fxp preFactor = -Fxp(2).Pow(t * 10);
-
-            Fxp angle = (t - s) * 6.28318530718 / period;
-            Fxp sinApprox = (angle - angle * angle * angle / 6) * 4;
-
-            Fxp factor = preFactor * sinApprox;
-            return Lerp(start, end, factor);
+            if (t <= Zero()) return start;
+            if (t >= One()) return end;
+            FixedPoint overshoot = t * (FixedPoint(2) - t) * FixedPoint(2);
+            return Lerp(start, end, overshoot);
         }
 
         /**
@@ -1386,6 +1401,11 @@ namespace SaturnMath::Types
          *
          * Implements bouncing using piecewise quadratic functions.
          * Simulates diminishing bounces of an elastic ball.
+         *
+         * @param start Starting value (I.F format)
+         * @param end Ending value (I.F format)
+         * @param t Interpolation factor in range [0,1] (I.F format)
+         * @return Eased value in I.F format
          *
          * @details The motion consists of four phases:
          * - Initial fall (36% of time)
@@ -1399,37 +1419,15 @@ namespace SaturnMath::Types
          * - Character jump landing
          * - Button clicks
          *
-         * @param start Starting value of the interpolation
-         * @param end Ending value of the interpolation
-         * @param t Interpolation factor in range [0,1]
-         * @return Eased value
-         *
          * @note Each bounce is approximately 75% the height of previous
          */
-        static constexpr Fxp BounceEaseOut(const Fxp& start, const Fxp& end, const Fxp& t)
+        static constexpr FixedPoint BounceEaseOut(FixedPoint start, FixedPoint end, FixedPoint t)
         {
-            Fxp factor;
-
-            if (t < Fxp(0.36363636)) // 4/11
-            {
-                factor = Fxp(7.5625) * t * t;
-            }
-            else if (t < Fxp(0.72727272)) // 8/11
-            {
-                Fxp tmp = t - Fxp(0.54545454); // 6/11
-                factor = Fxp(7.5625) * tmp * tmp + Fxp(0.75);
-            }
-            else if (t < Fxp(0.90909090)) // 10/11
-            {
-                Fxp tmp = t - Fxp(0.81818181); // 9/11
-                factor = Fxp(7.5625) * tmp * tmp + Fxp(0.9375);
-            }
-            else
-            {
-                Fxp tmp = t - Fxp(0.95454545); // 21/22
-                factor = Fxp(7.5625) * tmp * tmp + Fxp(0.984375);
-            }
-
+            FixedPoint factor;
+            if (t < FixedPoint(0.36363636)) { factor = FixedPoint(7.5625) * t * t; }
+            else if (t < FixedPoint(0.72727272)) { FixedPoint tmp = t - FixedPoint(0.54545454); factor = FixedPoint(7.5625) * tmp * tmp + FixedPoint(0.75); }
+            else if (t < FixedPoint(0.90909090)) { FixedPoint tmp = t - FixedPoint(0.81818181); factor = FixedPoint(7.5625) * tmp * tmp + FixedPoint(0.9375); }
+            else { FixedPoint tmp = t - FixedPoint(0.95454545); factor = FixedPoint(7.5625) * tmp * tmp + FixedPoint(0.984375); }
             return Lerp(start, end, factor);
         }
 
@@ -1438,6 +1436,11 @@ namespace SaturnMath::Types
          *
          * Implements bouncing by reversing BounceEaseOut.
          * Creates a series of bounces that converge to the start.
+         *
+         * @param start Starting value (I.F format)
+         * @param end Ending value (I.F format)
+         * @param t Interpolation factor in range [0,1] (I.F format)
+         * @return Eased value in I.F format
          *
          * @details The motion consists of four phases in reverse:
          * - Small initial bounces (10% of time)
@@ -1451,16 +1454,11 @@ namespace SaturnMath::Types
          * - Character jump startup
          * - Power-up activation
          *
-         * @param start Starting value of the interpolation
-         * @param end Ending value of the interpolation
-         * @param t Interpolation factor in range [0,1]
-         * @return Eased value
-         *
          * @note Reverses BounceEaseOut for symmetric animations
          */
-        static constexpr Fxp BounceEaseIn(const Fxp& start, const Fxp& end, const Fxp& t)
+        static constexpr FixedPoint BounceEaseIn(FixedPoint start, FixedPoint end, FixedPoint t)
         {
-            return Lerp(end, start, BounceEaseOut(Fxp(0), Fxp(1), Fxp(1) - t));
+            return Lerp(end, start, BounceEaseOut(Zero(), One(), One() - t));
         }
 
         /**
@@ -1491,22 +1489,99 @@ namespace SaturnMath::Types
          * @note For t outside [0,1], the curve will be extrapolated
          * @note More computationally expensive than simpler interpolation methods
          */
-        static constexpr Fxp CubicBezier(const Fxp& p0, const Fxp& p1, const Fxp& p2, const Fxp& p3, const Fxp& t)
+        static constexpr FixedPoint CubicBezier(FixedPoint p0, FixedPoint p1, FixedPoint p2, FixedPoint p3, FixedPoint t)
         {
-            const Fxp oneMinusT = Fxp(1) - t;
-            const Fxp oneMinusT2 = oneMinusT * oneMinusT;
-            const Fxp oneMinusT3 = oneMinusT2 * oneMinusT;
-            const Fxp t2 = t * t;
-            const Fxp t3 = t2 * t;
-            
-            // Cubic Bezier formula:
-            // (1-t)³·P0 + 3(1-t)²·t·P1 + 3(1-t)·t²·P2 + t³·P3
-            return oneMinusT3 * p0 + 
-                   Fxp(3) * oneMinusT2 * t * p1 + 
-                   Fxp(3) * oneMinusT * t2 * p2 + 
-                   t3 * p3;
+            const FixedPoint oneMinusT = One() - t;
+            const FixedPoint oneMinusT2 = oneMinusT * oneMinusT;
+            const FixedPoint oneMinusT3 = oneMinusT2 * oneMinusT;
+            const FixedPoint t2 = t * t;
+            const FixedPoint t3 = t2 * t;
+            return oneMinusT3 * p0 + FixedPoint(3) * oneMinusT2 * t * p1 + FixedPoint(3) * oneMinusT * t2 * p2 + t3 * p3;
         }
 
+        /**
+         * @brief Calculates the reciprocal (1/x) with target format control.
+         *
+         * Computes the reciprocal of the current fixed-point value, converting
+         * the result to the specified output format. Uses hardware division
+         * for optimal performance on Saturn hardware.
+         *
+         * @tparam OI Output integer bits (default: same as current)
+         * @tparam OF Output fractional bits (default: same as current)
+         * @return FixedPoint<OI, OF> The reciprocal value in the target format
+         *
+         * @details The operation is performed as:
+         * result = (1 << (OF + F)) / value
+         *
+         * For compile-time evaluation (consteval), uses floating-point
+         * arithmetic for maximum precision. At runtime, leverages the
+         * Saturn's hardware divider unit for zero-cost division.
+         *
+         * @note Returns MaxValue() for input of 0 to avoid division by zero
+         * @note The output format can differ from the input format
+         */
+        template<int OI = I, int OF = F>
+            requires (OI + OF == 32) && (OI >= 2) && (OF >= 8)
+        FixedPoint<OI, OF> Reciprocal() const
+        {
+            if consteval
+            {
+                double a = value / FractionScaleDouble;
+                if (a == 0.0) return FixedPoint<OI, OF>::MaxValue();
+                else return FixedPoint<OI, OF>::BuildRaw(static_cast<int32_t>((1.0 / a) * (1 << OF)));
+            }
+            else
+            {
+                if (value == 0) return FixedPoint<OI, OF>::MaxValue();
+                if constexpr (OF + F >= 32) { dvdnth = 1 << ((OF + F) - 32); dvdntl = 0; }
+                else { dvdnth = 0; dvdntl = 1 << (OF + F); }
+                dvsr = value;
+                return FixedPoint<OI, OF>::BuildRaw(static_cast<int32_t>(dvdntl));
+            }
+        }
+        ///@}
     };
+
+    // ========================================================================
+    // ALIASES
+    // ========================================================================
+
+    /**
+     * @brief Standard 16.16 fixed-point type (Legacy alias).
+     * @details This is the original alias for the 16.16 fixed-point format. 
+     * It is completely identical and 100% interoperable with Fxp16. It is kept 
+     * without deprecation warnings to maintain backwards compatibility with existing 
+     * codebase. Provides a balanced range [-32768, 32767.999] and resolution (1/65536).
+     */
+    using Fxp = FixedPoint<16, 16>;
+
+    /**
+     * @brief Standard 16.16 fixed-point type.
+     * @details The recommended default format for general-purpose math, physics, 
+     * velocities, and game logic. It offers the most optimal balance between range 
+     * and precision. Multiplication results alignment costs exactly 1 cycle on SH-2 
+     * hardware using the `xtrct` instruction.
+     */
+    using Fxp16 = FixedPoint<16, 16>;
+
+    /**
+     * @brief Large-world 24.8 fixed-point type.
+     * @details Prioritizes range over precision. Ideal for global world coordinates 
+     * and macro object placement where sub-millimeter precision is not required.
+     * - Range: [-8388608, 8388607.99]
+     * - Resolution: ~0.003906 (1/256)
+     * Multiplication is highly optimized on SH-2 hardware due to byte-aligned shifts.
+     */
+    using Fxp8 = FixedPoint<24, 8>;
+
+    /**
+     * @brief High-precision 8.24 fixed-point type.
+     * @details Prioritizes precision over range. Primarily intended for normalized 
+     * values (-1.0 to 1.0), rotation matrices, vector normals, and trigonometric 
+     * calculations to prevent accumulated distortion.
+     * - Range: [-128, 127.99]
+     * - Resolution: ~0.0000000596 (1/16777216)
+     * Multiplication is highly optimized on SH-2 hardware due to byte-aligned shifts.
+     */
+    using Fxp24 = FixedPoint<8, 24>;
 }
-#pragma GCC reset_options
