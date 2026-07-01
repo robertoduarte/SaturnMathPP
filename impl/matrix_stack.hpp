@@ -33,8 +33,11 @@ namespace SaturnMath::Types
      * @note This class follows the traditional OpenGL-style matrix stack paradigm but
      * is implemented with modern C++ practices and optimized for embedded systems.
      */
-    class MatrixStack
+    template<int I = 16, int F = 16>
+    class MatrixStackX
     {
+        using T = FixedPoint<I, F>;
+        using Vec3 = Vector3<I, F>;
     public:
         /**
          * @brief Maximum depth of the matrix stack.
@@ -55,122 +58,160 @@ namespace SaturnMath::Types
         static constexpr uint8_t MAX_DEPTH = 16;
 
     private:
-        Matrix43 stack[MAX_DEPTH];
+        Matrix4x3<I, F> stack[MAX_DEPTH];
         uint8_t currentDepth = 0;
     public:
-    
-        // Default constructor
-        constexpr MatrixStack() : stack{}, currentDepth(0)
+        /**
+         * @brief Default constructor. Initializes stack with identity matrix at base.
+         *
+         * @details The stack starts at depth 0 with an identity matrix, ready for
+         * immediate use in transformation chains.
+         */
+        constexpr MatrixStackX() : stack{}, currentDepth(0)
         {
-            stack[0] = Matrix43::Identity();
+            stack[0] = Matrix4x3<I, F>::Identity();
         }
-        
-        // Push matrix onto stack
-        constexpr void Push(const Matrix43& matrix)
+
+        /**
+         * @brief Pushes a matrix onto the stack.
+         *
+         * @param matrix The matrix to push onto the stack.
+         *
+         * @note If the stack is at MAX_DEPTH, the push is silently ignored to
+         * prevent stack overflow.
+         */
+        constexpr void Push(const Matrix4x3<I, F>& matrix)
         {
             if (currentDepth >= MAX_DEPTH - 1) return;
             stack[++currentDepth] = matrix;
         }
-        
-        // Pop matrix from stack
+
+        /**
+         * @brief Pops the top matrix from the stack.
+         *
+         * @note If the stack is at depth 0 (only identity), the pop is ignored.
+         */
         constexpr void Pop()
         {
             if (currentDepth > 0) --currentDepth;
         }
-        
-        // Get reference to top matrix
-        constexpr Matrix43& Top()
+
+        /**
+         * @brief Gets a mutable reference to the top matrix.
+         * @return Reference to the matrix at the top of the stack.
+         */
+        constexpr Matrix4x3<I, F>& Top()
         {
             return stack[currentDepth];
         }
-        constexpr const Matrix43& Top() const
+
+        /**
+         * @brief Gets a const reference to the top matrix.
+         * @return Const reference to the matrix at the top of the stack.
+         */
+        constexpr const Matrix4x3<I, F>& Top() const
         {
             return stack[currentDepth];
         }
-        
-        // Clear stack to identity matrix
+
+        /**
+         * @brief Clears the stack to a single identity matrix.
+         *
+         * @details Resets the stack to its initial state with depth 0 and an
+         * identity matrix at the base.
+         */
         constexpr void Clear()
         {
             currentDepth = 0;
-            stack[0] = Matrix43::Identity();
+            stack[0] = Matrix4x3<I, F>::Identity();
         }
-        
-        // Check if stack is empty (only identity matrix)
+
+        /**
+         * @brief Checks if the stack is empty (at depth 0).
+         * @return true if only the base identity matrix remains, false otherwise.
+         */
         constexpr bool IsEmpty() const
         {
             return currentDepth == 0;
         }
-        
-        // Get current stack depth
+
+        /**
+         * @brief Gets the current stack depth.
+         * @return The number of matrices pushed beyond the base (0 means only identity).
+         */
         constexpr size_t GetDepth() const
         {
             return currentDepth;
         }
-        
-        // Translate top matrix
-        constexpr void TranslateTop(const Vector3D& translation)
-        {
 
-            stack[currentDepth] = stack[currentDepth] * Matrix43::CreateTranslation(translation);
+        /**
+         * @brief Translates the top matrix by the given vector.
+         * @param translation The translation vector to apply.
+         *
+         * @details Multiplies the top matrix by a translation matrix,
+         * effectively moving the origin of the current transformation.
+         */
+        constexpr void TranslateTop(const Vec3& translation)
+        {
+            stack[currentDepth] = stack[currentDepth] * Matrix4x3<I, F>::CreateTranslation(translation);
         }
-        
-        // Rotate top matrix
+
+        /**
+         * @brief Rotates the top matrix by the given Euler angles.
+         * @param angleX Rotation angle around X-axis (pitch).
+         * @param angleY Rotation angle around Y-axis (yaw).
+         * @param angleZ Rotation angle around Z-axis (roll).
+         *
+         * @details Multiplies the top matrix by a rotation matrix created
+         * from the specified Euler angles. Rotations are applied in Z, Y, X order.
+         */
         constexpr void RotateTop(const Angle& angleX, const Angle& angleY, const Angle& angleZ)
         {
-            stack[currentDepth] = stack[currentDepth] * Matrix33::CreateRotation(angleX, angleY, angleZ);
+            stack[currentDepth] = stack[currentDepth] * Matrix3x3<I, F>::CreateRotation(angleX, angleY, angleZ);
         }
-        
-        // Scale top matrix
-        constexpr void ScaleTop(const Vector3D& scale)
+
+        /**
+         * @brief Scales the top matrix by the given factors.
+         * @param scale Per-axis scale factors.
+         *
+         * @details Multiplies the top matrix by a scaling matrix,
+         * affecting the scale of subsequent transformations.
+         */
+        constexpr void ScaleTop(const Vec3& scale)
         {
-            stack[currentDepth] = stack[currentDepth] * Matrix43::CreateScale(scale);
+            stack[currentDepth] = stack[currentDepth] * Matrix4x3<I, F>::CreateScale(scale);
         }
-        
-        // Transform point by current matrix
-        constexpr Vector3D TransformPoint(const Vector3D& point) const
+
+        /**
+         * @brief Transforms a point by the current top matrix.
+         * @param point The point to transform.
+         * @return The transformed point with rotation and translation applied.
+         */
+        constexpr Vec3 TransformPoint(const Vec3& point) const
         {
-            const Matrix43& m = stack[currentDepth];
-            return Vector3D(
+            const Matrix4x3<I, F>& m = stack[currentDepth];
+            return Vec3(
                 m.Row0.Dot(point) + m.Row3.X,
                 m.Row1.Dot(point) + m.Row3.Y,
                 m.Row2.Dot(point) + m.Row3.Z
             );
         }
-        
-        // Transform vector by current matrix (no translation)
-        constexpr Vector3D TransformVector(const Vector3D& vector) const
+
+        /**
+         * @brief Transforms a direction vector by the current top matrix.
+         * @param vector The direction vector to transform.
+         * @return The transformed vector with rotation only (no translation).
+         */
+        constexpr Vec3 TransformVector(const Vec3& vector) const
         {
-            const Matrix43& m = stack[currentDepth];
-            return Vector3D(
+            const Matrix4x3<I, F>& m = stack[currentDepth];
+            return Vec3(
                 m.Row0.Dot(vector),
                 m.Row1.Dot(vector),
                 m.Row2.Dot(vector)
             );
         }
-
-    public:
-        /**
-         * @brief Maximum depth of the matrix stack.
-         *
-         * @details Defines the maximum number of matrices that can be pushed onto the stack.
-         * This value is chosen to be sufficient for typical game scene hierarchies while
-         * avoiding excessive memory usage.
-         *
-         * The value of 16 is selected based on the following considerations:
-         * - Most game scene hierarchies rarely exceed 10-12 levels of nesting
-         * - Each matrix consumes memory (typically 48-64 bytes for a 4x3 or 4x4 matrix)
-         * - Embedded systems and performance-critical applications benefit from
-         *   predictable, fixed memory usage
-         *
-         * If a push operation would exceed this depth, it is silently ignored to prevent
-         * stack overflow, which is preferable to undefined behavior in a real-time system.
-         *
-         * @note If your application requires deeper hierarchies, this constant can be
-         * adjusted, but be aware of the increased memory footprint.
-         */
-
-    private:
-
-    public:
     };
+
+    using MatrixStack = MatrixStackX<>;  /**< Default instantiation alias */
 }

@@ -4,22 +4,24 @@
 #include "vector2d.hpp"
 #include "precision.hpp"
 #include "sort_order.hpp"
+#include "utils.hpp"
 
 namespace SaturnMath::Types
 {
     /**
      * @brief A high-performance three-dimensional vector implementation optimized for Saturn hardware.
      * 
-     * @details Vector3D extends Vector2D to provide comprehensive 3D vector operations using
-     * fixed-point arithmetic. It inherits all 2D functionality while adding Z-axis operations
+     * @details Vector3 provides comprehensive 3D vector operations using
+     * fixed-point arithmetic. It supports Z-axis operations
      * and 3D-specific algorithms optimized for performance-critical graphics and physics calculations.
      * 
      * Key features:
-     * - Memory-efficient representation (three Fxp values)
+     * - Memory-efficient representation (three T values)
      * - Comprehensive set of 3D vector operations (cross product, normalization, etc.)
      * - Multiple precision levels for performance-critical operations
      * - Hardware-optimized calculations for Saturn platform
-     * - Inheritance from Vector2D for seamless 2D/3D interoperability
+     * - Compatible with Vector2 for 2D/3D interoperability
+     * - Concept-constrained to FixedPoint types only
      * 
      * Common applications:
      * - 3D positions and translations
@@ -43,31 +45,35 @@ namespace SaturnMath::Types
      * normals), be aware of the performance implications and consider using the
      * appropriate precision level based on your requirements.
      * 
-     * @see Vector2D For 2D vector operations
-     * @see Fxp For details on the fixed-point implementation
+     * @see Vector2 For 2D vector operations
+     * @see FixedPoint For details on the fixed-point implementation
      * @see Precision For available precision levels in calculations
      */
-    struct Vector3D : public Vector2D
+    template<int I = 16, int F = 16> struct Vector3
     {
-        Fxp Z; /**< The Z-coordinate. */
+        using T = FixedPoint<I, F>;
+        T X; /**< The X-coordinate. */
+        T Y; /**< The Y-coordinate. */
+        T Z; /**< The Z-coordinate. */
 
-        // Constructors
+        /** @name Constructors */
+        ///@{
         /**
          * @brief Default constructor, initializes all coordinates to 0.
          */
-        constexpr Vector3D() : Vector2D(), Z() {}
+        constexpr Vector3() : X(), Y(), Z() {}
 
         /**
          * @brief Constructor to initialize all coordinates with the same value.
-         * @param fxp The value to initialize all coordinates with.
+         * @param T The value to initialize all coordinates with.
          */
-        constexpr Vector3D(const Fxp& fxp) : Vector2D(fxp), Z(fxp) {}
+        constexpr Vector3(const T& value) : X(value), Y(value), Z(value) {}
 
         /**
          * @brief Copy constructor.
          * @param vec The Vec3 object to copy.
          */
-        constexpr Vector3D(const Vector3D& vec) : Vector2D(vec), Z(vec.Z) {}
+        constexpr Vector3(const Vector3& vec) : X(vec.X), Y(vec.Y), Z(vec.Z) {}
 
         /**
          * @brief Constructor to initialize coordinates with specific values.
@@ -75,24 +81,27 @@ namespace SaturnMath::Types
          * @param valueY The Y-coordinate.
          * @param valueZ The Z-coordinate.
          */
-        constexpr Vector3D(const Fxp& valueX, const Fxp& valueY, const Fxp& valueZ) : Vector2D(valueX, valueY), Z(valueZ) {}
+        constexpr Vector3(const T& valueX, const T& valueY, const T& valueZ) : X(valueX), Y(valueY), Z(valueZ) {}
 
         /**
-         * @brief Constructor to initialize from a Vector2D and a Z coordinate.
-         * @param vec2d The Vector2D to copy X and Y from.
+         * @brief Constructor to initialize from a Vector2 and a Z coordinate.
+         * @param vec2d The Vector2 to copy X and Y from.
          * @param valueZ The Z-coordinate.
          */
-        constexpr Vector3D(const Vector2D& vec2d, const Fxp& valueZ) : Vector2D(vec2d), Z(valueZ) {}
+        constexpr Vector3(const Vector2<I, F>& vec2d, const T& valueZ) : X(vec2d.X), Y(vec2d.Y), Z(valueZ) {}
 
-        // Assignment operator
+        ///@}
+        /** @name Assignment */
+        ///@{
         /**
          * @brief Assignment operator.
          * @param vec The Vec3 object to assign.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vector3D& operator=(const Vector3D& vec)
+        constexpr Vector3& operator=(const Vector3& vec)
         {
-            Vector2D::operator=(vec);
+            X = vec.X;
+            Y = vec.Y;
             Z = vec.Z;
             return *this;
         }
@@ -101,9 +110,9 @@ namespace SaturnMath::Types
          * @brief Calculate the absolute values of each coordinate.
          * @return A new Vec3 object with absolute values.
          */
-        constexpr Vector3D Abs() const
+        [[gnu::always_inline]] constexpr Vector3 Abs() const
         {
-            return Vector3D(Vector2D::Abs(), Z.Abs());
+            return Vector3(X.Abs(), Y.Abs(), Z.Abs());
         }
 
         /**
@@ -112,9 +121,9 @@ namespace SaturnMath::Types
          * @return A new Vec3 object with sorted coordinates.
          */
         template <SortOrder O = SortOrder::Ascending>
-        constexpr Vector3D Sort() const
+        constexpr Vector3 Sort() const
         {
-            Vector3D result(*this);
+            Vector3 result(*this);
             result.SortInPlace<O>();
             return result;
         }
@@ -129,7 +138,7 @@ namespace SaturnMath::Types
         template <SortOrder O = SortOrder::Ascending>
         constexpr void SortInPlace()
         {
-            Fxp temp;
+            T temp;
 
             if constexpr (O == SortOrder::Ascending) {
                 if (X > Y) { temp = X; X = Y; Y = temp; }
@@ -146,7 +155,7 @@ namespace SaturnMath::Types
          * @brief Helper function to perform assembly-level dot product calculation and accumulation
          * @param first First vector
          * @param second Second vector
-         * @warning This function MUST be used together with Fxp::ClearMac() and Fxp::ExtractMac().
+         * @warning This function MUST be used together with T::ClearMac() and T::ExtractMac().
          * Failing to clear the MAC registers before the first DotAccumulate or extract after the
          * last DotAccumulate will result in incorrect calculations.
          *
@@ -157,44 +166,38 @@ namespace SaturnMath::Types
          * Required usage pattern:
          * @code
          * // Step 1: Always clear MAC registers before first DotAccumulate
-         * Fxp::ClearMac();
+         * T::ClearMac();
          *
          * // Step 2: Call DotAccumulate one or more times
          * DotAccumulate(v1, v2);              // First dot product
          * DotAccumulate(v3, v4);              // Optional: accumulate more dot products
          *
          * // Step 3: Always extract result after last DotAccumulate
-         * Fxp result = Fxp::ExtractMac();
+         * T result = T::ExtractMac();
          * @endcode
          */
-        static void DotAccumulate(const Vector3D& first, const Vector3D& second)
+        [[gnu::always_inline]] static void DotAccumulate(const Vector3& first, const Vector3& second)
         {
             auto a = reinterpret_cast<const int32_t*>(&first);
             auto b = reinterpret_cast<const int32_t*>(&second);
-            __asm__ volatile(
-                "\tmac.l @%[a]+, @%[b]+\n" // X * X
-                "\tmac.l @%[a]+, @%[b]+\n" // Y * Y
-                "\tmac.l @%[a]+, @%[b]+\n" // Z * Z
-                : [a] "+r"(a), [b] "+r"(b)
-                : "m"(*a), "m"(*b)
-                : "mach", "macl", "memory");
+            Hardware::MacAccumulate<3>(a, b);
         }
 
         /**
          * @brief Calculate the dot product of this object and another Vec3 object.
          * @param vec The Vec3 object to calculate the dot product with.
-         * @return The dot product as an Fxp value.
+         * @return The dot product as an T value.
          * @details Calculates a single dot product between two vectors. For runtime calculations,
          * this uses the DotAccumulate helper with proper MAC register management.
          *
          * Example usage:
          * @code
-         * Vector3D v1(1, 2, 3);
-         * Vector3D v2(4, 5, 6);
-         * Fxp result = v1.Dot(v2);    // Computes 1*4 + 2*5 + 3*6
+         * Vector3 v1(1, 2, 3);
+         * Vector3 v2(4, 5, 6);
+         * T result = v1.Dot(v2);    // Computes 1*4 + 2*5 + 3*6
          * @endcode
          */
-        constexpr Fxp Dot(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr T Dot(const Vector3& vec) const
         {
             if consteval
             {
@@ -202,9 +205,9 @@ namespace SaturnMath::Types
             }
             else
             {
-                Fxp::ClearMac();
+                Hardware::MacClear();
                 DotAccumulate(*this, vec);
-                return Fxp::ExtractMac();
+                return T::BuildRaw(Hardware::MacExtract());
             }
         }
 
@@ -219,13 +222,13 @@ namespace SaturnMath::Types
          *
          * Example usage:
          * @code
-         * Vector3D v1(1, 0, 0), v2(1, 0, 0);  // Unit vectors along X
-         * Vector3D v3(0, 1, 0), v4(0, 1, 0);  // Unit vectors along Y
-         * Vector3D v5(0, 0, 1), v6(0, 0, 1);  // Unit vectors along Z
+         * Vector3 v1(1, 0, 0), v2(1, 0, 0);  // Unit vectors along X
+         * Vector3 v3(0, 1, 0), v4(0, 1, 0);  // Unit vectors along Y
+         * Vector3 v5(0, 0, 1), v6(0, 0, 1);  // Unit vectors along Z
          *
          * // Computes (v1·v2) + (v3·v4) + (v5·v6) = 1 + 1 + 1 = 3
          * // All calculations done in parallel using Saturn's MAC registers
-         * Fxp result = Vector3D::MultiDotAccumulate(
+         * T result = Vector3::MultiDotAccumulate(
          *     std::pair{v1, v2},
          *     std::pair{v3, v4},
          *     std::pair{v5, v6}
@@ -233,7 +236,7 @@ namespace SaturnMath::Types
          * @endcode
          */
         template <typename... Pairs>
-        static constexpr Fxp MultiDotAccumulate(const Pairs&... pairs)
+        [[gnu::always_inline]] static constexpr T MultiDotAccumulate(const Pairs&... pairs)
         {
             if consteval
             {
@@ -242,7 +245,7 @@ namespace SaturnMath::Types
             }
             else
             {
-                Fxp::ClearMac();
+                Hardware::MacClear();
 
                 // Loop through pairs and accumulate dot products
                 ([&](const auto& pair)
@@ -250,7 +253,7 @@ namespace SaturnMath::Types
                     DotAccumulate(pair.first, pair.second);
                 }(pairs), ...); // Unpack the variadic arguments
 
-                return Fxp::ExtractMac();
+                return T::BuildRaw(Hardware::MacExtract());
             }
         }
 
@@ -265,9 +268,9 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v1(1, 0, 0);  // Unit vector along X
-         * Vector3D v2(0, 1, 0);  // Unit vector along Y
-         * Vector3D cross = v1.Cross(v2);  // Returns (0, 0, 1) - unit vector along Z
+         * Vector3 v1(1, 0, 0);  // Unit vector along X
+         * Vector3 v2(0, 1, 0);  // Unit vector along Y
+         * Vector3 cross = v1.Cross(v2);  // Returns (0, 0, 1) - unit vector along Z
          * @endcode
          */
         /**
@@ -286,14 +289,14 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D a(1, 0, 0);  // Unit vector along X
-         * Vector3D b(0, 1, 0);  // Unit vector along Y
-         * Vector3D cross = a.Cross(b);  // Returns (0, 0, 1) - unit vector along Z
+         * Vector3 a(1, 0, 0);  // Unit vector along X
+         * Vector3 b(0, 1, 0);  // Unit vector along Y
+         * Vector3 cross = a.Cross(b);  // Returns (0, 0, 1) - unit vector along Z
          * @endcode
          */
-        constexpr Vector3D Cross(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr Vector3 Cross(const Vector3& vec) const
         {
-            return Vector3D(
+            return Vector3(
                 Y * vec.Z - Z * vec.Y,  // X component
                 Z * vec.X - X * vec.Z,  // Y component
                 X * vec.Y - Y * vec.X   // Z component
@@ -301,9 +304,24 @@ namespace SaturnMath::Types
         }
 
         /**
+         * @brief Compute the maximum safe value for squaring without overflow (3D).
+         * @return sqrt(2^(IntBits-1) / 3) in the component type's units.
+         * @details For 16.16: ~104.6, for 24.8: ~1673.8, for 8.24: ~6.53.
+         *          Values at or above this threshold will overflow when squared
+         *          and summed across 3 components.
+         */
+        static constexpr T MaxSafeSquareValue()
+        {
+            if constexpr (T::IntBits % 2 == 0)
+                return T(static_cast<double>(1u << ((T::IntBits - 1) / 2)) * 0.8164965809277261); // sqrt(2/3)
+            else
+                return T(static_cast<double>(1u << ((T::IntBits - 1) / 2)) / 1.7320508075688772); // 1/sqrt(3)
+        }
+
+        /**
          * @brief Calculate the squared length of the vector with overflow protection.
-         * @return The squared length as an Fxp value, or MaxValue() if the result would overflow.
-         * @details Returns Fxp::MaxValue() if the squared magnitude would be too large to represent.
+         * @return The squared length as an T value, or MaxValue() if the result would overflow.
+         * @details Returns T::MaxValue() if the squared magnitude would be too large to represent.
          *          This version includes overflow protection to ensure safe calculations.
          *          
          *          The method checks for potential overflow by comparing against a safe threshold
@@ -313,40 +331,42 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v(3, 4, 5);
-         * Fxp lenSq = v.LengthSquared();  // Returns 50 (3*3 + 4*4 + 5*5)
+         * Vector3 v(3, 4, 5);
+         * T lenSq = v.LengthSquared();  // Returns 50 (3*3 + 4*4 + 5*5)
          * 
          * // With large values that would overflow:
-         * Vector3D large(1000, 1000, 1000);
-         * Fxp largeLenSq = large.LengthSquared();  // Returns Fxp::MaxValue()
+         * Vector3 large(1000, 1000, 1000);
+         * T largeLenSq = large.LengthSquared();  // Returns T::MaxValue()
          * @endcode
          */
-        constexpr Fxp LengthSquared() const {
+        [[gnu::always_inline]] constexpr T LengthSquared() const {
             // Special case: if any component is MinValue, the square would be MaxValue
-            if (X == Fxp::MinValue() || Y == Fxp::MinValue() || Z == Fxp::MinValue()) {
-                return Fxp::MaxValue();
+            if (X == T::MinValue() || Y == T::MinValue() || Z == T::MinValue()) {
+                return T::MaxValue();
             }
             
             // Get absolute values to handle negative numbers
-            const Fxp absX = X.Abs();
-            const Fxp absY = Y.Abs();
-            const Fxp absZ = Z.Abs();
+            const T absX = X.Abs();
+            const T absY = Y.Abs();
+            const T absZ = Z.Abs();
             
             // Calculate maximum possible value before overflow
-            // For 16.16 fixed-point with 3 components, we need to be more conservative
-            // sqrt(2^31 / 3) ≈ 1193.2, but we use a safer threshold to account for
-            // potential intermediate calculations and rounding
-            constexpr Fxp maxSafeValue = 100.0;  // Conservative for 3D vectors
+            // sqrt(2^(IntBits-1) / 3) for 3 components
+            constexpr T maxSafeValue = MaxSafeSquareValue();
             
             // If any component is too large, return MaxValue to prevent overflow
             if (absX >= maxSafeValue || absY >= maxSafeValue || absZ >= maxSafeValue) {
                 // For values just above the threshold, try scaling down to avoid false positives
                 if (absX < 2 * maxSafeValue && absY < 2 * maxSafeValue && absZ < 2 * maxSafeValue) {
                     // Scale down by 2, calculate, then scale back up
-                    const Vector3D scaled = *this >> 1;
-                    return scaled.Dot(scaled) << 2;  // Multiply by 4 (2^2)
+                    const Vector3 scaled = *this >> 1;
+                    T scaledDot = scaled.Dot(scaled);
+                    // Check if scaling back by 4 would overflow
+                    if (scaledDot > T::MaxValue() >> 2)
+                        return T::MaxValue();
+                    return scaledDot << 2;  // Multiply by 4 (2^2)
                 }
-                return Fxp::MaxValue();
+                return T::MaxValue();
             }
             
             // Safe to calculate normally
@@ -356,7 +376,7 @@ namespace SaturnMath::Types
         /**
          * @brief Calculate the length (magnitude) of the vector.
          * @tparam P Precision level for calculation (default: Precision::Default)
-         * @return The length as an Fxp value.
+         * @return The length as an T value.
          * 
          * @details Calculates the Euclidean length of the vector using the formula:
          *          sqrt(X² + Y² + Z²)
@@ -371,58 +391,93 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v(3, 4, 5);
-         * Fxp len = v.Length();  // Default precision (Fast)
-         * Fxp accLen = v.Length<Precision::Accurate>();  // Accurate sqrt
-         * Fxp fastLen = v.Length<Precision::Fast>();  // Fast sqrt
-         * Fxp turboLen = v.Length<Precision::Turbo>();  // Fast approximation (alpha-beta-gamma)
+         * Vector3 v(3, 4, 5);
+         * T len = v.Length();  // Default precision (Fast)
+         * T accLen = v.Length<Precision::Accurate>();  // Accurate sqrt
+         * T fastLen = v.Length<Precision::Fast>();  // Fast sqrt
+         * T turboLen = v.Length<Precision::Turbo>();  // Fast approximation (alpha-beta-gamma)
          * @endcode
          */
+        [[gnu::always_inline]] constexpr T Length() const
+        {
+            if consteval
+            {
+                // Compute the 64-bit dot product (X² + Y² + Z²) the same way the
+                // hardware MAC would, then split it into the high/low 32-bit halves
+                // expected by InternalSqrtFrom64 (which is itself constexpr-friendly).
+                const int64_t acc =
+                    static_cast<int64_t>(X.RawValue()) * X.RawValue() +
+                    static_cast<int64_t>(Y.RawValue()) * Y.RawValue() +
+                    static_cast<int64_t>(Z.RawValue()) * Z.RawValue();
+                const uint32_t hi = static_cast<uint32_t>(static_cast<uint64_t>(acc) >> 32);
+                const uint32_t lo = static_cast<uint32_t>(static_cast<uint64_t>(acc) & 0xFFFFFFFFu);
+                return T::InternalSqrtFrom64(hi, lo);
+            }
+            else
+            {
+                Hardware::MacClear();
+                DotAccumulate(*this, *this);
+                int32_t mach, macl;
+                Hardware::MacGet(mach, macl);
+                return T::InternalSqrtFrom64(mach, macl);
+            }
+        }
+
+        /**
+         * @brief Fast approximation of vector length using alpha-beta-gamma coefficients.
+         * @return Approximate length as an T value.
+         *
+         * @details Uses the alpha-beta-gamma approximation for square root:
+         *          |v| ≈ α·max(|x|,|y|,|z|) + β·mid(|x|,|y|,|z|) + γ·min(|x|,|y|,|z|)
+         *
+         * The coefficients are stored in 2.30 fixed-point format for maximum precision
+         * regardless of the vector's format. This ensures that the coefficient precision
+         * does not limit the overall accuracy of the approximation.
+         *
+         * Trade-offs:
+         * - Faster than Length() (no MAC operations, no 64-bit sqrt)
+         * - Higher error margin than Length() (typically ~1-2% error)
+         * - Suitable for performance-critical code where exact precision is not required
+         *
+         * Example usage:
+         * @code
+         * Vector3 v(3, 4, 5);
+         * T exactLen = v.Length();        // Exact length (slower)
+         * T approxLen = v.TurboLength();   // Approximate length (faster)
+         * @endcode
+         */
+        [[gnu::always_inline]] constexpr T TurboLength() const
+        {
+            constexpr FixedPoint<8, 24> alpha(0.96043387010342);
+            constexpr FixedPoint<8, 24> beta(0.39782473475533);
+            constexpr FixedPoint<8, 24> gamma(0.196034280659121);
+
+
+            Vector3 absolute = Abs();
+            absolute.SortInPlace<SortOrder::Descending>();
+            absolute.X *= alpha;
+            absolute.Y *= beta;
+            absolute.Z *= gamma;
+
+            return absolute.X + absolute.Y + absolute.Z;
+        }
+
+        /**
+         * @brief Calculate the length (magnitude) of the vector (deprecated)
+         * @tparam P Precision level for calculation
+         * @return The length as an T value.
+         * @deprecated Use Length() for exact length, or TurboLength() for fast approximation.
+         *             Precision parameter is ignored: Turbo→TurboLength(), others→Length()
+         */
         template<Precision P = Precision::Default>
-        constexpr Fxp Length() const
+        [[deprecated("Use Length() for exact length, or TurboLength() for fast approximation. Precision parameter is ignored")]]
+        [[gnu::always_inline]] constexpr T Length() const
         {
             if constexpr (P == Precision::Turbo) {
-                // Alpha-beta-gamma fast approximation
-                constexpr Vector3D alphaBetaGamma(
-                    0.96043387010342,   // Alpha
-                    0.39782473475533,   // Beta
-                    0.196034280659121   // Gamma
-                );
-                
-                Vector3D absolute = Abs();
-                absolute.SortInPlace<SortOrder::Descending>();
-                return alphaBetaGamma.Dot(absolute);
+                return TurboLength();
+            } else {
+                return Length();
             }
-
-            // For Accurate/Fast: use adaptive shift to maximise precision
-            // while preventing overflow in the Dot(self) intermediate.
-            // The OR of absolute raw values captures the highest set bit
-            // across all three components.
-            const int32_t combined = X.Abs().RawValue() | 
-                                     Y.Abs().RawValue() | 
-                                     Z.Abs().RawValue();
-
-            // Each threshold doubles the previous one, starting at ~104.5
-            // (sqrt(INT32_MAX_fxp / 3) — the safe per-component limit for
-            // a 3-component Dot that must fit in int32_t after >>16).
-            // A lambda with integral_constant keeps the shift compile-time
-            // so the s==0 branch avoids the unnecessary shift/rebuild.
-            auto calc = [this](auto shift_tag) -> Fxp {
-                constexpr int s = decltype(shift_tag)::value;
-                if constexpr (s == 0) {
-                    return Dot(*this).template Sqrt<P>();
-                } else {
-                    const Vector3D v = *this >> s;
-                    const Fxp res = v.Dot(v).template Sqrt<P>();
-                    return Fxp::BuildRaw(res.RawValue() << s);
-                }
-            };
-
-            if (combined <= 0x00688000) return calc(std::integral_constant<int, 0>{});
-            if (combined <= 0x01A20000) return calc(std::integral_constant<int, 2>{});
-            if (combined <= 0x06880000) return calc(std::integral_constant<int, 4>{});
-            if (combined <= 0x1A200000) return calc(std::integral_constant<int, 6>{});
-            return calc(std::integral_constant<int, 7>{});
         }
 
         /**
@@ -430,24 +485,60 @@ namespace SaturnMath::Types
          * The precision template parameter controls the length calculation method:
          * - Standard precision: Uses exact square root calculation
          * - Turbo precision: Uses fast approximation with alpha-beta-gamma coefficients
-         * 
+         *
          * If the vector length is zero, returns a zero vector to avoid division by zero.
-         * 
+         *
          * Example usage:
          * @code
-         * Vector3D v(3, 4, 5);
-         * Vector3D unitV = v.Normalize();  // Returns unit vector with standard precision
-         * Vector3D fastUnitV = v.Normalize<Precision::Turbo>();  // Returns approximate unit vector (faster)
+         * Vector3 v(3, 4, 5);
+         * Vector3 unitV = v.Normalize();  // Returns unit vector with standard precision
+         * Vector3 fastUnitV = v.Normalize<Precision::Turbo>();  // Returns approximate unit vector (faster)
          * @endcode
          */
-        template<Precision P = Precision::Default>
-        constexpr Vector3D Normalize() const
+        [[gnu::always_inline]] constexpr Vector3 Normalize() const
         {
-            Fxp length = Length<P>();
-            if (length != 0)
-                return Vector3D(X / length, Y / length, Z / length);
-            return Vector3D();
+            T length = Length();
+            if (length == 0)
+                return Vector3();
+            auto temp = *this;
+            if (length < 0) // Overflow happened
+            {
+                // Length is always large here, so reciprocal is tiny.
+                // Q2.30 has 30 fractional bits — enough precision for all formats.
+                // Runtime cost: same Mul64 + Extract32, just different shift constant.
+                length = T::BuildRaw(static_cast<uint32_t>(length.RawValue()) >> 1);
+                auto reciprocal = FixedPoint<2, 30>(0.5) / length;
+                temp.X *= reciprocal;
+                temp.Y *= reciprocal;
+                temp.Z *= reciprocal;
+            }
+            else
+            {
+                // For formats with many integer bits (e.g. Q24.8), large lengths
+                // produce tiny reciprocals that truncate to 0 in Q16.16.
+                // Q8.24 has 24 fractional bits — enough for lengths up to ~8M.
+                // For formats with ≤16 integer bits, Q16.16 is sufficient and
+                // preserves the original behavior for Q16.16 and Q8.24.
+                using RecipNormal = std::conditional_t<(T::IntBits > 16),
+                    FixedPoint<8, 24>, FixedPoint<16, 16>>;
+                auto reciprocal = RecipNormal(1.0) / length;
+                temp.X *= reciprocal;
+                temp.Y *= reciprocal;
+                temp.Z *= reciprocal;
+            }
+
+            return temp;
         }
+
+        /**
+         * @brief Creates a unit vector pointing in the same direction as this vector (deprecated)
+         * @tparam P Precision level for calculation (ignored)
+         * @return Normalized vector
+         * @deprecated Use Normalize() instead - precision parameter is ignored
+         */
+        template<Precision P = Precision::Default>
+        [[deprecated("Use Normalize() instead - precision parameter is ignored")]]
+        [[gnu::always_inline]] constexpr Vector3 Normalize() const { return Normalize(); }
 
         /**
          * @brief Get a normalized copy of the vector
@@ -459,16 +550,25 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v(3, 4, 5);
-         * Vector3D unitV = v.Normalized();  // Original vector remains unchanged
+         * Vector3 v(3, 4, 5);
+         * Vector3 unitV = v.Normalized();  // Original vector remains unchanged
          * @endcode
          */
-        template<Precision P = Precision::Default>
-        constexpr Vector3D Normalized() const
+        [[gnu::always_inline]] constexpr Vector3 Normalized() const
         {
-            Vector3D copy(*this);
-            return copy.Normalize<P>();
+            Vector3 copy(*this);
+            return copy.Normalize();
         }
+
+        /**
+         * @brief Get a normalized copy of the vector (deprecated)
+         * @tparam P Precision level for calculation (ignored)
+         * @return Normalized vector
+         * @deprecated Use Normalized() instead - precision parameter is ignored
+         */
+        template<Precision P = Precision::Default>
+        [[deprecated("Use Normalized() instead - precision parameter is ignored")]]
+        [[gnu::always_inline]] constexpr Vector3 Normalized() const { return Normalized(); }
 
         /**
          * @brief Calculate normal vector for a triangle
@@ -484,28 +584,42 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v1(0, 0, 0);
-         * Vector3D v2(1, 0, 0);
-         * Vector3D v3(0, 1, 0);
-         * Vector3D normal = Vector3D::CalcNormal(v1, v2, v3);  // Returns (0, 0, 1)
+         * Vector3 v1(0, 0, 0);
+         * Vector3 v2(1, 0, 0);
+         * Vector3 v3(0, 1, 0);
+         * Vector3 normal = Vector3::CalcNormal(v1, v2, v3);  // Returns (0, 0, 1)
          * @endcode
          */
-        template<Precision P = Precision::Default>
-        static Vector3D CalcNormal(
-            const Vector3D& vertexA,
-            const Vector3D& vertexB,
-            const Vector3D& vertexC)
+        static Vector3 CalcNormal(
+            const Vector3& vertexA,
+            const Vector3& vertexB,
+            const Vector3& vertexC)
         {
-            const Vector3D edge1 = vertexB - vertexA;
-            const Vector3D edge2 = vertexC - vertexA;
-            return edge1.Cross(edge2).Normalize<P>();
+            const Vector3 edge1 = vertexB - vertexA;
+            const Vector3 edge2 = vertexC - vertexA;
+            return edge1.Cross(edge2).Normalize();
+        }
+
+        /**
+         * @brief Calculate normal vector for a triangle (deprecated)
+         * @tparam P Precision level for calculation (ignored)
+         * @deprecated Use CalcNormal() instead - precision parameter is ignored
+         */
+        template<Precision P = Precision::Default>
+        [[deprecated("Use CalcNormal() instead - precision parameter is ignored")]]
+        static Vector3 CalcNormal(
+            const Vector3& vertexA,
+            const Vector3& vertexB,
+            const Vector3& vertexC)
+        {
+            return CalcNormal(vertexA, vertexB, vertexC);
         }
 
         /**
          * @brief Calculate the Euclidean distance from this vector to another vector.
          * @tparam P Precision level for calculation
          * @param other The other vector to calculate the distance to.
-         * @return The distance as an Fxp value.
+         * @return The distance as an T value.
          * @details Computes the distance using the formula: sqrt((X - other.X)^2 + (Y - other.Y)^2 + (Z - other.Z)^2).
          * The precision template parameter controls the calculation method:
          * - Standard precision: Uses exact square root calculation
@@ -513,15 +627,27 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v1(1, 2, 3);
-         * Vector3D v2(4, 6, 8);
-         * Fxp distance = v1.DistanceTo(v2);  // Computes distance between the two points
-         * Fxp fastDistance = v1.DistanceTo<Precision::Turbo>(v2);  // Computes approximate distance (faster)
+         * Vector3 v1(1, 2, 3);
+         * Vector3 v2(4, 6, 8);
+         * T distance = v1.DistanceTo(v2);  // Computes distance between the two points
+         * T fastDistance = v1.DistanceTo<Precision::Turbo>(v2);  // Computes approximate distance (faster)
          * @endcode
          */
+        [[gnu::always_inline]] constexpr T DistanceTo(const Vector3& other) const {
+            return (*this - other).Length();
+        }
+
+        /**
+         * @brief Calculate the Euclidean distance from this vector to another vector (deprecated)
+         * @tparam P Precision level for calculation (ignored)
+         * @param other The other vector to calculate the distance to.
+         * @return The distance as an T value.
+         * @deprecated Use DistanceTo() instead - precision parameter is ignored
+         */
         template<Precision P = Precision::Default>
-        constexpr Fxp DistanceTo(const Vector3D& other) const {
-            return (*this - other).Length<P>();
+        [[deprecated("Use DistanceTo() instead - precision parameter is ignored")]]
+        [[gnu::always_inline]] constexpr T DistanceTo(const Vector3& other) const {
+            return DistanceTo(other);
         }
 
         /**
@@ -535,15 +661,15 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D a(1, 2, 3);
-         * Vector3D b(4, 6, 8);
-         * Fxp distSq = a.DistanceSquared(b);  // Returns 50 (3² + 4² + 5²)
+         * Vector3 a(1, 2, 3);
+         * Vector3 b(4, 6, 8);
+         * T distSq = a.DistanceSquared(b);  // Returns 50 (3² + 4² + 5²)
          * @endcode
          */
-        constexpr Fxp DistanceSquared(const Vector3D& other) const {
-            const Fxp dx = X - other.X;
-            const Fxp dy = Y - other.Y;
-            const Fxp dz = Z - other.Z;
+        [[gnu::always_inline]] constexpr T DistanceSquared(const Vector3& other) const {
+            const T dx = X - other.X;
+            const T dy = Y - other.Y;
+            const T dz = Z - other.Z;
             return dx * dx + dy * dy + dz * dz;
         }
 
@@ -566,26 +692,26 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v1(1, 0, 0);  // Right vector
-         * Vector3D v2(0, 1, 0);  // Up vector
-         * Angle angle = Vector3D::Angle(v1, v2);  // Returns 90 degrees (π/2 radians)
+         * Vector3 v1(1, 0, 0);  // Right vector
+         * Vector3 v2(0, 1, 0);  // Up vector
+         * Angle angle = Vector3::Angle(v1, v2);  // Returns 90 degrees (π/2 radians)
          * @endcode
          */
         template<Precision P = Precision::Default>
-        static constexpr auto Angle(const Vector3D& a, const Vector3D& b)
+        static constexpr auto Angle(const Vector3& a, const Vector3& b)
         {
             // Handle zero vectors
-            const Fxp aLenSq = a.LengthSquared();
-            const Fxp bLenSq = b.LengthSquared();
+            const T aLenSq = a.LengthSquared();
+            const T bLenSq = b.LengthSquared();
             
             if (aLenSq == 0 || bLenSq == 0) {
                 return Angle::Zero();
             }
             
             // Calculate dot product and cross product magnitude squared
-            const Fxp dot = a.Dot(b);
-            const Vector3D cross = a.Cross(b);
-            const Fxp crossLenSq = cross.LengthSquared();
+            const T dot = a.Dot(b);
+            const Vector3 cross = a.Cross(b);
+            const T crossLenSq = cross.LengthSquared();
             
             // Handle collinear vectors (cross product is zero)
             if (crossLenSq == 0) {
@@ -617,16 +743,16 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v(2, 3, 0);
-         * Vector3D u(1, 0, 0);
-         * Vector3D proj = v.Project(u);  // Returns (2, 0, 0)
+         * Vector3 v(2, 3, 0);
+         * Vector3 u(1, 0, 0);
+         * Vector3 proj = v.Project(u);  // Returns (2, 0, 0)
          * @endcode
          */
-        constexpr Vector3D Project(const Vector3D& other) const
+        constexpr Vector3 Project(const Vector3& other) const
         {
-            Fxp denominator = other.Dot(other);
-            if (denominator == 0) return Vector3D(); // Avoid division by zero
-            Fxp scalar = Dot(other) / denominator;
+            T denominator = other.Dot(other);
+            if (denominator == 0) return Vector3(); // Avoid division by zero
+            T scalar = Dot(other) / denominator;
             return other * scalar;
         }
 
@@ -644,21 +770,23 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v(1, -1, 0);
-         * Vector3D n(0, 1, 0); // Up normal
-         * Vector3D reflected = v.Reflect(n);  // Returns (1, 1, 0)
+         * Vector3 v(1, -1, 0);
+         * Vector3 n(0, 1, 0); // Up normal
+         * Vector3 reflected = v.Reflect(n);  // Returns (1, 1, 0)
          * @endcode
          */
-        constexpr Vector3D Reflect(const Vector3D& normal) const
+        [[gnu::always_inline]] constexpr Vector3 Reflect(const Vector3& normal) const
         {
             // Standard reflection formula: v - 2*(v·n)*n
             // Where n is the normal vector (assumed to be normalized)
             // v·n = v.X*n.X + v.Y*n.Y + v.Z*n.Z
-            Fxp dot = Dot(normal);
+            T dot = Dot(normal);
             return *this - normal * (dot * 2);
         }
 
-        // Scalar multiplication and division
+        ///@}
+        /** @name Scalar Multiplication & Division */
+        ///@{
         /**
          * @brief Compound multiplication assignment operator.
          * @param scalar The scalar value to multiply by.
@@ -668,13 +796,14 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v(1, 2, 3);
+         * Vector3 v(1, 2, 3);
          * v *= 2.5_fxp;  // Results in v = (2.5, 5, 7.5)
          * @endcode
          */
-        constexpr Vector3D& operator*=(const Fxp& scalar)
+        [[gnu::always_inline]] constexpr Vector3& operator*=(const T& scalar)
         {
-            Vector2D::operator*=(scalar);
+            X *= scalar;
+            Y *= scalar;
             Z *= scalar;
             return *this;
         }
@@ -686,20 +815,21 @@ namespace SaturnMath::Types
          * @return Reference to the modified Vec3 object.
          * 
          * @details Multiplies each component of the vector by the integral scalar value.
-         * This specialized version uses Fxp's optimized integral multiplication
+         * This specialized version uses T's optimized integral multiplication
          * for better performance on Saturn hardware.
          * 
          * Example usage:
          * @code
-         * Vector3D v(1, 2, 3);
+         * Vector3 v(1, 2, 3);
          * v *= 2;  // Results in v = (2, 4, 6) with optimized integral multiplication
          * @endcode
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Vector3D& operator*=(const T& scalar)
+        template<typename U>
+            requires std::is_integral_v<U>
+        [[gnu::always_inline]] constexpr Vector3& operator*=(const U& scalar)
         {
-            Vector2D::operator*=(scalar);
+            X *= scalar;
+            Y *= scalar;
             Z *= scalar;
             return *this;
         }
@@ -713,13 +843,14 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v(4, 6, 8);
+         * Vector3 v(4, 6, 8);
          * v /= 2_fxp;  // Results in v = (2, 3, 4)
          * @endcode
          */
-        constexpr Vector3D& operator/=(const Fxp& scalar)
+        [[gnu::always_inline]] constexpr Vector3& operator/=(const T& scalar)
         {
-            Vector2D::operator/=(scalar);
+            X /= scalar;
+            Y /= scalar;
             Z /= scalar;
             return *this;
         }
@@ -731,20 +862,21 @@ namespace SaturnMath::Types
          * @return Reference to the modified Vec3 object.
          * 
          * @details Divides each component of the vector by the integral scalar value.
-         * This specialized version uses Fxp's optimized integral division
+         * This specialized version uses T's optimized integral division
          * for better performance on Saturn hardware.
          * 
          * Example usage:
          * @code
-         * Vector3D v(10, 20, 30);
+         * Vector3 v(10, 20, 30);
          * v /= 5;  // Results in v = (2, 4, 6) with optimized integral division
          * @endcode
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Vector3D& operator/=(const T& scalar)
+        template<typename U>
+            requires std::is_integral_v<U>
+        [[gnu::always_inline]] constexpr Vector3& operator/=(const U& scalar)
         {
-            Vector2D::operator/=(scalar);
+            X /= scalar;
+            Y /= scalar;
             Z /= scalar;
             return *this;
         }
@@ -759,13 +891,13 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v(1, 2, 3);
-         * Vector3D result = v * 3_fxp;  // Results in result = (3, 6, 9)
+         * Vector3 v(1, 2, 3);
+         * Vector3 result = v * 3_fxp;  // Results in result = (3, 6, 9)
          * @endcode
          */
-        constexpr Vector3D operator*(const Fxp& scalar) const
+        [[gnu::always_inline]] constexpr Vector3 operator*(const T& scalar) const
         {
-            Vector3D result(*this);
+            Vector3 result(*this);
             result *= scalar;
             return result;
         }
@@ -777,44 +909,44 @@ namespace SaturnMath::Types
          * @return A new vector with each component multiplied by the scalar.
          * 
          * @details Creates a new vector by multiplying each component of this vector
-         * by the integral scalar value. This specialized version uses Fxp's optimized 
+         * by the integral scalar value. This specialized version uses T's optimized 
          * integral multiplication for better performance on Saturn hardware.
          * 
          * Example usage:
          * @code
-         * Vector3D v(1, 2, 3);
-         * Vector3D result = v * 3;  // Results in result = (3, 6, 9) with optimized integral multiplication
+         * Vector3 v(1, 2, 3);
+         * Vector3 result = v * 3;  // Results in result = (3, 6, 9) with optimized integral multiplication
          * @endcode
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Vector3D operator*(const T& scalar) const
+        template<typename U>
+            requires std::is_integral_v<U>
+        [[gnu::always_inline]] constexpr Vector3 operator*(const U& scalar) const
         {
-            Vector3D result(*this);
+            Vector3 result(*this);
             result *= scalar;
             return result;
         }
 
         /**
-         * @brief Multiply an integral scalar by a Vector3D.
+         * @brief Multiply an integral scalar by a Vector3.
          * @tparam T The integral type of the scalar value.
          * @param scalar The scalar value to multiply.
          * @param vec The vector to multiply by.
          * @return A new vector with each component multiplied by the scalar.
          * 
          * @details Creates a new vector by multiplying each component of the input vector
-         * by the integral scalar value. This specialized version uses Fxp's optimized 
+         * by the integral scalar value. This specialized version uses T's optimized 
          * integral multiplication for better performance on Saturn hardware.
          * 
          * Example usage:
          * @code
-         * Vector3D v(1, 2, 3);
-         * Vector3D result = 3 * v;  // Results in result = (3, 6, 9) with optimized integral multiplication
+         * Vector3 v(1, 2, 3);
+         * Vector3 result = 3 * v;  // Results in result = (3, 6, 9) with optimized integral multiplication
          * @endcode
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        friend constexpr Vector3D operator*(const T& scalar, const Vector3D& vec)
+        template<typename U>
+            requires std::is_integral_v<U>
+        friend constexpr Vector3 operator*(const U& scalar, const Vector3& vec)
         {
             return vec * scalar;
         }
@@ -829,13 +961,13 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v(6, 8, 10);
-         * Vector3D result = v / 2_fxp;  // Results in result = (3, 4, 5)
+         * Vector3 v(6, 8, 10);
+         * Vector3 result = v / 2_fxp;  // Results in result = (3, 4, 5)
          * @endcode
          */
-        constexpr Vector3D operator/(const Fxp& scalar) const
+        [[gnu::always_inline]] constexpr Vector3 operator/(const T& scalar) const
         {
-            return Vector3D(Vector2D::operator/(scalar), Z / scalar);
+            return Vector3(X / scalar, Y / scalar, Z / scalar);
         }
 
         /**
@@ -845,77 +977,81 @@ namespace SaturnMath::Types
          * @return A new vector with each component divided by the scalar.
          * 
          * @details Creates a new vector by dividing each component of this vector
-         * by the integral scalar value. This specialized version uses Fxp's optimized 
+         * by the integral scalar value. This specialized version uses T's optimized 
          * integral division for better performance on Saturn hardware.
          * 
          * Example usage:
          * @code
-         * Vector3D v(10, 20, 30);
-         * Vector3D result = v / 5;  // Results in result = (2, 4, 6) with optimized integral division
+         * Vector3 v(10, 20, 30);
+         * Vector3 result = v / 5;  // Results in result = (2, 4, 6) with optimized integral division
          * @endcode
          */
-        template<typename T>
-            requires std::is_integral_v<T>
-        constexpr Vector3D operator/(const T& scalar) const
+        template<typename U>
+            requires std::is_integral_v<U>
+        [[gnu::always_inline]] constexpr Vector3 operator/(const U& scalar) const
         {
-            Vector3D result(*this);
+            Vector3 result(*this);
             result /= scalar;
             return result;
         }
 
-        // Unit vector and common vector constant methods
+        ///@}
+        /** @name Unit Vectors & Constants */
+        ///@{
         /**
          * @brief Get a unit vector pointing along the X axis (1,0,0).
          * @return Unit vector along X axis.
          */
-        static consteval Vector3D UnitX()
+        static consteval Vector3 UnitX()
         {
-            return Vector3D(1, 0, 0);
+            return Vector3(1, 0, 0);
         }
 
         /**
          * @brief Get a unit vector pointing along the Y axis (0,1,0).
          * @return Unit vector along Y axis.
          */
-        static consteval Vector3D UnitY()
+        static consteval Vector3 UnitY()
         {
-            return Vector3D(0, 1, 0);
+            return Vector3(0, 1, 0);
         }
 
         /**
          * @brief Get a unit vector pointing along the Z axis (0,0,1).
          * @return Unit vector along Z axis.
          */
-        static consteval Vector3D UnitZ()
+        static consteval Vector3 UnitZ()
         {
-            return Vector3D(0, 0, 1);
+            return Vector3(0, 0, 1);
         }
 
         /**
          * @brief Get a zero vector (0,0,0).
          * @return Zero vector.
          */
-        static consteval Vector3D Zero()
+        static consteval Vector3 Zero()
         {
-            return Vector3D(0);
+            return Vector3(0);
         }
 
         /**
          * @brief Get a vector with all components set to one (1,1,1).
          * @return Vector with all ones.
          */
-        static consteval Vector3D One()
+        static consteval Vector3 One()
         {
-            return Vector3D(1);
+            return Vector3(1);
         }
 
-        // Comparison operators
+        ///@}
+        /** @name Comparison Operators */
+        ///@{
         /**
          * @brief Check if two Vec3 objects are not equal.
          * @param vec The Vec3 object to compare.
          * @return True if not equal, false otherwise.
          */
-        constexpr bool operator!=(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr bool operator!=(const Vector3& vec) const
         {
             return X != vec.X || Y != vec.Y || Z != vec.Z;
         }
@@ -925,57 +1061,53 @@ namespace SaturnMath::Types
          * @param vec The Vec3 object to compare.
          * @return True if equal, false otherwise.
          */
-        constexpr bool operator==(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr bool operator==(const Vector3& vec) const
         {
             return X == vec.X && Y == vec.Y && Z == vec.Z;
         }
 
         /**
          * @brief Less than operator.
-         * @param vec The Vector3D object to compare with.
+         * @param vec The Vector3 object to compare with.
          * @return True if this vector is less than the provided vector, false otherwise.
          * @details Compares vectors lexicographically (X first, then Y, then Z).
          */
-        constexpr bool operator<(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr bool operator<(const Vector3& vec) const
         {
-            return Vector2D::operator<(vec) || 
-                   (Vector2D::operator==(vec) && Z < vec.Z);
+            return (X < vec.X) || (X == vec.X && (Y < vec.Y || (Y == vec.Y && Z < vec.Z)));
         }
 
         /**
          * @brief Less than or equal operator.
-         * @param vec The Vector3D object to compare with.
+         * @param vec The Vector3 object to compare with.
          * @return True if this vector is less than or equal to the provided vector, false otherwise.
          * @details Compares vectors lexicographically (X first, then Y, then Z).
          */
-        constexpr bool operator<=(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr bool operator<=(const Vector3& vec) const
         {
-            return Vector2D::operator<=(vec) || 
-                   (Vector2D::operator==(vec) && Z <= vec.Z);
+            return (X < vec.X) || (X == vec.X && (Y < vec.Y || (Y == vec.Y && Z <= vec.Z)));
         }
 
         /**
          * @brief Greater than operator.
-         * @param vec The Vector3D object to compare with.
+         * @param vec The Vector3 object to compare with.
          * @return True if this vector is greater than the provided vector, false otherwise.
          * @details Compares vectors lexicographically (X first, then Y, then Z).
          */
-        constexpr bool operator>(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr bool operator>(const Vector3& vec) const
         {
-            return Vector2D::operator>(vec) || 
-                   (Vector2D::operator==(vec) && Z > vec.Z);
+            return (X > vec.X) || (X == vec.X && (Y > vec.Y || (Y == vec.Y && Z > vec.Z)));
         }
 
         /**
          * @brief Greater than or equal operator.
-         * @param vec The Vector3D object to compare with.
+         * @param vec The Vector3 object to compare with.
          * @return True if this vector is greater than or equal to the provided vector, false otherwise.
          * @details Compares vectors lexicographically (X first, then Y, then Z).
          */
-        constexpr bool operator>=(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr bool operator>=(const Vector3& vec) const
         {
-            return Vector2D::operator>=(vec) || 
-                   (Vector2D::operator==(vec) && Z >= vec.Z);
+            return (X > vec.X) || (X == vec.X && (Y > vec.Y || (Y == vec.Y && Z >= vec.Z)));
         }
 
         /**
@@ -990,15 +1122,15 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D a(1, 2, 3);
-         * Vector3D b(5, 6, 7);
-         * Vector3D mid = Vector3D::Lerp(a, b, 0.5);  // Returns (3, 4, 5)
+         * Vector3 a(1, 2, 3);
+         * Vector3 b(5, 6, 7);
+         * Vector3 mid = Vector3::Lerp(a, b, 0.5);  // Returns (3, 4, 5)
          * @endcode
          */
-        static constexpr Vector3D Lerp(const Vector3D& start, const Vector3D& end, const Fxp& t)
+        static constexpr Vector3 Lerp(const Vector3& start, const Vector3& end, const T& t)
         {
             // Clamp t to [0, 1] range
-            Fxp clampedT = t;
+            T clampedT = t;
             if (t < 0.0) clampedT = 0.0;
             else if (t > 1.0) clampedT = 1.0;
             
@@ -1012,26 +1144,28 @@ namespace SaturnMath::Types
          * @param t Interpolation factor [0, 1]
          * @return Interpolated vector between start and end
          */
-        static constexpr Vector3D Smoothstep(const Vector3D& start, const Vector3D& end, const Fxp& t)
+        static constexpr Vector3 Smoothstep(const Vector3& start, const Vector3& end, const T& t)
         {
-            Fxp x = (t < 0) ? 0 : ((t > 1) ? 1 : t);
-            Fxp factor = x * x * (Fxp(3) - Fxp(2) * x);
-            return Vector3D(
-                Fxp::Lerp(start.X, end.X, factor),
-                Fxp::Lerp(start.Y, end.Y, factor),
-                Fxp::Lerp(start.Z, end.Z, factor)
+            T x = (t < 0) ? 0 : ((t > 1) ? 1 : t);
+            T factor = x * x * (T(3) - T(2) * x);
+            return Vector3(
+                T::Lerp(start.X, end.X, factor),
+                T::Lerp(start.Y, end.Y, factor),
+                T::Lerp(start.Z, end.Z, factor)
             );
         }
 
-        // Bitwise shift operators
+        ///@}
+        /** @name Bitwise Shift Operators */
+        ///@{
         /**
          * @brief Bitwise right shift operator.
          * @param shiftAmount The number of positions to shift.
          * @return The resulting Vec3 object.
          */
-        constexpr Vector3D operator>>(const size_t& shiftAmount) const
+        [[gnu::always_inline]] constexpr Vector3 operator>>(const size_t& shiftAmount) const
         {
-            return Vector3D(X >> shiftAmount, Y >> shiftAmount, Z >> shiftAmount);
+            return Vector3(X >> shiftAmount, Y >> shiftAmount, Z >> shiftAmount);
         }
 
         /**
@@ -1039,7 +1173,7 @@ namespace SaturnMath::Types
          * @param shiftAmount The number of positions to shift.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vector3D& operator>>=(const size_t& shiftAmount)
+        [[gnu::always_inline]] constexpr Vector3& operator>>=(const size_t& shiftAmount)
         {
             X >>= shiftAmount;
             Y >>= shiftAmount;
@@ -1052,9 +1186,9 @@ namespace SaturnMath::Types
          * @param shiftAmount The number of positions to shift.
          * @return The resulting Vec3 object.
          */
-        constexpr Vector3D operator<<(const size_t& shiftAmount) const
+        [[gnu::always_inline]] constexpr Vector3 operator<<(const size_t& shiftAmount) const
         {
-            return Vector3D(X << shiftAmount, Y << shiftAmount, Z << shiftAmount);
+            return Vector3(X << shiftAmount, Y << shiftAmount, Z << shiftAmount);
         }
 
         /**
@@ -1062,7 +1196,7 @@ namespace SaturnMath::Types
          * @param shiftAmount The number of positions to shift.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vector3D& operator<<=(const size_t& shiftAmount)
+        [[gnu::always_inline]] constexpr Vector3& operator<<=(const size_t& shiftAmount)
         {
             X <<= shiftAmount;
             Y <<= shiftAmount;
@@ -1070,14 +1204,16 @@ namespace SaturnMath::Types
             return *this;
         }
 
-        // Unary operators
+        ///@}
+        /** @name Unary Operators */
+        ///@{
         /**
          * @brief Unary negation operator.
          * @return A new Vec3 object with negated coordinates.
          */
-        constexpr Vector3D operator-() const
+        [[gnu::always_inline]] constexpr Vector3 operator-() const
         {
-            return Vector3D(-X, -Y, -Z);
+            return Vector3(-X, -Y, -Z);
         }
 
         // Binary operators
@@ -1086,27 +1222,27 @@ namespace SaturnMath::Types
          * @param vec The Vec3 object to add.
          * @return The sum as a Vec3 object.
          */
-        constexpr Vector3D operator+(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr Vector3 operator+(const Vector3& vec) const
         {
-            return Vector3D(X + vec.X, Y + vec.Y, Z + vec.Z);
+            return Vector3(X + vec.X, Y + vec.Y, Z + vec.Z);
         }
 
         /**
-         * @brief Binary addition operator for adding a Vector2D to a Vector3D.
+         * @brief Binary addition operator for adding a Vector2 to a Vector3.
          * @param vec The Vec2 object to add.
          * @return The sum as a Vec3 object.
          */
-        constexpr Vector3D operator+(const Vector2D& vec) const {
-            return Vector3D(X + vec.X, Y + vec.Y, Z);
+        [[gnu::always_inline]] constexpr Vector3 operator+(const Vector2<I, F>& vec) const {
+            return Vector3(X + vec.X, Y + vec.Y, Z);
         }
 
         /**
-         * @brief Binary addition operator for adding an Fxp to a Vector3D.
-         * @param scalar The Fxp value to add.
-         * @return The resulting Vector3D object.
+         * @brief Binary addition operator for adding an T to a Vector3.
+         * @param scalar The T value to add.
+         * @return The resulting Vector3 object.
          */
-        constexpr Vector3D operator+(const Fxp& scalar) const {
-            return Vector3D(X + scalar, Y + scalar, Z + scalar);
+        [[gnu::always_inline]] constexpr Vector3 operator+(const T& scalar) const {
+            return Vector3(X + scalar, Y + scalar, Z + scalar);
         }
 
         /**
@@ -1124,14 +1260,14 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Vector3D v1(5, 7, 9);
-         * Vector3D v2(2, 3, 4);
-         * Vector3D result = v1 - v2;  // Results in result = (3, 4, 5)
+         * Vector3 v1(5, 7, 9);
+         * Vector3 v2(2, 3, 4);
+         * Vector3 result = v1 - v2;  // Results in result = (3, 4, 5)
          * @endcode
          */
-        constexpr Vector3D operator-(const Vector3D& vec) const
+        [[gnu::always_inline]] constexpr Vector3 operator-(const Vector3& vec) const
         {
-            return Vector3D(X - vec.X, Y - vec.Y, Z - vec.Z);
+            return Vector3(X - vec.X, Y - vec.Y, Z - vec.Z);
         }
 
         /**
@@ -1139,7 +1275,7 @@ namespace SaturnMath::Types
          * @param vec The Vec3 object to add.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vector3D operator+=(const Vector3D& vec)
+        [[gnu::always_inline]] constexpr Vector3 operator+=(const Vector3& vec)
         {
             X += vec.X;
             Y += vec.Y;
@@ -1152,12 +1288,15 @@ namespace SaturnMath::Types
          * @param vec The Vec3 object to subtract.
          * @return Reference to the modified Vec3 object.
          */
-        constexpr Vector3D operator-=(const Vector3D& vec)
+        [[gnu::always_inline]] constexpr Vector3 operator-=(const Vector3& vec)
         {
             X -= vec.X;
             Y -= vec.Y;
             Z -= vec.Z;
             return *this;
         }
+        ///@}
     };
+
+    using Vector3D  = Vector3<>;
 }

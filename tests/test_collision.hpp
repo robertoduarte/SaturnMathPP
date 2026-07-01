@@ -472,6 +472,74 @@ namespace SaturnMath::Tests
          * @brief Runs all test cases in the collision test suite
          * @return true if all tests pass (which they must at compile-time)
          */
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- Collision Q8.24 ----
+        static constexpr void TestCollision_Q8_24()
+        {
+            using F = Fxp8_24;
+            using V3 = Vector3<8, 24>;
+            using S = SphereX<8, 24>;
+            using B = AABBX<8, 24>;
+            using P = PlaneX<8, 24>;
+
+            // AABB-AABB intersection
+            constexpr B box1 = B::FromMinMax(V3(F(0), F(0), F(0)), V3(F(5), F(5), F(5)));
+            constexpr B box2 = B::FromMinMax(V3(F(3), F(3), F(3)), V3(F(8), F(8), F(8)));
+            constexpr B box3 = B::FromMinMax(V3(F(10), F(10), F(10)), V3(F(15), F(15), F(15)));
+            static_assert(Collision::Intersects(box1, box2), "Collision<8,24> AABB-AABB overlapping");
+            static_assert(!Collision::Intersects(box1, box3), "Collision<8,24> AABB-AABB non-overlapping");
+
+            // Sphere-Sphere intersection
+            constexpr S sph1(V3(F(0), F(0), F(0)), F(3));
+            constexpr S sph2(V3(F(2), F(0), F(0)), F(2));
+            constexpr S sph3(V3(F(10), F(0), F(0)), F(1));
+            static_assert(Collision::Intersects(sph1, sph2), "Collision<8,24> Sphere-Sphere overlapping");
+            static_assert(!Collision::Intersects(sph1, sph3), "Collision<8,24> Sphere-Sphere non-overlapping");
+
+            // AABB-Sphere intersection
+            static_assert(Collision::Intersects(box1, sph1), "Collision<8,24> AABB-Sphere overlapping");
+            static_assert(!Collision::Intersects(box3, sph1), "Collision<8,24> AABB-Sphere non-overlapping");
+
+            // AABB-Plane intersection
+            constexpr P planeYZ(V3(F(1), F(0), F(0)), V3(F(3), F(0), F(0)));
+            static_assert(Collision::Intersects(box1, planeYZ), "Collision<8,24> AABB-Plane intersecting");
+            constexpr P planeFar(V3(F(1), F(0), F(0)), V3(F(100), F(0), F(0)));
+            static_assert(!Collision::Intersects(box1, planeFar), "Collision<8,24> AABB-Plane non-intersecting");
+
+            // Contains AABB-AABB
+            constexpr B bigBox = B::FromMinMax(V3(F(-10), F(-10), F(-10)), V3(F(10), F(10), F(10)));
+            static_assert(Collision::Contains(bigBox, box1), "Collision<8,24> AABB contains AABB");
+            static_assert(!Collision::Contains(box1, bigBox), "Collision<8,24> AABB not contains larger");
+        }
+
+        // ---- Collision Q24.8 ----
+        static constexpr void TestCollision_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+            using S = SphereX<24, 8>;
+            using B = AABBX<24, 8>;
+
+            constexpr B box1 = B::FromMinMax(V3(F(0), F(0), F(0)), V3(F(100), F(100), F(100)));
+            constexpr B box2 = B::FromMinMax(V3(F(50), F(50), F(50)), V3(F(150), F(150), F(150)));
+            constexpr B box3 = B::FromMinMax(V3(F(500), F(500), F(500)), V3(F(600), F(600), F(600)));
+            static_assert(Collision::Intersects(box1, box2), "Collision<24,8> AABB-AABB overlapping");
+            static_assert(!Collision::Intersects(box1, box3), "Collision<24,8> AABB-AABB non-overlapping");
+
+            constexpr S sph1(V3(F(0), F(0), F(0)), F(50));
+            constexpr S sph2(V3(F(30), F(0), F(0)), F(30));
+            constexpr S sph3(V3(F(500), F(0), F(0)), F(10));
+            static_assert(Collision::Intersects(sph1, sph2), "Collision<24,8> Sphere-Sphere overlapping");
+            static_assert(!Collision::Intersects(sph1, sph3), "Collision<24,8> Sphere-Sphere non-overlapping");
+            static_assert(Collision::Intersects(box1, sph1), "Collision<24,8> AABB-Sphere overlapping");
+
+            constexpr B bigBox = B::FromMinMax(V3(F(-200), F(-200), F(-200)), V3(F(200), F(200), F(200)));
+            static_assert(Collision::Contains(bigBox, box1), "Collision<24,8> AABB contains AABB");
+        }
+
         static constexpr bool RunAll()
         {
             TestClassification();
@@ -484,6 +552,8 @@ namespace SaturnMath::Tests
             TestEdgeCases();
             TestPointVsAABB();
             TestPointVsSphere();
+            TestCollision_Q8_24();
+            TestCollision_Q24_8();
             return true;
         }
     };

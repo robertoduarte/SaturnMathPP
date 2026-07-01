@@ -42,30 +42,33 @@ namespace SaturnMath::Types
      * @see Frustum For usage of planes in camera view frustums
      * @see AABB For intersection tests between planes and bounding boxes
      */
-    class Plane
+    template<int I = 16, int F = 16>
+    class PlaneX
     {
+        using T = FixedPoint<I, F>;
+        using Vec3 = Vector3<I, F>;
     public:
-        Vector3D Normal; /**< Unit normal vector (should be normalized) */
-        Fxp SignedDistance;          /**< Signed distance from origin to plane */
+        Vec3 Normal; /**< Unit normal vector (should be normalized) */
+        T SignedDistance;          /**< Signed distance from origin to plane */
 
         /** @brief Default constructor. Creates XZ plane at origin. */
-        constexpr Plane() : Normal(Vector3D::UnitY()), SignedDistance((int16_t)0) {}
+        constexpr PlaneX() : Normal(Vec3::UnitY()), SignedDistance((int16_t)0) {}
 
         /**
          * @brief Creates plane from normal and distance.
          * @param normal Direction perpendicular to plane (should be normalized)
          * @param signedDistance Signed distance from origin to plane along normal
          */
-        constexpr Plane(const Vector3D& normal, Fxp signedDistance) : Normal(normal), SignedDistance(signedDistance) {}
+        constexpr PlaneX(const Vec3& normal, T signedDistance) : Normal(normal), SignedDistance(signedDistance) {}
 
         /**
          * @brief Creates plane from normal and point.
          * @param normal Direction perpendicular to plane (should be normalized)
          * @param point Any point that lies on the plane
          */
-        static constexpr Plane FromNormalAndPoint(const Vector3D& normal, const Vector3D& point)
+        static constexpr PlaneX FromNormalAndPoint(const Vec3& normal, const Vec3& point)
         {
-            return Plane(normal, normal.Dot(point));
+            return PlaneX(normal, normal.Dot(point));
         }
         
         /**
@@ -78,28 +81,31 @@ namespace SaturnMath::Types
          * @param b Second point on plane
          * @param c Third point on plane
          */
-        static constexpr Plane FromPoints(const Vector3D& a, const Vector3D& b, const Vector3D& c)
+        static constexpr PlaneX FromPoints(const Vec3& a, const Vec3& b, const Vec3& c)
         {
             // Calculate normal using cross product
-            Vector3D cross = (b - a).Cross(c - a);
+            Vec3 cross = (b - a).Cross(c - a);
 
             // If the cross product is zero (points are collinear), return an invalid plane
-            if (cross.LengthSquared() < Fxp::Epsilon())
+            if (cross.LengthSquared() < T::Epsilon())
             {
-                return Plane(); // Or handle error appropriately
+                return PlaneX(); // Or handle error appropriately
             }
 
-            Vector3D normal = cross.Normalize<Precision::Accurate>();
-            return Plane(normal, normal.Dot(a));
+            Vec3 normal = cross.Normalize();
+            return PlaneX(normal, normal.Dot(a));
         }
         
-        constexpr Plane(const Vector3D& normal, const Vector3D& point)
+        /**
+         * @brief Creates plane from normal and point.
+         * @param normal Direction perpendicular to plane (should be normalized)
+         * @param point Any point that lies on the plane
+         */
+        constexpr PlaneX(const Vec3& normal, const Vec3& point)
             : Normal(normal)
             , SignedDistance(normal.Dot(point))
         {}
         
-        // Using Fxp::Epsilon() for floating-point comparisons
-
         /**
          * @brief Calculates signed distance from point to plane.
          * 
@@ -109,7 +115,7 @@ namespace SaturnMath::Types
          *         = 0: Point is on plane
          *         < 0: Point is on opposite side from normal
          */
-        constexpr Fxp GetSignedDistance(const Vector3D& point) const
+        constexpr T GetSignedDistance(const Vec3& point) const
         {
             return Normal.Dot(point) - SignedDistance;  // normal·X - d
         }
@@ -120,7 +126,7 @@ namespace SaturnMath::Types
          * @param point Point to test
          * @return Absolute distance (always positive or zero)
          */
-        constexpr Fxp GetDistance(const Vector3D& point) const
+        constexpr T GetDistance(const Vec3& point) const
         {
             return GetSignedDistance(point).Abs();
         }
@@ -130,7 +136,7 @@ namespace SaturnMath::Types
          * @param point Point to project
          * @return Closest point on plane to given point
          */
-        constexpr Vector3D ProjectPoint(const Vector3D& point) const
+        constexpr Vec3 ProjectPoint(const Vec3& point) const
         {
             return point - Normal * GetSignedDistance(point);
         }
@@ -140,7 +146,7 @@ namespace SaturnMath::Types
          * @param point Point to reflect
          * @return Reflected point
          */
-        constexpr Vector3D ReflectPoint(const Vector3D& point) const
+        constexpr Vec3 ReflectPoint(const Vec3& point) const
         {
             return point - Normal * (GetSignedDistance(point) * 2);
         }
@@ -150,7 +156,7 @@ namespace SaturnMath::Types
          * @param direction Direction vector to reflect
          * @return Reflected direction
          */
-        constexpr Vector3D ReflectVector(const Vector3D& direction) const
+        constexpr Vec3 ReflectVector(const Vec3& direction) const
         {
             return direction - Normal * (Normal.Dot(direction) * 2);
         }
@@ -162,7 +168,7 @@ namespace SaturnMath::Types
         constexpr bool IsValid() const
         {
             // Check if normal is not a zero vector
-            constexpr Fxp epsilon = Fxp(0.0001f);
+            constexpr T epsilon = T(0.0001f);
             return Normal.LengthSquared() > (epsilon * epsilon);
         }
         
@@ -172,9 +178,9 @@ namespace SaturnMath::Types
          * @brief Returns a normalized copy of this plane.
          * @return New normalized plane
          */
-        constexpr Plane Normalized() const
+        constexpr PlaneX Normalized() const
         {
-            Plane result = *this;
+            PlaneX result = *this;
             result.Normalize();
             return result;
         }
@@ -185,13 +191,11 @@ namespace SaturnMath::Types
          * Ensures normal is unit length while maintaining
          * the same plane equation.
          * 
-         * @tparam P Precision level for calculation
          * @return Reference to this plane
          */
-        template<Precision P = Precision::Default>
-        constexpr Plane& Normalize()
+        constexpr PlaneX& Normalize()
         {
-            Fxp len = Normal.Length<P>();
+            T len = Normal.Length();
             if (len > 0)
             {
                 Normal /= len;
@@ -200,4 +204,6 @@ namespace SaturnMath::Types
             return *this;
         }
     };
+
+    using Plane = PlaneX<>;  /**< Default instantiation alias */
 }

@@ -8,10 +8,15 @@
  * For optimal compile times, consider including only the specific headers you need.
  */
 
+// Hardware abstraction (SH-2 assembly intrinsics)
+#include <impl/hardware.hpp>
+
+// Integer utilities
+#include <impl/integer.hpp>
+
 // Core math types
 #include <impl/angle.hpp>
 #include <impl/fxp.hpp>
-#include <impl/precision.hpp>
 
 // Vector and matrix types
 #include <impl/vector2d.hpp>
@@ -27,7 +32,9 @@
 #include <impl/frustum.hpp>
 
 // Math utilities
+#include <impl/precision.hpp>
 #include <impl/trigonometry.hpp>
+#include <impl/constmath.hpp>
 #include <impl/collision.hpp>
 #include <impl/random.hpp>
 #include <impl/sort_order.hpp>

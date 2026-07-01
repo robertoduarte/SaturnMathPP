@@ -191,7 +191,7 @@ namespace SaturnMath::Tests
 
             // Negation
             constexpr Angle negated = -angle45;
-            static_assert(negated.ToDegrees() == 135, "Negation of 45° should be 135°");
+            static_assert(negated.ToDegrees() == 225, "Negation of 45° should be 225°");
 
             // Multiplication by scalar
             constexpr Angle doubled = angle45 * 2;

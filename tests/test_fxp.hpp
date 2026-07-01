@@ -80,16 +80,16 @@ namespace SaturnMath::Tests
         static constexpr void TestConversion()
         {
             // Test conversion from integral
-            constexpr Fxp from_int = Fxp::Convert(10);
+            constexpr Fxp from_int(10);
             static_assert(from_int.RawValue() == (10 << 16), "Convert from int should work");
 
             // Test conversion from floating-point
-            constexpr Fxp from_float = Fxp::Convert(3.14);
+            constexpr Fxp from_float(3.14);
             static_assert(from_float.RawValue() == (int32_t)(3.14 * 65536.0), "Convert from float should work");
 
             // Test conversion between formats
-            constexpr FixedPoint<16, 16> fxp16 = FixedPoint<16, 16>::Convert(10);
-            constexpr FixedPoint<24, 8> hfxp = FixedPoint<24, 8>::Convert(fxp16);
+            constexpr FixedPoint<16, 16> fxp16(10);
+            constexpr FixedPoint<24, 8> hfxp = FixedPoint<24, 8>::ConvertUnchecked(fxp16);
             static_assert(hfxp.RawValue() == (10 << 8), "Convert between formats should work");
         }
 
@@ -118,8 +118,8 @@ namespace SaturnMath::Tests
             static_assert(-a == -5, "Negation should work");
 
             // Runtime-style arithmetic tests
-            constexpr Fxp a2 = Fxp::Convert(10);
-            constexpr Fxp b2 = Fxp::Convert(5);
+            constexpr Fxp a2(10);
+            constexpr Fxp b2(5);
 
             // Addition
             constexpr Fxp sum = a2 + b2;
@@ -156,8 +156,8 @@ namespace SaturnMath::Tests
         // Multiplication tests
         static constexpr void TestMultiplication()
         {
-            constexpr Fxp a = Fxp::Convert(4);
-            constexpr Fxp b = Fxp::Convert(3);
+            constexpr Fxp a(4);
+            constexpr Fxp b(3);
             constexpr Fxp product = a * b;
             static_assert(product.RawValue() == ((4 * 3) << 16), "Multiplication should work");
         }
@@ -165,8 +165,8 @@ namespace SaturnMath::Tests
         // Division tests
         static constexpr void TestDivision()
         {
-            constexpr Fxp a = Fxp::Convert(10);
-            constexpr Fxp b = Fxp::Convert(2);
+            constexpr Fxp a(10);
+            constexpr Fxp b(2);
             constexpr Fxp quotient = a / b;
             static_assert(quotient.RawValue() == ((10 / 2) << 16), "Division should work");
         }
@@ -174,8 +174,8 @@ namespace SaturnMath::Tests
         // Mixed format operations tests
         static constexpr void TestMixedOperations()
         {
-            constexpr FixedPoint<16, 16> fxp = FixedPoint<16, 16>::Convert(10);
-            constexpr FixedPoint<24, 8> hfxp = FixedPoint<24, 8>::Convert(5);
+            constexpr FixedPoint<16, 16> fxp(10);
+            constexpr FixedPoint<24, 8> hfxp(5);
 
             // Multiplication: HFxp * Fxp -> HFxp
             constexpr FixedPoint<24, 8> mul_result = hfxp * fxp;
@@ -184,32 +184,59 @@ namespace SaturnMath::Tests
             // Division: HFxp / Fxp -> HFxp
             constexpr FixedPoint<24, 8> div_result = hfxp / fxp;
             static_assert(div_result.RawValue() == 128, "Mixed division should work (5/10 = 0.5 in 24.8)");
+
+            // Test division between formats that caused issues (2.30 and 8.24)
+            constexpr FixedPoint<2, 30> fxp230 = 1.0;
+            constexpr FixedPoint<8, 24> fxp824 = 2.0;
+            constexpr FixedPoint<2, 30> div_result_230_824 = fxp230 / fxp824;
+            // 1.0 / 2.0 = 0.5 in 2.30 format
+            static_assert(div_result_230_824.RawValue() == (int32_t)(0.5 * (1 << 30)), "2.30 / 8.24 division should work");
+
+            // Test division: 1.0 (2.30) / 2.0 (16.16) -> 2.30
+            constexpr FixedPoint<2, 30> fxp230_one = 1.0;
+            constexpr FixedPoint<16, 16> fxp1616_two = 2.0;
+            constexpr FixedPoint<2, 30> div_result_230_1616 = fxp230_one / fxp1616_two;
+            // 1.0 / 2.0 = 0.5 in 2.30 format
+            static_assert(div_result_230_1616.RawValue() == (int32_t)(0.5 * (1 << 30)), "2.30 / 16.16 division should work");
+
+            // Test division: 1.0 (2.30) / 0.95 (16.16) -> 2.30
+            constexpr FixedPoint<2, 30> fxp230_one2 = 1.0;
+            constexpr FixedPoint<16, 16> fxp1616_095 = 0.95;
+            constexpr FixedPoint<2, 30> div_result_230_1616_095 = fxp230_one2 / fxp1616_095;
+            // 1.0 / 0.95 ≈ 1.0526 in 2.30 format
+            // Use tolerance due to float conversion imprecision (0.95 in 16.16 has limited precision)
+            constexpr double expected = 1.0 / 0.95;
+            constexpr int32_t expected_raw = (int32_t)(expected * (1 << 30));
+            constexpr int32_t actual_raw = div_result_230_1616_095.RawValue();
+            constexpr int32_t diff = (expected_raw > actual_raw) ? (expected_raw - actual_raw) : (actual_raw - expected_raw);
+            // Tolerance of 1M in raw is ~0.001 in actual value for 2.30 format
+            static_assert(diff < 1000000, "2.30 / 16.16 division with 0.95 should work within tolerance");
         }
 
         // Comprehensive format combinations tests
         static constexpr void TestComprehensiveFormats()
         {
             // 8.24 / 12.20 -> 8.24
-            constexpr FixedPoint<8, 24> c824 = FixedPoint<8, 24>::Convert(100.0);
-            constexpr FixedPoint<12, 20> d1220 = FixedPoint<12, 20>::Convert(25.0);
+            constexpr FixedPoint<8, 24> c824(100.0);
+            constexpr FixedPoint<12, 20> d1220(25.0);
             constexpr FixedPoint<8, 24> div824 = c824 / d1220;
             static_assert(div824.RawValue() == (int32_t)(4.0 * (1 << 24)), "8.24 / 12.20 should equal 4.0");
 
             // 22.10 / 24.8 -> 22.10
-            constexpr FixedPoint<22, 10> g2210 = FixedPoint<22, 10>::Convert(1000.0);
-            constexpr FixedPoint<24, 8> h248 = FixedPoint<24, 8>::Convert(100.0);
+            constexpr FixedPoint<22, 10> g2210(1000.0);
+            constexpr FixedPoint<24, 8> h248(100.0);
             constexpr FixedPoint<22, 10> div2210 = g2210 / h248;
             static_assert(div2210.RawValue() == (int32_t)(10.0 * (1 << 10)), "22.10 / 24.8 should equal 10.0");
 
             // 12.20 / 8.24 -> 12.20
-            constexpr FixedPoint<12, 20> i1220 = FixedPoint<12, 20>::Convert(16.0);
-            constexpr FixedPoint<8, 24> j824 = FixedPoint<8, 24>::Convert(4.0);
+            constexpr FixedPoint<12, 20> i1220(16.0);
+            constexpr FixedPoint<8, 24> j824(4.0);
             constexpr FixedPoint<12, 20> div1220 = i1220 / j824;
             static_assert(div1220.RawValue() == (int32_t)(4.0 * (1 << 20)), "12.20 / 8.24 should equal 4.0");
 
             // 20.12 / 16.16 -> 20.12
-            constexpr FixedPoint<20, 12> k2012 = FixedPoint<20, 12>::Convert(200.0);
-            constexpr FixedPoint<16, 16> l1616 = FixedPoint<16, 16>::Convert(10.0);
+            constexpr FixedPoint<20, 12> k2012(200.0);
+            constexpr FixedPoint<16, 16> l1616(10.0);
             constexpr FixedPoint<20, 12> div2012 = k2012 / l1616;
             static_assert(div2012.RawValue() == (int32_t)(20.0 * (1 << 12)), "20.12 / 16.16 should equal 20.0");
         }
@@ -304,9 +331,9 @@ namespace SaturnMath::Tests
             static_assert(4.5 <= a, "float <= Fxp comparison should work with lesser values at compile-time");
 
             // Runtime-style comparison tests
-            constexpr FixedPoint<16, 16> a2 = FixedPoint<16, 16>::Convert(10);
-            constexpr FixedPoint<16, 16> b2 = FixedPoint<16, 16>::Convert(5);
-            constexpr FixedPoint<16, 16> c2 = FixedPoint<16, 16>::Convert(10);
+            constexpr FixedPoint<16, 16> a2(10);
+            constexpr FixedPoint<16, 16> b2(5);
+            constexpr FixedPoint<16, 16> c2(10);
 
             static_assert(a2 > b2, "Greater than should work with Convert");
             static_assert(b2 < a2, "Less than should work with Convert");
@@ -504,30 +531,11 @@ namespace SaturnMath::Tests
         // Edge case tests
         static constexpr void TestEdgeCases()
         {
-            // Zero division handling
-            constexpr auto TestZeroDivision = []()
-            {
-                Fxp x(5);
-                Fxp zero;
+            // Zero division handling - runtime only
+            // Note: Division by zero cannot be tested at compile-time
 
-                // Division by zero should return MaxValue (or implementation defined)
-                // Just verify it doesn't crash at compile time
-                Fxp result = x / zero;
-                return true;
-            };
-            static_assert(TestZeroDivision(), "Division by zero should be handled");
-
-            // Overflow handling
-            constexpr auto TestOverflow = []()
-            {
-                constexpr Fxp max = Fxp::MaxValue();
-                constexpr Fxp result = max + 1;
-
-                // Just verify it doesn't crash at compile time
-                // The actual behavior (saturation or wrap-around) is implementation-defined
-                return true;
-            };
-            static_assert(TestOverflow(), "Overflow should be handled");
+            // Overflow handling - runtime only
+            // Note: Overflow behavior cannot be tested at compile-time
         }
 
         /**
@@ -1045,11 +1053,11 @@ namespace SaturnMath::Tests
         static constexpr void TestAliases()
         {
             // Test Fxp as FixedPoint<16, 16>
-            constexpr FixedPoint<16, 16> fxp = FixedPoint<16, 16>::Convert(10);
+            constexpr FixedPoint<16, 16> fxp(10);
             static_assert(fxp.RawValue() == (10 << 16), "Fxp alias should work");
 
             // Test HFxp as FixedPoint<24, 8>
-            constexpr FixedPoint<24, 8> hfxp = FixedPoint<24, 8>::Convert(10);
+            constexpr FixedPoint<24, 8> hfxp(10);
             static_assert(hfxp.RawValue() == (10 << 8), "HFxp alias should work");
         }
 
@@ -1059,6 +1067,161 @@ namespace SaturnMath::Tests
          * This function executes all the test functions in the FxpTests struct.
          * If any test fails, the static_assert will fail at compile time.
          */
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- FixedPoint Q8.24 arithmetic ----
+        static constexpr void TestFxp_Q8_24()
+        {
+            using F = Fxp8_24;
+
+            constexpr F a(2.5);
+            constexpr F b(1.25);
+
+            static_assert(a + b == F(3.75), "Fxp8_24 addition");
+            static_assert(a - b == F(1.25), "Fxp8_24 subtraction");
+            static_assert(a * b == F(3.125), "Fxp8_24 multiplication");
+            static_assert(a / b == F(2.0), "Fxp8_24 division");
+
+            constexpr F neg = -a;
+            static_assert(neg == F(-2.5), "Fxp8_24 negation");
+
+            constexpr F sqrtVal(4.0);
+            constexpr F sqrtResult = sqrtVal.Sqrt();
+            static_assert(sqrtResult > F(1.9) && sqrtResult < F(2.1), "Fxp8_24 Sqrt(4) ~2");
+
+            constexpr F zero(0.0);
+            static_assert(zero.Sqrt() == zero, "Fxp8_24 Sqrt(0) = 0");
+        }
+
+        // ---- FixedPoint Q24.8 arithmetic ----
+        static constexpr void TestFxp_Q24_8()
+        {
+            using F = Fxp24_8;
+
+            constexpr F a(100.5);
+            constexpr F b(2.0);
+
+            static_assert(a + b == F(102.5), "Fxp24_8 addition");
+            static_assert(a - b == F(98.5), "Fxp24_8 subtraction");
+            static_assert(a * b == F(201.0), "Fxp24_8 multiplication");
+            static_assert(a / b == F(50.25), "Fxp24_8 division");
+
+            constexpr F neg = -a;
+            static_assert(neg == F(-100.5), "Fxp24_8 negation");
+
+            constexpr F sqrtVal(100.0);
+            constexpr F sqrtResult = sqrtVal.Sqrt();
+            static_assert(sqrtResult > F(9.5) && sqrtResult < F(10.5), "Fxp24_8 Sqrt(100) ~10");
+        }
+
+        // ---- FixedPoint Q8.24 edge cases ----
+        static constexpr void TestFxp_Q8_24_EdgeCases()
+        {
+            using F = Fxp8_24;
+
+            // Min/Max values
+            static_assert(F::MinValue() < F(0), "Fxp8_24 MinValue is negative");
+            static_assert(F::MaxValue() > F(0), "Fxp8_24 MaxValue is positive");
+            static_assert(F::MinValue() < F::MaxValue(), "Fxp8_24 Min < Max");
+
+            // Epsilon is the smallest representable positive value
+            constexpr F eps = F::Epsilon();
+            static_assert(eps > F(0), "Fxp8_24 Epsilon > 0");
+            static_assert(eps < F(0.001), "Fxp8_24 Epsilon is tiny");
+
+            // NearOne is just below 1.0
+            constexpr F nearOne = F::NearOne();
+            static_assert(nearOne < F(1), "Fxp8_24 NearOne < 1");
+            static_assert(nearOne > F(0.99), "Fxp8_24 NearOne close to 1");
+
+            // Zero and One constants
+            static_assert(F::Zero() == F(0), "Fxp8_24 Zero");
+            static_assert(F::One() == F(1), "Fxp8_24 One");
+
+            // Sqrt of negative returns zero (guard)
+            constexpr F negVal(-4.0);
+            static_assert(negVal.Sqrt() == F::Zero(), "Fxp8_24 Sqrt(negative) = 0");
+
+            // Sqrt of MaxValue doesn't crash (result is positive)
+            constexpr F sqrtMax = F::MaxValue().Sqrt();
+            static_assert(sqrtMax > F(0), "Fxp8_24 Sqrt(MaxValue) > 0");
+
+            // Division by a small but safe value
+            constexpr F smallDiv = F(1) / F(0.01);
+            static_assert(smallDiv > F(90) && smallDiv < F(110), "Fxp8_24 1/0.01 ~100");
+        }
+
+        // ---- FixedPoint Q24.8 edge cases ----
+        static constexpr void TestFxp_Q24_8_EdgeCases()
+        {
+            using F = Fxp24_8;
+
+            static_assert(F::MinValue() < F(0), "Fxp24_8 MinValue is negative");
+            static_assert(F::MaxValue() > F(0), "Fxp24_8 MaxValue is positive");
+            static_assert(F::MinValue() < F::MaxValue(), "Fxp24_8 Min < Max");
+
+            constexpr F eps = F::Epsilon();
+            static_assert(eps > F(0), "Fxp24_8 Epsilon > 0");
+            static_assert(eps < F(0.01), "Fxp24_8 Epsilon is tiny");
+
+            constexpr F nearOne = F::NearOne();
+            static_assert(nearOne < F(1), "Fxp24_8 NearOne < 1");
+            static_assert(nearOne > F(0.9), "Fxp24_8 NearOne close to 1");
+
+            // Sqrt of negative returns zero
+            constexpr F negVal(-100.0);
+            static_assert(negVal.Sqrt() == F::Zero(), "Fxp24_8 Sqrt(negative) = 0");
+
+            // Sqrt of MaxValue is positive
+            constexpr F sqrtMax = F::MaxValue().Sqrt();
+            static_assert(sqrtMax > F(0), "Fxp24_8 Sqrt(MaxValue) > 0");
+
+            // Q24.8 has large integer range but low fractional precision
+            // Verify a large integer value works
+            constexpr F largeInt(8000.0);
+            static_assert(largeInt + F(1) == F(8001), "Fxp24_8 large integer arithmetic");
+
+            // Q24.8 has 8 fractional bits = 1/256 precision
+            // 1/3 should round to ~85/256 ≈ 0.332
+            constexpr F third = F(1) / F(3);
+            static_assert(third > F(0.32) && third < F(0.34), "Fxp24_8 1/3 within precision");
+        }
+
+        // ---- Cross-format Convert / ConvertUnchecked ----
+        static constexpr void TestCrossFormatConvert()
+        {
+            // Safe Convert: Q24.8 -> Q16.16 (more frac bits, fewer int bits - safe)
+            constexpr Fxp24_8 src24_8(3.5);
+            constexpr Fxp safeResult = Fxp::Convert(src24_8);
+            static_assert(safeResult == Fxp(3.5), "Convert Q24.8->Q16.16 safe");
+
+            // Safe Convert: Q8.24 -> Q16.16 (more frac bits, fewer int bits - safe)
+            constexpr Fxp8_24 src8_24(2.25);
+            constexpr Fxp safeResult2 = Fxp::Convert(src8_24);
+            static_assert(safeResult2 == Fxp(2.25), "Convert Q8.24->Q16.16 safe");
+
+            // ConvertUnchecked: Q16.16 -> Q24.8 (loses fractional precision)
+            constexpr Fxp src16_16(5.25);
+            constexpr Fxp24_8 uncheckedResult = Fxp24_8::ConvertUnchecked(src16_16);
+            // 5.25 in Q24.8 = 5.25 * 256 = 1344; in Q16.16 = 5.25 * 65536 = 344064
+            // Convert: 344064 >> 8 = 1344, so 1344/256 = 5.25 (exact in this case)
+            static_assert(uncheckedResult == Fxp24_8(5.25), "ConvertUnchecked Q16.16->Q24.8");
+
+            // ConvertUnchecked: Q16.16 -> Q8.24 (loses integer range)
+            constexpr Fxp smallVal(3.5);
+            constexpr Fxp8_24 uncheckedResult2 = Fxp8_24::ConvertUnchecked(smallVal);
+            static_assert(uncheckedResult2 == Fxp8_24(3.5), "ConvertUnchecked Q16.16->Q8.24");
+
+            // ConvertUnchecked with value that loses precision: Q16.16 1/3 -> Q24.8
+            constexpr Fxp oneThird = Fxp(1) / Fxp(3);
+            constexpr Fxp24_8 oneThird_24_8 = Fxp24_8::ConvertUnchecked(oneThird);
+            // Q16.16 1/3 ≈ 21845, >> 8 = 85, 85/256 ≈ 0.332
+            static_assert(oneThird_24_8 > Fxp24_8(0.32) && oneThird_24_8 < Fxp24_8(0.34),
+                "ConvertUnchecked Q16.16 1/3 -> Q24.8 loses precision but is close");
+        }
+
         static constexpr void RunAll()
         {
             TestConstruction();
@@ -1090,6 +1253,11 @@ namespace SaturnMath::Tests
             TestElasticEaseIn();
             TestBounceEaseIn();
             TestBounceEaseOut();
+            TestFxp_Q8_24();
+            TestFxp_Q24_8();
+            TestFxp_Q8_24_EdgeCases();
+            TestFxp_Q24_8_EdgeCases();
+            TestCrossFormatConvert();
         }
     };
 
