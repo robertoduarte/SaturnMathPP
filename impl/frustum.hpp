@@ -55,8 +55,11 @@ namespace SaturnMath::Types
      * @see AABB For axis-aligned bounding box intersection tests
      * @see Sphere For sphere intersection tests
      */
-    struct Frustum
+    template<int I = 16, int F = 16>
+    struct FrustumX
     {
+        using T = FixedPoint<I, F>;
+        using Vec3 = Vector3<I, F>;
         // Named constants for plane indices
         static constexpr size_t PLANE_NEAR = 0;
         static constexpr size_t PLANE_FAR = 1;
@@ -65,24 +68,27 @@ namespace SaturnMath::Types
         static constexpr size_t PLANE_LEFT = 4;
         static constexpr size_t PLANE_RIGHT = 5;
         static constexpr size_t PLANE_COUNT = 6;
-        static constexpr Fxp REFERENCE_MAX_DISTANCE = 10;
-        static constexpr Fxp REFERENCE_NEAR_DISTANCE = 1;
+        static constexpr T REFERENCE_MAX_DISTANCE = 10;
+        static constexpr T REFERENCE_NEAR_DISTANCE = 1;
 
-        Plane Planes[PLANE_COUNT];  /**< Frustum boundary planes with inward-facing normals */
+        PlaneX<I, F> Planes[PLANE_COUNT];  /**< Frustum boundary planes with inward-facing normals */
 
-        Fxp NearDist;   /**< Near clipping plane distance (always positive) */
-        Fxp FarDist;    /**< Far clipping plane distance (always > nearDist) */
-        Fxp NearHeight; /**< Height of the near plane (half-height * 2) */
-        Fxp NearWidth;  /**< Width of the near plane (half-width * 2) */
-        Fxp FarHeight;  /**< Height of the far plane (half-height * 2) */
-        Fxp FarWidth;   /**< Width of the far plane (half-width * 2) */
+        T NearDist;   /**< Near clipping plane distance (always positive) */
+        T FarDist;    /**< Far clipping plane distance (always > nearDist) */
+        T NearHeight; /**< Height of the near plane (half-height * 2) */
+        T NearWidth;  /**< Width of the near plane (half-width * 2) */
+        T FarHeight;  /**< Height of the far plane (half-height * 2) */
+        T FarWidth;   /**< Width of the far plane (half-width * 2) */
 
     
+        /**
+         * @brief Describes the spatial relationship between an object and the frustum.
+         */
         enum class FrustumRelationship
         {
-            Inside,
-            Intersects,
-            Outside
+            Inside,     ///< Object is fully contained within the frustum
+            Intersects, ///< Object partially intersects the frustum boundary
+            Outside     ///< Object is fully outside the frustum
         };
 
         /**
@@ -95,7 +101,7 @@ namespace SaturnMath::Types
          * 
          * @note FOV is the full angle, so tan(fov/2) is used for calculations
          */
-        constexpr Frustum(const Angle& verticalFov, const Fxp& aspectRatio, const Fxp& nearDist, const Fxp& farDist)
+        constexpr FrustumX(const Angle& verticalFov, const T& aspectRatio, const T& nearDist, const T& farDist)
             : NearDist(nearDist)
             , FarDist(farDist)
             , NearHeight(Trigonometry::Tan(verticalFov / 2) * REFERENCE_NEAR_DISTANCE)
@@ -118,11 +124,11 @@ namespace SaturnMath::Types
          * @param interiorPoint A point known to be inside the frustum
          * @return Plane with inward-facing normal
          */
-        static constexpr Plane MakeInwardPlane(
-            const Vector3D& a, const Vector3D& b, const Vector3D& c,
-            const Vector3D& interiorPoint)
+        static constexpr PlaneX<I, F> MakeInwardPlane(
+            const Vec3& a, const Vec3& b, const Vec3& c,
+            const Vec3& interiorPoint)
         {
-            Plane p = Plane::FromPoints(a, b, c);
+            PlaneX<I, F> p = PlaneX<I, F>::FromPoints(a, b, c);
             // If the interior point is behind the plane, the normal faces outward — flip it.
             if (p.GetSignedDistance(interiorPoint) < 0)
             {
@@ -143,54 +149,54 @@ namespace SaturnMath::Types
          * 
          * @param viewMatrix Camera's view transformation
          */
-        constexpr void Update(const Matrix43& viewMatrix)
+        constexpr void Update(const Matrix4x3<I, F>& viewMatrix)
         {
             // Recover world-space camera position from the view matrix.
             // Row3 of a view matrix stores (-right·eye, -up·eye, -viewZ·eye),
             // so we reconstruct the eye position by inverting the transform.
-            const Vector3D pos = -(viewMatrix.Row0 * viewMatrix.Row3.X
+            const Vec3 pos = -(viewMatrix.Row0 * viewMatrix.Row3.X
                                  + viewMatrix.Row1 * viewMatrix.Row3.Y
                                  + viewMatrix.Row2 * viewMatrix.Row3.Z);
 
             // Camera basis vectors
-            const Vector3D right = viewMatrix.Row0;   // camera right
-            const Vector3D up    = viewMatrix.Row1;    // camera up
-            const Vector3D forward = -viewMatrix.Row2; // camera forward (into the scene)
+            const Vec3 right = viewMatrix.Row0;   // camera right
+            const Vec3 up    = viewMatrix.Row1;    // camera up
+            const Vec3 forward = -viewMatrix.Row2; // camera forward (into the scene)
 
             // Near and far plane centers at actual clipping distances
-            const Vector3D nearPlaneCenter = pos + forward * NearDist;
-            const Vector3D farPlaneCenter  = pos + forward * FarDist;
+            const Vec3 nearPlaneCenter = pos + forward * NearDist;
+            const Vec3 farPlaneCenter  = pos + forward * FarDist;
 
             // Reference near/far centers used for side plane geometry
-            const Vector3D nearCenter = pos + forward * REFERENCE_NEAR_DISTANCE;
-            const Vector3D farCenter  = pos + forward * REFERENCE_MAX_DISTANCE;
+            const Vec3 nearCenter = pos + forward * REFERENCE_NEAR_DISTANCE;
+            const Vec3 farCenter  = pos + forward * REFERENCE_MAX_DISTANCE;
 
             // Near plane corners (camera-space naming: tl/tr/bl/br)
-            const Vector3D nearUp    = up * NearHeight;
-            const Vector3D nearRight = right * NearWidth;
+            const Vec3 nearUp    = up * NearHeight;
+            const Vec3 nearRight = right * NearWidth;
 
-            const Vector3D ntl = nearCenter + nearUp - nearRight; // camera top-left
-            const Vector3D ntr = nearCenter + nearUp + nearRight; // camera top-right
-            const Vector3D nbl = nearCenter - nearUp - nearRight; // camera bottom-left
-            const Vector3D nbr = nearCenter - nearUp + nearRight; // camera bottom-right
+            const Vec3 ntl = nearCenter + nearUp - nearRight; // camera top-left
+            const Vec3 ntr = nearCenter + nearUp + nearRight; // camera top-right
+            const Vec3 nbl = nearCenter - nearUp - nearRight; // camera bottom-left
+            const Vec3 nbr = nearCenter - nearUp + nearRight; // camera bottom-right
 
             // Far plane corners
-            const Vector3D farUp    = up * FarHeight;
-            const Vector3D farRight = right * FarWidth;
+            const Vec3 farUp    = up * FarHeight;
+            const Vec3 farRight = right * FarWidth;
 
-            const Vector3D ftl = farCenter + farUp - farRight;
-            const Vector3D ftr = farCenter + farUp + farRight;
-            const Vector3D fbl = farCenter - farUp - farRight;
-            const Vector3D fbr = farCenter - farUp + farRight;
+            const Vec3 ftl = farCenter + farUp - farRight;
+            const Vec3 ftr = farCenter + farUp + farRight;
+            const Vec3 fbl = farCenter - farUp - farRight;
+            const Vec3 fbr = farCenter - farUp + farRight;
 
             // Frustum center point for inward-normal validation
-            const Vector3D frustumCenter = pos + forward * ((REFERENCE_NEAR_DISTANCE + REFERENCE_MAX_DISTANCE) / Fxp(int16_t{2}));
+            const Vec3 frustumCenter = pos + forward * ((REFERENCE_NEAR_DISTANCE + REFERENCE_MAX_DISTANCE) / T(int16_t{2}));
 
             // Near plane: normal points into the frustum (same as forward)
-            Planes[PLANE_NEAR] = Plane(forward, nearPlaneCenter);
+            Planes[PLANE_NEAR] = PlaneX<I, F>(forward, nearPlaneCenter);
 
             // Far plane: normal points back toward camera (opposite of forward)
-            Planes[PLANE_FAR] = Plane(-forward, farPlaneCenter);
+            Planes[PLANE_FAR] = PlaneX<I, F>(-forward, farPlaneCenter);
 
             // Side planes: build from three coplanar points, then
             // MakeInwardPlane ensures the normal always faces inward.
@@ -208,9 +214,14 @@ namespace SaturnMath::Types
             Planes[PLANE_RIGHT] = MakeInwardPlane(ntr, nbr, fbr, frustumCenter);
         }
 
-        constexpr Frustum Updated(const Matrix43& viewMatrix) const
+        /**
+         * @brief Returns a copy of this frustum with planes updated for the given view matrix.
+         * @param viewMatrix Camera's view transformation.
+         * @return A new FrustumX with recalculated planes.
+         */
+        constexpr FrustumX Updated(const Matrix4x3<I, F>& viewMatrix) const
         {
-            Frustum result = *this;
+            FrustumX result = *this;
             result.Update(viewMatrix);
             return result;
         }
@@ -222,11 +233,11 @@ namespace SaturnMath::Types
          *         FrustumRelationship::Intersects if the point lies exactly on a frustum plane,
          *         FrustumRelationship::Outside if the point is outside any frustum plane
          */
-        constexpr FrustumRelationship Classify(const Vector3D& point) const
+        constexpr FrustumRelationship Classify(const Vec3& point) const
         {
             bool onPlane = false;
             
-            for (const Plane& plane : Planes)
+            for (const PlaneX<I, F>& plane : Planes)
             {
                 auto relation = Collision::Classify(point, plane);
                 if (relation == Collision::PlaneRelationship::Back)
@@ -245,11 +256,11 @@ namespace SaturnMath::Types
          *         FrustumRelationship::Intersects if the sphere intersects any frustum plane,
          *         FrustumRelationship::Outside if the sphere is completely outside any frustum plane
          */
-        constexpr FrustumRelationship Classify(const Sphere& sphere) const
+        constexpr FrustumRelationship Classify(const SphereX<I, F>& sphere) const
         {
             bool intersects = false;
             
-            for (const Plane& plane : Planes)
+            for (const PlaneX<I, F>& plane : Planes)
             {
                 auto relation = Collision::Classify(sphere, plane);
                 if (relation == Collision::PlaneRelationship::Back)
@@ -268,7 +279,7 @@ namespace SaturnMath::Types
          *         FrustumRelationship::Intersects if the AABB intersects any frustum plane,
          *         FrustumRelationship::Outside if the AABB is completely outside any frustum plane
          */
-        constexpr FrustumRelationship Classify(const AABB& aabb) const
+        constexpr FrustumRelationship Classify(const AABBX<I, F>& aabb) const
         {
             bool intersects = false;
             
@@ -290,7 +301,7 @@ namespace SaturnMath::Types
          * @param index Index of the plane (0-5)
          * @return The requested frustum plane
          */
-        constexpr const Plane& GetPlane(size_t index) const { return Planes[index]; }
+        constexpr const PlaneX<I, F>& GetPlane(size_t index) const { return Planes[index]; }
 
         /**
          * @brief Checks if a point is inside or intersecting the frustum
@@ -299,9 +310,9 @@ namespace SaturnMath::Types
          * 
          * @note This is more efficient than Classify() when you only need to know if the point is visible
          */
-        constexpr bool Intersects(const Vector3D& point) const
+        constexpr bool Intersects(const Vec3& point) const
         {
-            for (const Plane& p : Planes)
+            for (const PlaneX<I, F>& p : Planes)
             {
                 if (Collision::Classify(point, p) == Collision::PlaneRelationship::Back)
                     return false;
@@ -316,9 +327,9 @@ namespace SaturnMath::Types
          * 
          * @note This is more efficient than Classify() when you only need to know if the sphere is visible
          */
-        constexpr bool Intersects(const Sphere& sphere) const
+        constexpr bool Intersects(const SphereX<I, F>& sphere) const
         {
-            for (const Plane& p : Planes)
+            for (const PlaneX<I, F>& p : Planes)
             {
                 if (Collision::Classify(sphere, p) == Collision::PlaneRelationship::Back)
                     return false;
@@ -333,7 +344,7 @@ namespace SaturnMath::Types
          * 
          * @note This is more efficient than Classify() when you only need to know if the AABB is visible
          */
-        constexpr bool Intersects(const AABB& aabb) const
+        constexpr bool Intersects(const AABBX<I, F>& aabb) const
         {
             // Use index-based loop for better constexpr compatibility
             for (size_t i = 0; i < 6; ++i)
@@ -344,4 +355,6 @@ namespace SaturnMath::Types
             return true;
         }
     };
+
+    using Frustum = FrustumX<>;  /**< Default instantiation alias */
 }

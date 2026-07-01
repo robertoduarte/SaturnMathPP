@@ -15,9 +15,9 @@ SaturnMath++ is a high-performance mathematical library specifically engineered 
 
 Developed with the Saturn's unique hardware architecture in mind, SaturnMath++ addresses the platform's key constraints while maximizing performance:
 
-- **Fixed-Point Precision**: Replaces costly floating-point operations with optimized 16.16 fixed-point arithmetic
+- **Fixed-Point Precision**: Replaces costly floating-point operations with configurable fixed-point arithmetic (default 16.16, also 24.8 and 8.24) templated across all math types
 - **Hardware-Aware Design**: Takes advantage of the SH-2's 32-bit operations and instruction set
-- **Performance-First Philosophy**: Offers multiple precision levels to balance accuracy and speed
+- **Hardware-Optimized**: Hand-tuned SH-2 assembly in critical paths (64-bit MAC multiplication, hardware divider unit, `xtrct` for fixed-point alignment)
 - **Modern C++ Features**: Leverages C++23 capabilities for compile-time optimizations
 - **Zero Overhead**: No dynamic memory allocation, minimal branching, and cache-friendly data structures
 
@@ -30,8 +30,8 @@ SaturnMath++ is organized into two main namespaces:
 ### SaturnMath::Types
 Contains all fundamental mathematical types and structures:
 - Vector arithmetic (`Vector2D`, `Vector3D`)
-- Matrix operations (`Mat33`, `Matrix43`)
-- Geometric primitives (`AABB`, `Sphere`, `Plane`, `Frustum`)
+- Matrix operations (`Matrix33`, `Matrix43`)
+- Geometric primitives (`AABB`, `Sphere`, `Plane`, `Frustum`) — all templated with `X` suffix (e.g. `AABBX<I, F>`) and bare aliases for Q16.16
 - Fixed-point numbers (`Fxp`)
 - Angle representation optimized for Saturn hardware
 
@@ -48,10 +48,10 @@ Provides mathematical operations and utilities:
 - **Fixed-Point Arithmetic**: High-performance template-based `FixedPoint<I, F>` class with precise fixed-point operations
   - Configurable integer (`I`) and fractional (`F`) bits at compile-time (constraint: `I + F == 32`, `I >= 2`, `F >= 8`)
   - Built-in aliases for common formats:
-    - `Fxp` / `Fxp16` — `FixedPoint<16, 16>` (default, balanced range/precision)
-    - `Fxp8` — `FixedPoint<24, 8>` (large-world coordinates)
-    - `Fxp24` — `FixedPoint<8, 24>` (high-precision normalized values, rotations)
-    - **Note**: The `Fxp` alias is kept as the general-purpose default and for legacy compatibility; it is identical to `Fxp16` and both can be used interchangeably. Use `Fxp16` in new code for clarity, or continue using `Fxp` if you prefer the shorter name.
+    - `Fxp` / `Fxp16_16` — `FixedPoint<16, 16>` (default, balanced range/precision)
+    - `Fxp24_8` — `FixedPoint<24, 8>` (large-world coordinates)
+    - `Fxp8_24` — `FixedPoint<8, 24>` (high-precision normalized values, rotations)
+    - **Note**: The `Fxp` alias is kept as the general-purpose default and for legacy compatibility; it is identical to `Fxp16_16` and both can be used interchangeably. Use `Fxp16_16` in new code for clarity, or continue using `Fxp` if you prefer the shorter name.
   - Power function for integer exponents
   - Value clamping between bounds
   - Comprehensive arithmetic operations
@@ -91,52 +91,33 @@ Provides mathematical operations and utilities:
     int16_t i = a.As<int16_t>();     // To integer
     float f = a.As<float>();         // To float (with performance warning)
     ```
-  - **Advanced Usage**: For experts who understand the 16.16 fixed-point format, direct raw value manipulation is available:
+  - **Advanced Usage**: For experts who understand the fixed-point format, direct raw value manipulation and hardware-level parallel division are available:
     ```cpp
-    // Create from raw 16.16 value (for advanced users only)
+    // Create from raw value (for advanced users only)
     Fxp raw = Fxp::BuildRaw(0x00010000);  // 1.0 in 16.16 format
-    
-    // Hardware-optimized asynchronous division
-    Fxp dividend = 10;
-    Fxp divisor = 3;
-    Fxp::AsyncDivSet(dividend, divisor);
-    Fxp quotient = Fxp::AsyncDivGetResult();    // Get division result
-    Fxp remainder = Fxp::AsyncDivGetRemainder(); // Get remainder
+
+    // Hardware-optimized parallel division (overlaps CPU work with DIVU)
+    Fxp a(10), b(3), c(4), d(5), e(2);
+    Fxp cd;
+    Fxp r = (a / ParallelDiv(b, [&]{ cd = c * d; })) * e;
+    // a/b runs on the DIVU hardware while c*d executes on the CPU
     ```
-  - **Comparison Operators**: Comprehensive comparison support with important runtime limitations:
+  - **Comparison Operators**: Comprehensive comparison support with both compile-time and runtime operation:
     ```cpp
-    // These work at both compile-time and runtime
+    // All of these work at both compile-time and runtime
     Fxp a(5);
     Fxp b(3);
     
-    if (a > b) { /* This works fine */ }
-    if (a == 5) { /* This works fine */ }
-    if (a > 40.0) { /* This works fine - Fxp on LEFT side */ }
+    if (a > b) { /* works fine */ }
+    if (a == 5) { /* works fine */ }
+    if (a > 40.0) { /* works fine */ }
     
-    // These ONLY work at compile-time due to C++ language limitations
-    constexpr Fxp c(7);
-    constexpr bool test1 = (5 < c);  // Works in constexpr context
-    constexpr bool test2 = (9.5 > c);  // Works in constexpr context
-    
-    // This will NOT work at runtime:
+    // Reversed operand order also works (int/float on left side)
     int value = GetRuntimeValue();
     Fxp d(10);
-    // if (value < d) { /* COMPILE ERROR - non-Fxp on LEFT side */ }
-    // if (40.0 < d) { /* COMPILE ERROR - non-Fxp on LEFT side */ }
-    
-    // KEY POINT: The order matters!
-    // This works: fxpValue > 40.0  (Fxp on left side)
-    // This fails: 40.0 < fxpValue  (Fxp on right side)
-    
-    // Solutions:
-    // 1. Use the Convert method for runtime values:
-    int runtimeValue = GetRuntimeValue();
-    Fxp convertedValue = Fxp::Convert(runtimeValue);
-    if (convertedValue < d) { /* This works fine */ }
-    
-    // 2. Flip the comparison if possible:
-    if (d > runtimeValue) { /* This works fine */ }
-    if (d > 40.0) { /* This works fine */ }
+    if (value < d) { /* works fine */ }
+    if (40.0 < d) { /* works fine */ }
+    if (5 == a) { /* works fine */ }
     ```
   - **Conversion Best Practices**:
     ```cpp
@@ -152,10 +133,6 @@ Provides mathematical operations and utilities:
     float runtimeFloat = GetValue();
     // Fxp d(runtimeFloat);          // ERROR: Won't compile, constructor only works with compile-time floats
     Fxp d = Fxp::Convert(runtimeFloat); // Works but VERY expensive on Saturn hardware
-    
-    // For comparisons with runtime values, prefer flipping the comparison:
-    // AVOID: if (Fxp(runtimeInt) < a) - can have limitations
-    // BETTER: if (a > runtimeInt) - works consistently
     ```
   - **Angle Handling**: Type-safe `Angle` class for angular calculations
   - Raw value construction and access
@@ -184,16 +161,33 @@ Provides mathematical operations and utilities:
   - Zero-initialization support
 
 ### Vectors and Matrices
-- **2D Vectors**: `Vector2D` class with optimized operations
+
+All vector, matrix, and geometric types are templated with `template<int I = 16, int F = 16>`, using `FixedPoint<I, F>` internally. Aliases are provided for the default Q16.16 precision:
+
+| Template | Alias (Q16.16) | Custom Precision Example |
+|---|---|---|
+| `Vector2<I, F>` | `Vector2D` | `Vector2<24, 8>` |
+| `Vector3<I, F>` | `Vector3D` | `Vector3<8, 24>` |
+| `Matrix3x3<I, F>` | `Matrix33` | `Matrix3x3<24, 8>` |
+| `Matrix4x3<I, F>` | `Matrix43` | `Matrix4x3<24, 8>` |
+| `AABBX<I, F>` | `AABB` | `AABBX<24, 8>` |
+| `SphereX<I, F>` | `Sphere` | `SphereX<24, 8>` |
+| `PlaneX<I, F>` | `Plane` | `PlaneX<24, 8>` |
+| `FrustumX<I, F>` | `Frustum` | `FrustumX<24, 8>` |
+| `MatrixStackX<I, F>` | `MatrixStack` | `MatrixStackX<24, 8>` |
+
+> **Design note**: For vector/matrix types, the template name is descriptive (e.g. `Vector3`, `Matrix4x3`) and the alias is a shorter legacy name (e.g. `Vector3D`, `Matrix43`). For geometric primitives and MatrixStack, the template name uses an `X` suffix (e.g. `AABBX`, `SphereX`) since the base name is already maximally descriptive — the `X` suffix distinguishes the template from the alias. For non-default precisions, use the template directly (e.g. `AABBX<24, 8>`). If a shorter name is needed in user code, a local `using` declaration is recommended.
+
+- **2D Vectors**: `Vector2<I, F>` with optimized operations
   - Unit vectors (UnitX, UnitY)
   - Directional vectors (Left, Right, Up, Down)
-  - Multiple precision levels for normalization and length calculations
-- **3D Vectors**: `Vector3D` class extending `Vector2D` functionality
+  - `TurboLength()` for fast alpha-beta-gamma length approximation
+- **3D Vectors**: `Vector3<I, F>` extending `Vector2<I, F>` functionality
   - Unit vectors (UnitX, UnitY, UnitZ)
   - Optimized cross/dot products
-  - Template-based precision control for geometric operations
+  - `TurboLength()` for fast alpha-beta-gamma length approximation
   - Optimized operators for integral types
-- **Matrix Operations**: Efficient `Matrix33` and `Matrix43` implementations
+- **Matrix Operations**: Efficient `Matrix3x3<I, F>` and `Matrix4x3<I, F>` implementations
   - Common transformations (scale, rotate, translate)
   - Optimized multiplication with detailed documentation
   - Identity/zero matrix constants
@@ -203,26 +197,25 @@ Provides mathematical operations and utilities:
   - Look-at matrix for camera positioning
   - Transform decomposition into scale/rotation/translation
   - EulerAngles support for rotations
-- **Matrix Stack**: Fixed-size stack for transform hierarchies
+- **Matrix Stack**: `MatrixStackX<I, F>` (alias: `MatrixStack`) — Fixed-size stack for transform hierarchies
   - No dynamic allocation
   - Depth checking
   - Direct transformation methods
 
 ### Geometric Primitives
-- **AABB**: Axis-aligned bounding box with comprehensive intersection tests
+- **AABB**: `AABBX<I, F>` (alias: `AABB`) — Axis-aligned bounding box with comprehensive intersection tests
   - Fast min/max calculations
   - Volume and surface area computation
   - Merging and expansion operations
-- **Sphere**: Perfect sphere with exact collision detection
+- **Sphere**: `SphereX<I, F>` (alias: `Sphere`) — Perfect sphere with exact collision detection
   - Point containment tests
   - Sphere-sphere intersection
   - Sphere-AABB intersection
-- **Plane**: Infinite plane with normal and distance representation
+- **Plane**: `PlaneX<I, F>` (alias: `Plane`) — Infinite plane with normal and distance representation
   - Point-plane distance calculation
   - Construction from points/normal
   - Normalization utilities
-  - Template-based precision control for construction and normalization
-- **Frustum**: View frustum for efficient visibility culling
+- **Frustum**: `FrustumX<I, F>` (alias: `Frustum`) — View frustum for efficient visibility culling
   - Fast plane extraction from matrices
   - Comprehensive intersection tests
   - View space utilities
@@ -271,33 +264,28 @@ Just include the library in your Sega Saturn project:
 #include "saturn_math.hpp"
 using namespace SaturnMath::Types;
 
-// 3D vector operations with different precision levels
+// Default precision (Q16.16) — use legacy aliases
 Vector3D position(1, 2, 3);
 Vector3D direction = Vector3D::UnitZ();  // Forward direction (0,0,1)
+Vector3D normal = direction.Normalize();
 
-// Standard precision - highest accuracy
-Vector3D normal = direction.Normalize<Precision::Accurate>();  // Explicit
-Vector3D same = direction.Normalize();                        // Implicit (defaults to Standard)
-
-// Fast precision - balanced performance
-Vector3D approxNormal = direction.Normalize<Precision::Fast>();
-
-// Turbo precision - fastest calculation
-Vector3D quickNormal = direction.Normalize<Precision::Turbo>();
+// Custom precision — use template directly
+Vector3<24, 8> worldPos(1000, 2000, 3000);       // Large-world coordinates
+Matrix4x3<24, 8> worldTransform = Matrix4x3<24, 8>::Identity();
 
 // 2D vector operations
 Vector2D screenPos = Vector2D::Zero();
 screenPos += Vector2D::Right() * 10;  // Move 10 units right
 screenPos += Vector2D::Up() * 5;      // Move 5 units up
 
-// Matrix operations with precision control
+// Matrix operations
 Matrix43 transform = Matrix43::Identity();
 transform.Translate(Vector3D::UnitY() * 5);  // Move 5 units up
-transform.Rotate(Vector3D(0, Angle::FromDegrees(90), 0));
+transform.RotateY(Angle::FromDegrees(90));   // Rotate 90° around Y
 
-// Matrix decomposition with specified precision
+// Matrix decomposition
 Vector3D scale, rotation, translation;
-transform.Decompose<Precision::Accurate>(scale, rotation, translation);
+transform.Decompose(scale, rotation, translation);
 
 // Transform the position
 Vector3D transformed = transform * position;
@@ -306,29 +294,31 @@ Vector3D transformed = transform * position;
 ### Geometric Operations
 
 ```cpp
-// Create and manipulate geometric primitives
+// Create and manipulate geometric primitives (default Q16.16 via aliases)
 Vector3D center(0, 0, 0);
 Vector3D size(2, 2, 2);
 AABB box(center, size);
 
-// Calculate normals with different precision levels
+// Or use custom precision with the X-suffix template
+AABBX<24, 8> largeBox(Vector3<24, 8>(1000, 2000, 3000), Vector3<24, 8>(10, 10, 10));
+
+// Calculate normal vector for a triangle
 Vector3D v1(0, 0, 0), v2(1, 0, 0), v3(0, 1, 0);
-Vector3D normal = Vector3D::CalcNormal<Precision::Accurate>(v1, v2, v3);
-Vector3D fastNormal = Vector3D::CalcNormal<Precision::Fast>(v1, v2, v3);
+Vector3D normal = Vector3D::CalcNormal(v1, v2, v3);
 
 // Collision detection using the Collision namespace
-Sphere sphere(center, 2.0_fxp);
+Sphere sphere(center, Fxp(2));
 bool collision = SaturnMath::Collision::Intersects(box, sphere);
 
-// Create view matrix with precision control
+// Create view matrix
 Vector3D eye(0, 5, -10);
 Vector3D target(0, 0, 0);
 Vector3D up = Vector3D::UnitY();
-Matrix43 view = Matrix43::CreateLookAt<Precision::Accurate>(eye, target, up);
+Matrix43 view = Matrix43::CreateLookAt(eye, target, up);
 
 // Frustum culling
-Frustum viewFrustum;
-bool isVisible = viewFrustum.Contains(box);
+Frustum viewFrustum(fov, aspect, nearDist, farDist);
+bool isVisible = viewFrustum.Intersects(box);
 ```
 
 ### Fixed-Point and Angle Operations
@@ -372,15 +362,15 @@ float as_float = compile_time.As<float>();      // Convert to float (warning: he
 
 // Angle calculations
 Angle rotation = Angle::FromDegrees(45);
-Fxp sine = SaturnMath::Sin(rotation);
-Fxp cosine = SaturnMath::Cos(rotation);
+Fxp sine = SaturnMath::Trigonometry::Sin(rotation);
+Fxp cosine = SaturnMath::Trigonometry::Cos(rotation);
 
 // Example of angle arithmetic
 Angle doubled = rotation * Fxp(2);    // Double the angle
 Angle halved = rotation / Fxp(2);     // Half the angle
 
 // Euler angles for 3D rotation
-Vector3D orientation(
+EulerAngles orientation(
     Angle::FromDegrees(30),  // Pitch
     Angle::FromDegrees(45),  // Yaw
     Angle::FromDegrees(0)    // Roll
@@ -416,7 +406,7 @@ auto maxVec = Max(Vector2D(1, 5), Vector2D(3, 2));  // Works with vectors (compo
 ## Performance Considerations
 
 ### Performance Features
-- Template-based `FixedPoint<I, F>` allowing per-use-case format selection (range vs precision)
+- Template-based `FixedPoint<I, F>` and `Vector/Matrix<I, F>` allowing per-use-case format selection (range vs precision)
 - Cache-friendly data layouts
 - Fixed-size containers to avoid dynamic allocation
 - Lookup table-based trigonometry
@@ -425,57 +415,17 @@ auto maxVec = Max(Vector2D(1, 5), Vector2D(3, 2));  // Works with vectors (compo
 - Hardware-optimized multiplication (`dmuls.l`) and division (hardware divider unit) on SH-2
 ### Precision Control (Deprecated)
 
-> ⚠️ **Deprecation Notice**: The template-based precision modes (`Precision::Accurate`, `Precision::Fast`, `Precision::Turbo`, `Precision::Default`) are being **deprecated**. In practice they have proven to add significant template complexity and API surface area without delivering meaningful real-world performance benefits to justify the trade-off. The `Fxp::Sqrt` function already implements a single, balanced algorithm regardless of the precision template parameter (the parameter is preserved only to avoid breaking existing call sites). New code should not rely on precision modes; future versions will likely remove them entirely in favour of a single optimized implementation per operation.
+> ⚠️ **Deprecation Notice**: The template-based precision modes (`Precision::Accurate`, `Precision::Fast`, `Precision::Turbo`, `Precision::Default`) are **deprecated**. In practice they have proven to add significant template complexity and API surface area without delivering meaningful real-world performance benefits to justify the trade-off. The precision template parameter is preserved on existing methods only to avoid breaking call sites — it is ignored at runtime. New code should not use precision modes; future versions will remove them entirely.
 
-SaturnMath++ historically provided a template-based precision control system that allows you to balance between accuracy and performance. Each precision level was optimized for different use cases:
-
-- `Accurate`: Full precision calculations, ideal for critical computations
-- `Fast`: Good approximation with better performance
-- `Turbo`: Fastest calculation with acceptable accuracy, best for real-time effects
-- `Default`: Automatically selects precision based on the `MATH_PERFORMANCE_MODE` macro (set to `ACCURATE`, `FAST`, or `TURBO`)
-
-```cpp
-using namespace SaturnMath;
-
-// Accurate precision - highest accuracy, ideal for critical computations
-Vector3D normal = direction.Normalize<Precision::Accurate>();
-
-// Fast precision - good approximation with better performance
-Vector3D approxNormal = direction.Normalize<Precision::Fast>();
-
-// Turbo precision - fastest calculation with acceptable accuracy
-Vector3D quickNormal = direction.Normalize<Precision::Turbo>();
-
-// Default precision - automatically selected based on MATH_PERFORMANCE_MODE
-Vector3D defaultNormal = direction.Normalize<Precision::Default>();
-// Same as above (Default is implied when no template parameter is specified)
-Vector3D sameAsDefault = direction.Normalize();
-
-// Setting the default precision mode at build time
-// In your build configuration or preprocessor definitions:
-// #define MATH_PERFORMANCE_MODE ACCURATE  // For highest precision calculations
-// #define MATH_PERFORMANCE_MODE FAST      // For balanced performance (used if not defined)
-// #define MATH_PERFORMANCE_MODE TURBO     // For maximum performance
-```
-
-> **Note**: For square root operations, Fast and Turbo precision modes use the same algorithm, providing a balance between performance and accuracy. Standard precision provides the most accurate results at the cost of performance.
-
-Supported operations with precision control:
-- Vector normalization and length calculations
-- Matrix decomposition and transformations
-- Square root calculations
-- Geometric calculations (normals, distances)
-- Plane construction and normalization
-- Look-at matrix creation
+Historically, SaturnMath++ provided template-based precision control via a `Precision` enum template parameter on methods like `Normalize()`, `Length()`, and `CalcNormal()`. These have been replaced by single optimized implementations. For fast length approximation, use `TurboLength()` explicitly.
 
 ### Testing
 
-SaturnMath++ includes a comprehensive suite of compile-time tests that verify the correctness of all mathematical operations across different precision modes. These tests ensure that:
+SaturnMath++ includes a comprehensive suite of compile-time tests that verify the correctness of all mathematical operations. These tests ensure that:
 
 - All operations produce expected results within appropriate tolerance ranges
-- Different precision modes maintain their accuracy vs. performance trade-offs
 - Edge cases (zero values, perfect squares, very small values) are handled correctly
-- Fast and Turbo modes produce identical results for operations where they share algorithms
+- Cross-format FixedPoint conversions preserve values correctly
 
 All tests are implemented as static assertions that run at compile-time, ensuring zero runtime overhead while providing strong correctness guarantees.
 
@@ -500,7 +450,10 @@ auto maxVec = Max(Vector2D(1, 5), Vector2D(3, 2));  // Returns Vector2D(3, 5)
 
 ### Best Practices
 - ~~Use `Fast` or `Turbo` precision for non-critical calculations where performance is important~~ *(precision modes are deprecated; rely on the default implementation)*
-- Choose the appropriate `FixedPoint<I, F>` format for the job (`Fxp16` for general use, `Fxp8` for large worlds, `Fxp24` for normalized/precision-sensitive values)
+- Choose the appropriate `FixedPoint<I, F>` format for the job (`Fxp16_16` for general use, `Fxp24_8` for large worlds, `Fxp8_24` for normalized/precision-sensitive values)
+- Use the same `I, F` precision for vectors and matrices as for the `FixedPoint` values they interact with (e.g. `Vector3<24, 8>` with `Fxp24_8`)
+- Legacy aliases (`Vector2D`, `Vector3D`, `Matrix33`, `Matrix43`, `AABB`, `Sphere`, `Plane`, `Frustum`, `MatrixStack`) default to Q16.16 — use `X` suffix templates (e.g. `AABBX<24, 8>`) for other precisions
+- If a shorter name for a custom precision is needed, use a local `using` declaration rather than relying on library-provided aliases
 - Avoid implicit conversions between FixedPoint formats — be explicit with `Convert()` and pay attention to the deprecation warning that flags lossy conversions
 - Prefer fixed-size containers (like `MatrixStack`) over dynamic allocation
 - Take advantage of lookup-based trig functions for better performance

@@ -2,328 +2,572 @@
 
 #include "fxp.hpp"
 #include "angle.hpp"
+#include "hardware.hpp"
+#include "constmath.hpp"
 #include <type_traits>
-#include <utility>
+#include <array>
+#include <cstdint>
 
 namespace SaturnMath
 {
     using namespace SaturnMath::Types;
+
+    namespace detail
+    {
+        static constexpr double pi = 3.14159265358979323846;
+
+        // ================================================================
+        // LookupCache — interpolation entry with precomputed multiplicand
+        // ================================================================
+
+        /**
+         * @brief Lookup table entry with hardware-optimized interpolation.
+         * @tparam ValueType Result type (int32_t or uint16_t)
+         * @tparam InterpolationMask Bit mask for fraction extraction from input
+         * @tparam ExtractShift Bit offset for extracting result from 64-bit product
+         */
+        template<typename ValueType, uint32_t InterpolationMask, uint32_t ExtractShift>
+        struct LookupCache
+        {
+            static constexpr uint32_t mask = InterpolationMask;
+            static constexpr uint32_t extractShift = ExtractShift;
+
+            ValueType value;
+            ValueType interpolationMultiplicand;
+
+            /**
+             * @brief Interpolates between table entries using hardware multiply.
+             * @param input Raw angle/fixed-point value containing fractional bits
+             * @return Interpolated result in internal fixed-point format
+             */
+            [[gnu::always_inline]] constexpr ValueType ExtractValue(const auto& input) const
+            {
+                uint32_t interpolationMultiplier = InterpolationMask & input;
+
+                // Determine if product fits in 32 bits (enables lighter multiply)
+                constexpr int maskBits = []() {
+                    uint32_t m = InterpolationMask; int b = 0;
+                    while (m) { b++; m >>= 1; }
+                    return b;
+                }();
+                constexpr bool fits32 = (maskBits + sizeof(ValueType) * 8) <= 32;
+
+                if consteval
+                {
+                    if constexpr (fits32)
+                    {
+                        uint32_t product = interpolationMultiplier *
+                            static_cast<uint32_t>(interpolationMultiplicand);
+                        return value + static_cast<ValueType>(product >> ExtractShift);
+                    }
+                    else
+                    {
+                        int64_t product = static_cast<int64_t>(
+                            static_cast<int32_t>(interpolationMultiplier)) *
+                            static_cast<int64_t>(interpolationMultiplicand);
+
+                        int32_t mach = static_cast<int32_t>(product >> 32);
+                        int32_t macl = static_cast<int32_t>(product & 0xFFFFFFFF);
+
+                        int32_t delta;
+                        if constexpr (ExtractShift == 0)
+                            delta = macl;
+                        else if constexpr (ExtractShift == 16)
+                            delta = static_cast<int32_t>(
+                                (static_cast<uint32_t>(mach) << 16) |
+                                (static_cast<uint32_t>(macl) >> 16));
+                        else
+                            delta = static_cast<int32_t>(
+                                ((static_cast<uint64_t>(static_cast<uint32_t>(mach)) << 32) |
+                                 static_cast<uint32_t>(macl)) >> ExtractShift);
+
+                        return value + static_cast<ValueType>(delta);
+                    }
+                }
+                else
+                {
+                    if constexpr (fits32)
+                    {
+                        if constexpr (std::is_unsigned_v<ValueType>)
+                        {
+                            // Unsigned: plain multiply + logical shift
+                            // GCC uses mulu.w (16x16->32) + swap.w for >> 16
+                            uint32_t product = interpolationMultiplier *
+                                static_cast<uint32_t>(interpolationMultiplicand);
+                            return value + static_cast<ValueType>(product >> ExtractShift);
+                        }
+                        else
+                        {
+                            // Signed: mul.l + arithmetic shift
+                            int32_t product = Hardware::Mul32(
+                                static_cast<int32_t>(interpolationMultiplier),
+                                interpolationMultiplicand);
+                            int32_t delta = product;
+                            if constexpr (ExtractShift > 0)
+                                Hardware::ArithmeticShiftRight<ExtractShift>(delta);
+                            return value + static_cast<ValueType>(delta);
+                        }
+                    }
+                    else
+                    {
+                        // Runtime: SH-2 dmuls.l (signed 32x32->64)
+                        int32_t mach, macl;
+                        Hardware::Mul64(
+                            static_cast<int32_t>(interpolationMultiplier),
+                            interpolationMultiplicand, mach, macl);
+
+                        int32_t delta;
+                        Hardware::Extract32<ExtractShift>(mach, macl, delta);
+
+                        return value + static_cast<ValueType>(delta);
+                    }
+                }
+            }
+        };
+
+        // ================================================================
+        // Table generation helpers
+        // ================================================================
+
+        /**
+         * @brief Computes the interpolation multiplicand for a lookup table entry.
+         * @tparam InternalFractionalBits Fixed-point fractional bits of internal representation
+         * @tparam ExtractShift Bit offset for extracting result from product
+         * @tparam MultiplierBits Number of bits in the interpolation multiplier
+         * @param currentValue Function value at the start of the interval
+         * @param nextValue Function value at the end of the interval
+         * @return Precomputed multiplicand for linear interpolation
+         */
+        template<int InternalFractionalBits, int ExtractShift, int MultiplierBits>
+        constexpr int32_t ComputeMultiplicand(double currentValue, double nextValue)
+        {
+            int64_t delta = static_cast<int64_t>(nextValue * (1 << InternalFractionalBits))
+                          - static_cast<int64_t>(currentValue * (1 << InternalFractionalBits));
+
+            int shiftAmount = ExtractShift - MultiplierBits;
+            if (shiftAmount >= 0)
+                return static_cast<int32_t>(static_cast<int64_t>(static_cast<uint64_t>(delta) << shiftAmount));
+            else
+                return static_cast<int32_t>(delta >> (-shiftAmount));
+        }
+
+        /**
+         * @brief Generates a lookup table array from a compile-time entry builder.
+         * @tparam EntryType The LookupCache instantiation for this table
+         * @tparam EntryCount Number of entries in the table
+         * @tparam EntryBuilder Compile-time function that builds a single entry from an index
+         * @return std::array of populated lookup table entries
+         */
+        template<typename EntryType, int EntryCount, auto EntryBuilder>
+        constexpr std::array<EntryType, EntryCount> MakeLookupTable()
+        {
+            return [&]<int... Indices>(std::integer_sequence<int, Indices...>) {
+                return std::array<EntryType, EntryCount>{ EntryBuilder(Indices)... };
+            }(std::make_integer_sequence<int, EntryCount>{});
+        }
+
+        // ================================================================
+        // Sin table — 64 entries, 10-bit interpolation, 8.24 internal format
+        // ================================================================
+
+        struct SinSpec
+        {
+            static constexpr int entryCount = 64;
+            static constexpr uint32_t interpolationMask = 0x3FF;
+            static constexpr int multiplierBits = 10;
+            static constexpr int extractShift = 16;
+            static constexpr int internalFractionalBits = 24;
+            using ValueType = int32_t;
+        };
+
+        using SinEntry = LookupCache<SinSpec::ValueType,
+                                     SinSpec::interpolationMask,
+                                     SinSpec::extractShift>;
+
+        constexpr SinEntry BuildSinEntry(int index)
+        {
+            double angle = static_cast<double>(index) / SinSpec::entryCount * 2.0 * pi;
+            double nextAngle = static_cast<double>(index + 1) / SinSpec::entryCount * 2.0 * pi;
+
+            return {
+                static_cast<int32_t>(ConstexprMath::Sin(angle) * (1 << SinSpec::internalFractionalBits)),
+                ComputeMultiplicand<SinSpec::internalFractionalBits,
+                                     SinSpec::extractShift,
+                                     SinSpec::multiplierBits>(
+                    ConstexprMath::Sin(angle), ConstexprMath::Sin(nextAngle))
+            };
+        }
+
+        inline constexpr auto sinTable = MakeLookupTable<SinEntry, SinSpec::entryCount, BuildSinEntry>();
+
+        // ================================================================
+        // Tan table 1 — 15 entries, 10-bit interpolation, 8.24 internal
+        // Range: 0 to 0x3C00 (0° to 84.375°), step = 1024 raw units
+        // ================================================================
+
+        struct Tan1Spec
+        {
+            static constexpr int entryCount = 15;
+            static constexpr uint32_t interpolationMask = 0x3FF;
+            static constexpr int multiplierBits = 10;
+            static constexpr int extractShift = 0;
+            static constexpr int internalFractionalBits = 24;
+            static constexpr uint32_t baseAngle = 0;
+            static constexpr int stepSize = 1024;
+            using ValueType = int32_t;
+        };
+
+        using Tan1Entry = LookupCache<Tan1Spec::ValueType,
+                                      Tan1Spec::interpolationMask,
+                                      Tan1Spec::extractShift>;
+
+        constexpr Tan1Entry BuildTan1Entry(int index)
+        {
+            double angle = static_cast<double>(Tan1Spec::baseAngle + index * Tan1Spec::stepSize) / 65536.0 * 2.0 * pi;
+            double nextAngle = static_cast<double>(Tan1Spec::baseAngle + (index + 1) * Tan1Spec::stepSize) / 65536.0 * 2.0 * pi;
+
+            return {
+                static_cast<int32_t>(ConstexprMath::Tan(angle) * (1 << Tan1Spec::internalFractionalBits)),
+                ComputeMultiplicand<Tan1Spec::internalFractionalBits,
+                                     Tan1Spec::extractShift,
+                                     Tan1Spec::multiplierBits>(
+                    ConstexprMath::Tan(angle), ConstexprMath::Tan(nextAngle))
+            };
+        }
+
+        inline constexpr auto tanTable1 = MakeLookupTable<Tan1Entry, Tan1Spec::entryCount, BuildTan1Entry>();
+
+        // ================================================================
+        // Tan table 2 — 3 entries, 8-bit interpolation, 8.24 internal
+        // Range: 0x3C00 to 0x3F00 (84.375° to 87.1875°), step = 256 raw units
+        // ================================================================
+
+        struct Tan2Spec
+        {
+            static constexpr int entryCount = 3;
+            static constexpr uint32_t interpolationMask = 0x0FF;
+            static constexpr int multiplierBits = 8;
+            static constexpr int extractShift = 0;
+            static constexpr int internalFractionalBits = 24;
+            static constexpr uint32_t baseAngle = 0x3C00;
+            static constexpr int stepSize = 256;
+            using ValueType = int32_t;
+        };
+
+        using Tan2Entry = LookupCache<Tan2Spec::ValueType,
+                                      Tan2Spec::interpolationMask,
+                                      Tan2Spec::extractShift>;
+
+        constexpr Tan2Entry BuildTan2Entry(int index)
+        {
+            double angle = static_cast<double>(Tan2Spec::baseAngle + index * Tan2Spec::stepSize) / 65536.0 * 2.0 * pi;
+            double nextAngle = static_cast<double>(Tan2Spec::baseAngle + (index + 1) * Tan2Spec::stepSize) / 65536.0 * 2.0 * pi;
+
+            return {
+                static_cast<int32_t>(ConstexprMath::Tan(angle) * (1 << Tan2Spec::internalFractionalBits)),
+                ComputeMultiplicand<Tan2Spec::internalFractionalBits,
+                                     Tan2Spec::extractShift,
+                                     Tan2Spec::multiplierBits>(
+                    ConstexprMath::Tan(angle), ConstexprMath::Tan(nextAngle))
+            };
+        }
+
+        inline constexpr auto tanTable2 = MakeLookupTable<Tan2Entry, Tan2Spec::entryCount, BuildTan2Entry>();
+
+        // ================================================================
+        // Tan table 3 — 3 entries, 6-bit interpolation, 8.24 internal
+        // Range: 0x3F00 to 0x3FC0 (87.1875° to 88.59°), step = 64 raw units
+        // ================================================================
+
+        struct Tan3Spec
+        {
+            static constexpr int entryCount = 3;
+            static constexpr uint32_t interpolationMask = 0x03F;
+            static constexpr int multiplierBits = 6;
+            static constexpr int extractShift = 0;
+            static constexpr int internalFractionalBits = 24;
+            static constexpr uint32_t baseAngle = 0x3F00;
+            static constexpr int stepSize = 64;
+            using ValueType = int32_t;
+        };
+
+        using Tan3Entry = LookupCache<Tan3Spec::ValueType,
+                                      Tan3Spec::interpolationMask,
+                                      Tan3Spec::extractShift>;
+
+        constexpr Tan3Entry BuildTan3Entry(int index)
+        {
+            double angle = static_cast<double>(Tan3Spec::baseAngle + index * Tan3Spec::stepSize) / 65536.0 * 2.0 * pi;
+            double nextAngle = static_cast<double>(Tan3Spec::baseAngle + (index + 1) * Tan3Spec::stepSize) / 65536.0 * 2.0 * pi;
+
+            return {
+                static_cast<int32_t>(ConstexprMath::Tan(angle) * (1 << Tan3Spec::internalFractionalBits)),
+                ComputeMultiplicand<Tan3Spec::internalFractionalBits,
+                                     Tan3Spec::extractShift,
+                                     Tan3Spec::multiplierBits>(
+                    ConstexprMath::Tan(angle), ConstexprMath::Tan(nextAngle))
+            };
+        }
+
+        inline constexpr auto tanTable3 = MakeLookupTable<Tan3Entry, Tan3Spec::entryCount, BuildTan3Entry>();
+
+        // ================================================================
+        // Tan table 4 — 3 entries, 4-bit interpolation, 16.16 internal
+        // Range: 0x3FC0 to 0x3FF0 (88.59° to 89.45°), step = 16 raw units
+        // Values clamped to 32767 to prevent overflow in 16.16 format.
+        // ================================================================
+
+        struct Tan4Spec
+        {
+            static constexpr int entryCount = 3;
+            static constexpr uint32_t interpolationMask = 0x00F;
+            static constexpr int multiplierBits = 4;
+            static constexpr int extractShift = 4;
+            static constexpr int internalFractionalBits = 16;
+            static constexpr uint32_t baseAngle = 0x3FC0;
+            static constexpr int stepSize = 16;
+            using ValueType = int32_t;
+        };
+
+        using Tan4Entry = LookupCache<Tan4Spec::ValueType,
+                                      Tan4Spec::interpolationMask,
+                                      Tan4Spec::extractShift>;
+
+        constexpr Tan4Entry BuildTan4Entry(int index)
+        {
+            double angle = static_cast<double>(Tan4Spec::baseAngle + index * Tan4Spec::stepSize) / 65536.0 * 2.0 * pi;
+            double nextAngle = static_cast<double>(Tan4Spec::baseAngle + (index + 1) * Tan4Spec::stepSize) / 65536.0 * 2.0 * pi;
+
+            double tanValue = ConstexprMath::Tan(angle);
+            if (tanValue > 32767.0) tanValue = 32767.0;
+            double tanNext = ConstexprMath::Tan(nextAngle);
+            if (tanNext > 32767.0) tanNext = 32767.0;
+
+            return {
+                static_cast<int32_t>(tanValue * (1 << Tan4Spec::internalFractionalBits)),
+                ComputeMultiplicand<Tan4Spec::internalFractionalBits,
+                                     Tan4Spec::extractShift,
+                                     Tan4Spec::multiplierBits>(
+                    tanValue, tanNext)
+            };
+        }
+
+        inline constexpr auto tanTable4 = MakeLookupTable<Tan4Entry, Tan4Spec::entryCount, BuildTan4Entry>();
+
+        // ================================================================
+        // Tan table 5 — 5 entries, 2-bit interpolation, 16.16 internal
+        // Range: 0x3FF0 to 0x4000 (89.45° to 90°), step = 4 raw units
+        // Values clamped to 32767. 5th entry is sentinel for clamping.
+        // ================================================================
+
+        struct Tan5Spec
+        {
+            static constexpr int entryCount = 5;
+            static constexpr uint32_t interpolationMask = 0x003;
+            static constexpr int multiplierBits = 2;
+            static constexpr int extractShift = 2;
+            static constexpr int internalFractionalBits = 16;
+            static constexpr uint32_t baseAngle = 0x3FF0;
+            static constexpr int stepSize = 4;
+            using ValueType = int32_t;
+        };
+
+        using Tan5Entry = LookupCache<Tan5Spec::ValueType,
+                                      Tan5Spec::interpolationMask,
+                                      Tan5Spec::extractShift>;
+
+        constexpr Tan5Entry BuildTan5Entry(int index)
+        {
+            if (index >= 4)
+            {
+                // Sentinel: tan(90°) clamped to max
+                return { 0x7FFFFFFF, 0 };
+            }
+
+            double angle = static_cast<double>(Tan5Spec::baseAngle + index * Tan5Spec::stepSize) / 65536.0 * 2.0 * pi;
+            double nextAngle = static_cast<double>(Tan5Spec::baseAngle + (index + 1) * Tan5Spec::stepSize) / 65536.0 * 2.0 * pi;
+
+            double tanValue = ConstexprMath::Tan(angle);
+            if (tanValue > 32767.0) tanValue = 32767.0;
+            double tanNext = ConstexprMath::Tan(nextAngle);
+            if (tanNext > 32767.0) tanNext = 32767.0;
+
+            return {
+                static_cast<int32_t>(tanValue * (1 << Tan5Spec::internalFractionalBits)),
+                ComputeMultiplicand<Tan5Spec::internalFractionalBits,
+                                     Tan5Spec::extractShift,
+                                     Tan5Spec::multiplierBits>(
+                    tanValue, tanNext)
+            };
+        }
+
+        inline constexpr auto tanTable5 = MakeLookupTable<Tan5Entry, Tan5Spec::entryCount, BuildTan5Entry>();
+
+        // ================================================================
+        // Atan2 table — 33 entries, 11-bit interpolation, uint16_t result
+        // Maps ratio [0, 1] to angle [0, π/4] in turns
+        // ================================================================
+
+        struct Atan2Spec
+        {
+            static constexpr int entryCount = 33;
+            static constexpr uint32_t interpolationMask = 0x7FF;
+            static constexpr int multiplierBits = 11;
+            static constexpr int extractShift = 16;
+            using ValueType = uint16_t;
+        };
+
+        using Atan2Entry = LookupCache<Atan2Spec::ValueType,
+                                       Atan2Spec::interpolationMask,
+                                       Atan2Spec::extractShift>;
+
+        constexpr Atan2Entry BuildAtan2Entry(int index)
+        {
+            double ratio = static_cast<double>(index) / 32.0;
+            double nextRatio = static_cast<double>(index + 1) / 32.0;
+
+            double angle = ConstexprMath::Atan(ratio) / (2.0 * pi);
+            double nextAngle = ConstexprMath::Atan(nextRatio) / (2.0 * pi);
+
+            uint16_t value = static_cast<uint16_t>(angle * 65536.0);
+            uint16_t nextValue = static_cast<uint16_t>(nextAngle * 65536.0);
+
+            int32_t delta = static_cast<int32_t>(nextValue) - static_cast<int32_t>(value);
+
+            int shiftAmount = Atan2Spec::extractShift - Atan2Spec::multiplierBits;
+            int32_t multiplicand;
+            if (shiftAmount >= 0)
+                multiplicand = static_cast<int32_t>(static_cast<uint32_t>(delta) << shiftAmount);
+            else
+                multiplicand = delta >> (-shiftAmount);
+
+            return { value, static_cast<uint16_t>(multiplicand) };
+        }
+
+        inline constexpr auto atan2Table = MakeLookupTable<Atan2Entry, Atan2Spec::entryCount, BuildAtan2Entry>();
+    }
+
     /**
-     * @brief High-performance trigonometric function library optimized for Saturn hardware.
+     * @brief High-performance trigonometric library using 64-bit hardware multiply.
      *
-     * @details The Trigonometry class provides a comprehensive set of trigonometric and
-     * hyperbolic functions essential for 3D graphics, physics simulations, and signal
-     * processing. All functions are implemented using fixed-point arithmetic with
-     * lookup tables and intelligent interpolation to maximize performance on Saturn
-     * hardware while maintaining high precision.
+     * @details Uses dmuls.l (signed 32x32->64) + Extract32<shift> for hardware-optimized
+     * interpolation. Tables are generated at compile time via constexpr functions.
      *
      * Key features:
-     * - Complete set of trigonometric functions (sin, cos, tan, etc.)
-     * - Full hyperbolic function support (sinh, cosh, tanh, etc.)
-     * - Inverse trigonometric functions (asin, acos, atan, atan2)
-     * - No floating-point operations for consistent cross-platform behavior
-     * - Constant-time execution for most operations regardless of input value
-     * - Memory-efficient table design to minimize cache misses
-     * - Automatic range handling and normalization for any input angle
-     * - Multiple precision levels for performance-critical operations
+     * - 8.24 internal precision for sin/tan1-3/atan2 (16.16 for tan4-5)
+     * - 64-bit product eliminates truncation error from 32-bit multiply
+     * - Extract32<0|16> replaces arbitrary shift sequences (1 instruction vs 1-4)
+     * - Compile-time table generation from mathematical formulas
+     * - Template output type allows requesting different fixed-point precisions
+     * - Constant-time execution for all operations
+     * - Automatic angle wrapping and quadrant handling
      *
-     * Performance characteristics:
-     * - Sine/cosine: O(1) complexity using table lookup with interpolation
-     * - Tangent: O(1) complexity with dynamic table sizing near asymptotes
-     * - Inverse functions: O(1) complexity with slightly higher cost than direct functions
-     * - Hyperbolic functions: O(1) complexity using specialized tables
-     * 
-     * Common applications:
-     * - 3D rotations and transformations
-     * - Physics simulations (projectile motion, oscillations)
-     * - Procedural animation and movement
-     * - Signal processing and waveform generation
-     * - Geometric calculations (angles, distances, projections)
-     * 
-     * Implementation details:
-     * - Uses LookupCache for efficient interpolation between table entries
-     * - Pre-calculated multiplicands to avoid expensive division operations
-     * - Dynamic table sizing for functions with asymptotic behavior (like tan)
-     * - Shared tables where mathematical relationships allow (sin/cos)
-     * - Specialized implementations for critical angle values (0, 90, 180, 270 degrees)
-     * 
-     * Precision considerations:
-     * - Standard functions maintain accuracy within 0.01% across the entire range
-     * - Near asymptotes (tan at 90°), precision naturally decreases
-     * - For highest precision, consider using Precision::Accurate template parameter
-
-     * 
      * @see Angle For angle representation and conversion
      * @see Fxp For details on the fixed-point implementation
-     * @see Precision For available precision levels in calculations
      */
     class Trigonometry final
     {
     private:
-        /**
-         * @brief Lookup table cache structure for efficient interpolation
-         *
-         * This template provides fast interpolation by pre-calculating multiplicands
-         * and using bit operations instead of division.
-         *
-         * @tparam R Type of the stored value
-         * @tparam Mask Bit mask for fraction extraction
-         * @tparam InterpolationShift Shift value for interpolation
-         */
-        template<typename R, uint32_t Mask, uint32_t InterpolationShift>
-        struct LookupCache
+        static constexpr auto& sinTable = detail::sinTable;
+        static constexpr auto& tanTable1 = detail::tanTable1;
+        static constexpr auto& tanTable2 = detail::tanTable2;
+        static constexpr auto& tanTable3 = detail::tanTable3;
+        static constexpr auto& tanTable4 = detail::tanTable4;
+        static constexpr auto& tanTable5 = detail::tanTable5;
+        static constexpr auto& atan2Table = detail::atan2Table;
+
+        template<typename Out, int InternalFractionalBits>
+        [[gnu::always_inline]] static constexpr Out ConvertFromInternal(int32_t raw)
         {
-            static constexpr uint32_t interpolationShift = InterpolationShift;
-
-            R value;                     // Fixed-point value at this point
-            R interpolationMultiplicand; // Pre-calculated (next_value - value) / step_size
-
-            /**
-             * @brief Interpolates between table entries using pre-calculated multiplicand.
-             * @param input Raw fixed-point value to interpolate
-             * @return Interpolated result maintaining fixed-point precision
-             */
-            constexpr R ExtractValue(const auto& input) const
+            constexpr int shift = InternalFractionalBits - Out::FracBits;
+            if constexpr (shift > 0)
             {
-                // Get fractional position between table entries
-                uint32_t interpolationMultiplier = Mask & input;
-
-                // Special handling for negative multiplicands to maintain precision
-                if constexpr (std::is_signed_v<R>)
-                    if (interpolationMultiplicand < 0)
-                        return value - (R)((interpolationMultiplier * (uint32_t)(-interpolationMultiplicand)) >> InterpolationShift);
-
-                return value + (R)((interpolationMultiplier * (uint32_t)interpolationMultiplicand) >> InterpolationShift);
+                if consteval
+                {
+                    return Out::BuildRaw(raw >> shift);
+                }
+                else
+                {
+                    Hardware::ArithmeticShiftRight<shift>(raw);
+                    return Out::BuildRaw(raw);
+                }
             }
-        };
+            else if constexpr (shift < 0)
+                return Out::BuildRaw(static_cast<int32_t>(static_cast<uint32_t>(raw) << (-shift)));
+            else
+                return Out::BuildRaw(raw);
+        }
 
-        /**
-         * @brief Sine/Cosine lookup table
-         *
-         * This table stores sine values for [0, π/2]. Cosine values are obtained
-         * by phase-shifting the input by π/2. The table uses uniform spacing
-         * as the sine function has relatively uniform rate of change.
-         */
-        static constexpr LookupCache<int32_t, 0x3FF, 15> sinTable[] = {
-            {Fxp(0.000000).RawValue(), 205556},   // Sine value for 0 degrees
-            {Fxp(0.098017).RawValue(), 203577},   // Sine value for 5.625 degrees
-            {Fxp(0.195090).RawValue(), 199637},   // Sine value for 11.25 degrees
-            {Fxp(0.290285).RawValue(), 193774},   // Sine value for 16.875 degrees
-            {Fxp(0.382683).RawValue(), 186045},   // Sine value for 22.5 degrees
-            {Fxp(0.471397).RawValue(), 176524},   // Sine value for 28.125 degrees
-            {Fxp(0.555570).RawValue(), 165303},   // Sine value for 33.75 degrees
-            {Fxp(0.634393).RawValue(), 152491},   // Sine value for 39.375 degrees
-            {Fxp(0.707107).RawValue(), 138210},   // Sine value for 45 degrees
-            {Fxp(0.773010).RawValue(), 122597},   // Sine value for 50.625 degrees
-            {Fxp(0.831470).RawValue(), 105804},   // Sine value for 56.25 degrees
-            {Fxp(0.881921).RawValue(), 87992},    // Sine value for 61.875 degrees
-            {Fxp(0.923880).RawValue(), 69333},    // Sine value for 67.5 degrees
-            {Fxp(0.956940).RawValue(), 50006},    // Sine value for 73.125 degrees
-            {Fxp(0.980785).RawValue(), 30197},    // Sine value for 78.75 degrees
-            {Fxp(0.995185).RawValue(), 10098},    // Sine value for 84.375 degrees
-            {Fxp(1.000000).RawValue(), -10098},   // Sine value for 90 degrees
-            {Fxp(0.995185).RawValue(), -30197},   // Sine value for 95.625 degrees
-            {Fxp(0.980785).RawValue(), -50006},   // Sine value for 101.25 degrees
-            {Fxp(0.956940).RawValue(), -69333},   // Sine value for 106.875 degrees
-            {Fxp(0.923880).RawValue(), -87992},   // Sine value for 112.5 degrees
-            {Fxp(0.881921).RawValue(), -105804},  // Sine value for 118.125 degrees
-            {Fxp(0.831470).RawValue(), -122597},  // Sine value for 123.75 degrees
-            {Fxp(0.773010).RawValue(), -138210},  // Sine value for 129.375 degrees
-            {Fxp(0.707107).RawValue(), -152491},  // Sine value for 135 degrees
-            {Fxp(0.634393).RawValue(), -165303},  // Sine value for 140.625 degrees
-            {Fxp(0.555570).RawValue(), -176524},  // Sine value for 146.25 degrees
-            {Fxp(0.471397).RawValue(), -186045},  // Sine value for 151.875 degrees
-            {Fxp(0.382683).RawValue(), -193774},  // Sine value for 157.5 degrees
-            {Fxp(0.290285).RawValue(), -199637},  // Sine value for 163.125 degrees
-            {Fxp(0.195090).RawValue(), -203577},  // Sine value for 168.75 degrees
-            {Fxp(0.098017).RawValue(), -205556},  // Sine value for 174.375 degrees
-            {Fxp(0.000000).RawValue(), -205556},  // Sine value for 180 degrees
-            {Fxp(-0.098017).RawValue(), -203577}, // Sine value for -174.375 degrees
-            {Fxp(-0.195090).RawValue(), -199637}, // Sine value for -168.75 degrees
-            {Fxp(-0.290285).RawValue(), -193774}, // Sine value for -163.125 degrees
-            {Fxp(-0.382683).RawValue(), -186045}, // Sine value for -157.5 degrees
-            {Fxp(-0.471397).RawValue(), -176524}, // Sine value for -151.875 degrees
-            {Fxp(-0.555570).RawValue(), -165303}, // Sine value for -146.25 degrees
-            {Fxp(-0.634393).RawValue(), -152491}, // Sine value for -140.625 degrees
-            {Fxp(-0.707107).RawValue(), -138210}, // Sine value for -135 degrees
-            {Fxp(-0.773010).RawValue(), -122597}, // Sine value for -129.375 degrees
-            {Fxp(-0.831470).RawValue(), -105804}, // Sine value for -123.75 degrees
-            {Fxp(-0.881921).RawValue(), -87992},  // Sine value for -118.125 degrees
-            {Fxp(-0.923880).RawValue(), -69333},  // Sine value for -112.5 degrees
-            {Fxp(-0.956940).RawValue(), -50006},  // Sine value for -106.875 degrees
-            {Fxp(-0.980785).RawValue(), -30197},  // Sine value for -101.25 degrees
-            {Fxp(-0.995185).RawValue(), -10098},  // Sine value for -95.625 degrees
-            {Fxp(-1.000000).RawValue(), 10098},   // Sine value for -90 degrees
-            {Fxp(-0.995185).RawValue(), 30197},   // Sine value for -84.375 degrees
-            {Fxp(-0.980785).RawValue(), 50006},   // Sine value for -78.75 degrees
-            {Fxp(-0.956940).RawValue(), 69333},   // Sine value for -73.125 degrees
-            {Fxp(-0.923880).RawValue(), 87992},   // Sine value for -67.5 degrees
-            {Fxp(-0.881921).RawValue(), 105804},  // Sine value for -61.875 degrees
-            {Fxp(-0.831470).RawValue(), 122597},  // Sine value for -56.25 degrees
-            {Fxp(-0.773010).RawValue(), 138210},  // Sine value for -50.625 degrees
-            {Fxp(-0.707107).RawValue(), 152491},  // Sine value for -45 degrees
-            {Fxp(-0.634393).RawValue(), 165303},  // Sine value for -39.375 degrees
-            {Fxp(-0.555570).RawValue(), 176524},  // Sine value for -33.75 degrees
-            {Fxp(-0.471397).RawValue(), 186045},  // Sine value for -28.125 degrees
-            {Fxp(-0.382683).RawValue(), 193774},  // Sine value for -22.5 degrees
-            {Fxp(-0.290285).RawValue(), 199637},  // Sine value for -16.875 degrees
-            {Fxp(-0.195090).RawValue(), 203577},  // Sine value for -11.25 degrees
-            {Fxp(-0.098017).RawValue(), 205556}   // Sine value for -5.625 degrees
-        };
+        template<typename Out, int InternalFractionalBits>
+        [[gnu::always_inline]] static constexpr Out TanResult(int32_t ret, bool secondQuarter)
+        {
+            return ConvertFromInternal<Out, InternalFractionalBits>(secondQuarter ? -ret : ret);
+        }
 
-        /**
-         * @brief Tangent lookup tables with dynamic sizing
-         *
-         * Multiple tables with different granularities are used to handle
-         * the non-uniform growth of tangent. More precise tables are used
-         * near π/2 where tan(x) changes rapidly.
-         */
-        static constexpr LookupCache<int32_t, 0x3FF, 10> tanTable1[] = {
-            {Fxp(0.00000).RawValue(), 6454},
-            {Fxp(0.09849).RawValue(), 6581},
-            {Fxp(0.19891).RawValue(), 6844},
-            {Fxp(0.30335).RawValue(), 7265},
-            {Fxp(0.41421).RawValue(), 7883},
-            {Fxp(0.53451).RawValue(), 8760},
-            {Fxp(0.66818).RawValue(), 9994},
-            {Fxp(0.82068).RawValue(), 11751},
-            {Fxp(1.00000).RawValue(), 14319},
-            {Fxp(1.21850).RawValue(), 18225},
-            {Fxp(1.49661).RawValue(), 24527},
-            {Fxp(2.41421).RawValue(), 57825},
-            {Fxp(3.29656).RawValue(), 113428},
-            {Fxp(5.02734).RawValue(), 335926} };
+        template<typename Out, typename TableType, int InternalFractionalBits>
+        [[gnu::always_inline]] static constexpr Out CalcTan(
+            const TableType& table, uint16_t tempAngle, uint16_t baseRange, bool secondQuarter)
+        {
+            using CleanTableType = std::remove_cvref_t<TableType>;
+            using EntryType = typename CleanTableType::value_type;
+            constexpr uint32_t mask = EntryType::mask;
 
-        static constexpr LookupCache<int32_t, 0x0FF, 8> tanTable2[] = {
-            {Fxp(10.15317).RawValue(), 223051},
-            {Fxp(13.55667).RawValue(), 445566},
-            {Fxp(20.35547).RawValue(), 1335624} };
+            // Count mask bits
+            constexpr int multBits = [](uint32_t m) {
+                int b = 0;
+                while (m >> b) b++;
+                return b;
+            }(mask);
 
-        static constexpr LookupCache<int32_t, 0x03F, 6> tanTable3[] = {
-            {Fxp(40.73548).RawValue(), 890193},
-            {Fxp(54.31875).RawValue(), 1780251},
-            {Fxp(81.48324).RawValue(), 5340487} };
+            size_t index = static_cast<uint32_t>(tempAngle - baseRange) >> multBits;
+            if (index >= table.size()) index = table.size() - 1;
 
-        static constexpr LookupCache<int32_t, 0x00F, 4> tanTable4[] = {
-            {Fxp(162.97262).RawValue(), 3560269},
-            {Fxp(217.29801).RawValue(), 7120505},
-            {Fxp(325.94830).RawValue(), 21361448} };
-
-        static constexpr LookupCache<int32_t, 0x003, 2> tanTable5[] = {
-            {Fxp(651.89814).RawValue(), 14240951},
-            {Fxp(869.19781).RawValue(), 28481894},
-            {Fxp(1303.79704).RawValue(), 85445668},
-            {Fxp(2607.59446).RawValue(), 365979601},
-            {0x7FFFFFFF, 0} };
-
-        static constexpr LookupCache<uint16_t, 0x7FF, 17> aTan2Table[] = {
-            {0, 20853},
-            {326, 20813},
-            {651, 20732},
-            {975, 20612},
-            {1297, 20454},
-            {1617, 20260},
-            {1933, 20032},
-            {2246, 19773},
-            {2555, 19484},
-            {2860, 19170},
-            {3159, 18832},
-            {3453, 18474},
-            {3742, 18098},
-            {4025, 17708},
-            {4302, 17306},
-            {4572, 16896},
-            {4836, 16479},
-            {5094, 16058},
-            {5344, 15635},
-            {5589, 15212},
-            {5826, 14790},
-            {6058, 14372},
-            {6282, 13959},
-            {6500, 13552},
-            {6712, 13151},
-            {6917, 12759},
-            {7117, 12374},
-            {7310, 11999},
-            {7498, 11633},
-            {7679, 11277},
-            {7856, 10931},
-            {8026, 10595},
-            {8192, 0} };
+            int32_t ret = table[index].ExtractValue(tempAngle);
+            return TanResult<Out, InternalFractionalBits>(ret, secondQuarter);
+        }
 
     public:
         /**
-         * @name Basic Trigonometric Functions
-         * Core trigonometric operations using fixed-point arithmetic.
-         * @{
+         * @brief Calculates sine of an angle.
+         * @tparam Out Output fixed-point type (default: Fxp 16.16)
+         * @param angle Input angle in turns
+         * @return Sine value in the specified fixed-point format [-1, 1]
          */
-
-         /**
-          * @brief Calculates sine of an angle
-          *
-          * Uses the sinTable with interpolation for smooth results.
-          * The input angle is automatically wrapped to [0, 2π].
-          *
-          * Implementation details:
-          * - Table lookup with 11-bit interpolation
-          * - Constant-time execution
-          * - Automatic angle wrapping
-          *
-          * @param angle Input angle in turns
-          * @return Sine value in fixed-point format [-1, 1]
-          */
-        static constexpr Fxp Sin(const Angle& angle)
+        template<typename Out = Fxp>
+        [[gnu::always_inline]] static constexpr Out Sin(const Angle& angle)
         {
-            size_t index = angle.RawValue() >> 10;
-            auto tableValue = sinTable[index];
-            return Fxp::BuildRaw(tableValue.ExtractValue(angle.RawValue()));
+            constexpr int indexShift = detail::SinSpec::multiplierBits;
+            size_t index = angle.RawValue() >> indexShift;
+            int32_t raw = sinTable[index].ExtractValue(angle.RawValue());
+            return ConvertFromInternal<Out, detail::SinSpec::internalFractionalBits>(raw);
         }
 
         /**
-         * @brief Calculates cosine of an angle
-         *
-         * Implemented as sin(x + π/2) to reuse the sine table.
-         * The input angle is automatically wrapped to [0, 2π].
-         *
-         * Implementation details:
-         * - Reuses sine table for memory efficiency
-         * - Phase shift by π/2 for cosine values
-         * - Same precision as sine function
-         *
+         * @brief Calculates cosine of an angle.
+         * Implemented as sin(x + π/2) reusing the sine table.
+         * @tparam Out Output fixed-point type (default: Fxp 16.16)
          * @param angle Input angle in turns
-         * @return Cosine value in fixed-point format [-1, 1]
+         * @return Cosine value in the specified fixed-point format [-1, 1]
          */
-        static constexpr Fxp Cos(const Angle& angle)
+        template<typename Out = Fxp>
+        [[gnu::always_inline]] static constexpr Out Cos(const Angle& angle)
         {
-            Angle testAngle = angle + Angle::HalfPi();
-            size_t index = testAngle.RawValue() >> 10;
-            auto tableValue = sinTable[index];
-            return Fxp::BuildRaw(tableValue.ExtractValue(testAngle.RawValue()));
+            Angle shifted = angle + Angle::HalfPi();
+            constexpr int indexShift = detail::SinSpec::multiplierBits;
+            size_t index = shifted.RawValue() >> indexShift;
+            int32_t raw = sinTable[index].ExtractValue(shifted.RawValue());
+            return ConvertFromInternal<Out, detail::SinSpec::internalFractionalBits>(raw);
         }
 
         /**
-         * @brief Calculates tangent of an angle
-         *
-         * Uses multiple lookup tables with different granularities for optimal
-         * precision, especially near π/2 where tangent approaches infinity.
-         *
-         * Implementation details:
-         * - Dynamic table selection based on input range
-         * - Higher precision near critical values
-         * - Automatic angle wrapping and quadrant handling
-         * - Handles positive and negative angles correctly
-         *
-         * Table selection:
-         * - tanTable1: [0, 0x3C00) - Base precision
-         * - tanTable2: [0x3C00, 0x3F00) - Higher precision
-         * - tanTable3: [0x3F00, 0x3FC0) - Even higher precision
-         * - tanTable4: [0x3FC0, 0x3FF0) - Very high precision
-         * - tanTable5: [0x3FF0, π/2) - Maximum precision
-         *
+         * @brief Calculates tangent of an angle.
+         * Uses dynamic table selection based on proximity to π/2.
+         * @tparam Out Output fixed-point type (default: Fxp 16.16)
          * @param angle Input angle in turns
-         * @return Tangent value in fixed-point format
+         * @return Tangent value in the specified fixed-point format
          */
-        static constexpr Fxp Tan(const Angle& angle)
+        template<typename Out = Fxp>
+        [[gnu::always_inline]] static constexpr Out Tan(const Angle& angle)
         {
             uint16_t tempAngle = angle.RawValue();
 
@@ -335,83 +579,78 @@ namespace SaturnMath
             if (secondQuarter)
                 tempAngle = Angle::Pi().RawValue() - tempAngle;
 
-            auto CalculateValue = [tempAngle, secondQuarter](auto lookupTable, auto upperRange)
-            {
-                size_t index = (tempAngle - upperRange) >> lookupTable[0].interpolationShift;
-                auto tableValue = lookupTable[index];
-                int32_t ret = tableValue.ExtractValue(tempAngle);
-                return Fxp::BuildRaw(secondQuarter ? -ret : ret);
-            };
-
-            if (tempAngle >= 0x3FF0) { return CalculateValue(tanTable5, 0x3FF0); }
-            if (tempAngle >= 0x3FC0) { return CalculateValue(tanTable4, 0x3FC0); }
-            if (tempAngle >= 0x3F00) { return CalculateValue(tanTable3, 0x3F00); }
-            if (tempAngle >= 0x3C00) { return CalculateValue(tanTable2, 0x3C00); }
-            return CalculateValue(tanTable1, 0);
+            if (tempAngle >= detail::Tan5Spec::baseAngle) { return CalcTan<Out, decltype(tanTable5), detail::Tan5Spec::internalFractionalBits>(tanTable5, tempAngle, detail::Tan5Spec::baseAngle, secondQuarter); }
+            if (tempAngle >= detail::Tan4Spec::baseAngle) { return CalcTan<Out, decltype(tanTable4), detail::Tan4Spec::internalFractionalBits>(tanTable4, tempAngle, detail::Tan4Spec::baseAngle, secondQuarter); }
+            if (tempAngle >= detail::Tan3Spec::baseAngle) { return CalcTan<Out, decltype(tanTable3), detail::Tan3Spec::internalFractionalBits>(tanTable3, tempAngle, detail::Tan3Spec::baseAngle, secondQuarter); }
+            if (tempAngle >= detail::Tan2Spec::baseAngle) { return CalcTan<Out, decltype(tanTable2), detail::Tan2Spec::internalFractionalBits>(tanTable2, tempAngle, detail::Tan2Spec::baseAngle, secondQuarter); }
+            return CalcTan<Out, decltype(tanTable1), detail::Tan1Spec::internalFractionalBits>(tanTable1, tempAngle, detail::Tan1Spec::baseAngle, secondQuarter);
         }
 
         /**
-         * @brief Calculates arctangent of y/x, handling all quadrants correctly.
-         *
-         * This is the full-quadrant arctangent function that takes into account the
-         * signs of both inputs to determine the correct quadrant.
-         *
-         * The function uses a lookup table for the arctangent values and handles
-         * special cases (x=0, y=0) separately to ensure correct quadrant determination.
-         *
+         * @brief Calculates arctangent of y/x, handling all quadrants.
+         * @tparam T FixedPoint type for both coordinates (default: Fxp 16.16)
          * @param y Y coordinate
          * @param x X coordinate
-         * @return Angle in range [0, 1] turns (equivalent to [0°, 360°])
+         * @return Angle in range [0, 1] turns
          */
-        static constexpr Angle Atan2(const Fxp& y, const Fxp& x)
+        template<FixedPointType T = Fxp>
+        [[gnu::always_inline]] static constexpr Angle Atan2(const T& y, const T& x)
         {
             if (y == 0) return x >= 0 ? Angle::Zero() : Angle::Pi();
             if (x == 0) return y >= 0 ? Angle::HalfPi() : Angle::ThreeQuarterPi();
 
             Angle result = x < 0 ? Angle::Pi() : Angle::Zero();
 
-            Fxp divResult;
+            // Use absolute values for division to avoid the SH-2 hardware DIVU
+            // bug: unsigned 64-bit/32-bit division gives wrong results when the
+            // numerator is negative (huge unsigned 64-bit value overflows quotient).
+            // The sign is restored after the division.
+            T divResult;
 
             if (x.Abs() < y.Abs())
             {
-                divResult = (x / y);
+                divResult = x.Abs() / y.Abs();
+                if ((x < 0) != (y < 0)) divResult = -divResult;
                 result += (divResult < 0) ? Angle::ThreeQuarterPi() : Angle::HalfPi();
             }
             else
             {
-                divResult = -(y / x);
+                divResult = y.Abs() / x.Abs();
+                if ((x < 0) == (y < 0)) divResult = -divResult;
             }
 
-            uint32_t absDivResult = divResult.Abs().RawValue();
+            // Convert ratio to Fxp for table lookup.
+            // Ratio is always in [-1, 1], so conversion is safe regardless of source format.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+            Fxp ratio = Fxp::Convert(divResult);
+#pragma GCC diagnostic pop
+            uint32_t absDivResult = ratio.Abs().RawValue();
 
-            size_t index = absDivResult >> 11;
-            auto tableValue = aTan2Table[index];
-            uint16_t atan2Result = tableValue.ExtractValue(absDivResult);
+            constexpr int indexShift = detail::Atan2Spec::multiplierBits;
+            size_t index = absDivResult >> indexShift;
 
-            return result + Angle::BuildRaw((divResult < 0 ? atan2Result : (0x10000 - atan2Result)));
+            uint16_t atan2Result = atan2Table[index].ExtractValue(absDivResult);
+
+            return result + Angle::BuildRaw(
+                (ratio < 0 ? atan2Result : (0x10000 - atan2Result)));
         }
 
         /**
-         * @brief Calculates arcsine (inverse sine) of a value
-         * 
-         * Implements arcsine using the identity: asin(x) = atan2(x, sqrt(1 - x^2))
-         * 
+         * @brief Calculates arcsine using asin(x) = atan2(x, sqrt(1 - x²)).
          * @param x Value in range [-1, 1]
-         * @return Angle in range [-π/2, π/2] radians
+         * @return Angle in range [-π/2, π/2]
          */
-        static constexpr Angle Asin(const Fxp& x)
+        [[gnu::always_inline]] static constexpr Angle Asin(const Fxp& x)
         {
-            // Clamp input to valid range [-1, 1]
             Fxp clampedX = x;
             if (clampedX < -Fxp(1)) clampedX = -Fxp(1);
             if (clampedX > Fxp(1)) clampedX = Fxp(1);
-            
-            // Use the identity: asin(x) = atan2(x, sqrt(1 - x^2))
+
             Fxp oneMinusXSquared = Fxp(1) - (clampedX * clampedX);
             Fxp sqrtTerm = oneMinusXSquared.Sqrt();
-            
+
             return Atan2(clampedX, sqrtTerm);
         }
-        /** @} */
     };
 }

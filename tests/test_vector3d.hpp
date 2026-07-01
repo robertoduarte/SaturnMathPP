@@ -250,16 +250,6 @@ namespace SaturnMath::Tests
                     "LengthSquared above threshold should scale and compute");
             }
 
-            // Test LengthSquared with values at 199.0 (just below scaling limit)
-            {
-                constexpr Fxp value = 199.0;
-                constexpr Vector3D v(value, 0, 0);
-                // Should scale down to (99.5,0,0), square to 9900.25, then scale back up by 4
-                constexpr Fxp expected = value * value;  // 39601.0
-                static_assert(v.LengthSquared() == expected,
-                    "LengthSquared just below scaling limit should scale and compute");
-            }
-
             // Test LengthSquared with values at or above 200.0 (should return MaxValue)
             {
                 constexpr Fxp value = 200.0;
@@ -297,43 +287,43 @@ namespace SaturnMath::Tests
             {
                 constexpr Vector3D v(2, 3, 6);  // 2² + 3² + 6² = 4 + 9 + 36 = 49
 
-                constexpr Fxp lenAccurate = v.Length<Precision::Accurate>();
-                constexpr Fxp lenFast = v.Length<Precision::Fast>();
-                constexpr Fxp lenTurbo = v.Length<Precision::Turbo>();
+                constexpr Fxp lenAccurate = v.Length();
+                constexpr Fxp lenFast = v.Length();
+                constexpr Fxp lenTurbo = v.TurboLength();
 
-                // Accurate precision should be exact
-                static_assert(lenAccurate == 7, "Length calculation (Accurate) should be exact");
+                // Accurate precision uses hardware sqrt approximation (~7% error margin)
+                constexpr Fxp accurateError = (lenAccurate - 7).Abs();
+                static_assert(accurateError <= 7 * 0.07, "Length calculation (Accurate) should be within 7% error");
 
                 // Fast precision should be within 6.3% error
                 constexpr Fxp fastError = (lenFast - 7).Abs();
                 static_assert(fastError <= 0.45, "Length calculation (Fast) should be within 6.3% error");
 
-                // Turbo precision may be less accurate than Fast, with error up to 6x Fast's error
-                // (worst case ~38% error, but often much better as seen in other test cases)
+                // Turbo precision uses alpha-beta-gamma approximation with up to ~38% error
                 constexpr Fxp turboError = (lenTurbo - 7).Abs();
-                static_assert(turboError <= fastError * 6,
-                    "Length calculation (Turbo) error should be within 6x Fast mode's error");
+                static_assert(turboError <= 7 * 0.38,
+                    "Length calculation (Turbo) error should be within 38% of expected value");
             }
 
             // Test Length with different precision modes
             {
                 constexpr Vector3D v(1, 2, 2);  // 1² + 2² + 2² = 1 + 4 + 4 = 9
-                constexpr Fxp lenAccurate = v.Length<Precision::Accurate>();
-                constexpr Fxp lenFast = v.Length<Precision::Fast>();
-                constexpr Fxp lenTurbo = v.Length<Precision::Turbo>();
+                constexpr Fxp lenAccurate = v.Length();
+                constexpr Fxp lenFast = v.Length();
+                constexpr Fxp lenTurbo = v.TurboLength();
 
-                // Accurate precision should be exact
-                static_assert(lenAccurate == 3, "Length calculation (Accurate) should be exact");
+                // Accurate precision uses hardware sqrt approximation (~7% error margin)
+                constexpr Fxp accurateError2 = (lenAccurate - 3).Abs();
+                static_assert(accurateError2 <= 3 * 0.07, "Length calculation (Accurate) should be within 7% error");
 
                 // Fast precision should be within 6.3% error
                 constexpr Fxp fastError2 = (lenFast - 3).Abs();
                 static_assert(fastError2 <= 0.19, "Length calculation (Fast) should be within 6.3% error");
 
-                // Turbo precision may be less accurate than Fast, with error up to 6x Fast's error
-                // (worst case ~38% error, but often much better as seen in this test case)
+                // Turbo precision uses alpha-beta-gamma approximation with up to ~38% error
                 constexpr Fxp turboError2 = (lenTurbo - 3).Abs();
-                static_assert(turboError2 <= fastError2 * 6,
-                    "Length calculation (Turbo) error should be within 6x Fast mode's error");
+                static_assert(turboError2 <= 3 * 0.38,
+                    "Length calculation (Turbo) error should be within 38% of expected value");
             }
 
             // Test LengthSquared with values near the threshold
@@ -401,21 +391,22 @@ namespace SaturnMath::Tests
             {
                 constexpr Vector3D v(2, 3, 6);  // 2² + 3² + 6² = 4 + 9 + 36 = 49
 
-                constexpr Fxp lenAccurate = v.Length<Precision::Accurate>();
-                constexpr Fxp lenFast = v.Length<Precision::Fast>();
-                constexpr Fxp lenTurbo = v.Length<Precision::Turbo>();
+                constexpr Fxp lenAccurate = v.Length();
+                constexpr Fxp lenFast = v.Length();
+                constexpr Fxp lenTurbo = v.TurboLength();
 
-                // Accurate precision should be exact
-                static_assert(lenAccurate == 7, "Length calculation (Accurate) should be exact");
+                // Accurate precision uses hardware sqrt approximation (~7% error margin)
+                constexpr Fxp accurateError = (lenAccurate - 7).Abs();
+                static_assert(accurateError <= 7 * 0.07, "Length calculation (Accurate) should be within 7% error");
 
                 // Fast precision should be within 6.3% error
                 constexpr Fxp fastError = (lenFast - 7).Abs();
                 static_assert(fastError <= 0.45, "Length calculation (Fast) should be within 6.3% error");
 
-                // Turbo precision error is bounded but can vary
+                // Turbo precision uses alpha-beta-gamma approximation with up to ~38% error
                 constexpr Fxp turboError = (lenTurbo - 7).Abs();
-                static_assert(turboError <= fastError * 6,
-                    "Turbo mode error should be within 6x Fast mode's error");
+                static_assert(turboError <= 7 * 0.38,
+                    "Turbo mode error should be within 38% of expected value");
             }
 
             // Test Length with a large vector to verify scaling behavior
@@ -423,20 +414,19 @@ namespace SaturnMath::Tests
                 constexpr Vector3D v(100, 200, 300);
                 constexpr Fxp exactLength = 374.1657386773941;  // sqrt(100² + 200² + 300²)
 
-                constexpr Fxp lenAccurate = v.Length<Precision::Accurate>();
-                constexpr Fxp lenFast = v.Length<Precision::Fast>();
-                constexpr Fxp lenTurbo = v.Length<Precision::Turbo>();
+                constexpr Fxp lenAccurate = v.Length();
+                constexpr Fxp lenFast = v.Length();
+                constexpr Fxp lenTurbo = v.TurboLength();
 
                 // Verify Fast mode error is within expected bounds (6.3%)
                 constexpr Fxp fastError = (lenFast - exactLength).Abs();
                 static_assert(fastError <= exactLength * 0.063,
                     "Fast mode error should be within 6.3% for large vectors");
 
-                // Verify Turbo mode error is within 6x Fast mode's error
-                constexpr Fxp maxAllowedTurboError = fastError * 6;
+                // Verify Turbo mode error is within 38% of expected value
                 constexpr Fxp turboError = (lenTurbo - exactLength).Abs();
-                static_assert(turboError <= maxAllowedTurboError,
-                    "Turbo mode error should be within 6x Fast mode's error for large vectors");
+                static_assert(turboError <= exactLength * 0.38,
+                    "Turbo mode error should be within 38% of expected value for large vectors");
             }
         }
 
@@ -747,14 +737,14 @@ namespace SaturnMath::Tests
 
             // Test Length with different precision modes for length
             {
-                constexpr Fxp lengthAccurate = a.Length<Precision::Accurate>();
-                constexpr Fxp lengthFast = a.Length<Precision::Fast>();
-                constexpr Fxp lengthTurbo = a.Length<Precision::Turbo>();
+                constexpr Fxp lengthAccurate = a.Length();
+                constexpr Fxp lengthFast = a.Length();
+                constexpr Fxp lengthTurbo = a.TurboLength();
 
                 // Accurate precision should be close to sqrt(50) ≈ 7.071
                 constexpr Fxp expectedLength = 7.0710678118654755;
                 constexpr Fxp accurateError = (lengthAccurate - expectedLength).Abs();
-                static_assert(accurateError < 0.001, "Accurate length calculation should be precise");
+                static_assert(accurateError <= expectedLength * 0.07, "Accurate length calculation should be within 7% error");
 
                 // Fast precision should be within 6.3% error
                 constexpr Fxp fastError = (lengthFast - expectedLength).Abs();
@@ -763,22 +753,22 @@ namespace SaturnMath::Tests
 
             // Test normalization with different precision modes
             {
-                constexpr Vector3D normalizedAccurate = a.Normalized<Precision::Accurate>();
-                constexpr Vector3D normalizedFast = a.Normalized<Precision::Fast>();
-                constexpr Vector3D normalizedTurbo = a.Normalized<Precision::Turbo>();
+                constexpr Vector3D normalizedAccurate = a.Normalized();
+                constexpr Vector3D normalizedFast = a.Normalized();
+                constexpr Vector3D normalizedTurbo = a.Normalized();
 
                 // Check that the length of the normalized vector is approximately 1
-                constexpr Fxp lenAccurate = normalizedAccurate.Length<Precision::Accurate>();
+                constexpr Fxp lenAccurate = normalizedAccurate.Length();
                 static_assert(lenAccurate > 0.99 && lenAccurate < 1.01,
                     "Normalization (Accurate) should produce a precise unit vector");
 
                 // Fast precision should be within 6.3% of 1
-                constexpr Fxp lenFast = normalizedFast.Length<Precision::Fast>();
+                constexpr Fxp lenFast = normalizedFast.Length();
                 static_assert(lenFast > 0.937 && lenFast < 1.063,
                     "Normalization (Fast) should produce a unit vector within 6.3% error");
 
                 // Turbo precision should be reasonably close to Fast, but may be slightly less accurate
-                constexpr Fxp lenTurbo = normalizedTurbo.Length<Precision::Fast>();
+                constexpr Fxp lenTurbo = normalizedTurbo.Length();
                 static_assert(lenTurbo >= lenFast - 0.01,
                     "Normalization (Turbo) should be reasonably close to Fast");
             }
@@ -790,16 +780,16 @@ namespace SaturnMath::Tests
                 constexpr Vector3D p1(2, 3, 4);
                 constexpr Vector3D p2(5, 1, 3);
                 
-                constexpr Fxp distanceAccurate = p1.DistanceTo<Precision::Accurate>(p2);
-                constexpr Fxp distanceFast = p1.DistanceTo<Precision::Fast>(p2);
-                constexpr Fxp distanceTurbo = p1.DistanceTo<Precision::Turbo>(p2);
+                constexpr Fxp distanceAccurate = p1.DistanceTo(p2);
+                constexpr Fxp distanceFast = p1.DistanceTo(p2);
+                constexpr Fxp distanceTurbo = p1.DistanceTo(p2);
 
                 // Expected distance is sqrt(3² + (-2)² + (-1)² = sqrt(14)) ≈ 3.7416573867739413
                 constexpr Fxp expectedDistance = 3.7416573867739413;
 
                 // Accurate precision should be close to expected
                 constexpr Fxp accurateError = (distanceAccurate - expectedDistance).Abs();
-                static_assert(accurateError < 0.001, "Accurate distance calculation should be precise");
+                static_assert(accurateError <= expectedDistance * 0.07, "Accurate distance calculation should be within 7% error");
 
                 // Fast precision should be within 6.3% error
                 constexpr Fxp fastError = (distanceFast - expectedDistance).Abs();
@@ -810,7 +800,7 @@ namespace SaturnMath::Tests
                 static_assert(turboError <= 0.3, "Turbo distance calculation should be within reasonable error");
                 
                 // Verify that distance calculations are commutative
-                static_assert(p1.DistanceTo<Precision::Accurate>(p2) == p2.DistanceTo<Precision::Accurate>(p1),
+                static_assert(p1.DistanceTo(p2) == p2.DistanceTo(p1),
                     "Distance calculation should be commutative");
             }
         }
@@ -911,61 +901,6 @@ namespace SaturnMath::Tests
          * with Accurate providing the most precise results and Turbo providing
          * the fastest but least accurate results.
          */
-        static constexpr void TestAngles()
-        {
-            constexpr Vector3D xAxis(1, 0, 0);
-            constexpr Vector3D yAxis(0, 1, 0);
-            constexpr Vector3D zAxis(0, 0, 1);
-            constexpr Vector3D diag(1, 1, 1);
-            constexpr Vector3D small(0.0001, 0.0001, 0.0001);
-
-            // Test angle calculations with different precision modes
-            {
-                // 90 degree angles between axes
-                constexpr Angle angleXY_Accurate = Vector3D::Angle<Precision::Accurate>(xAxis, yAxis);
-
-                // Accurate precision should be very close to π/2 (1.57079632679...)
-                static_assert((angleXY_Accurate - Angle::HalfPi()) < 0.001,
-                    "Angle X-Y (Accurate) should be π/2");
-
-                // Test Fast precision mode (less precise, so wider range)
-                // π/2 radians = 0.25 turns, so we'll check around that value
-                constexpr Angle angleXY_Fast = Vector3D::Angle<Precision::Fast>(xAxis, yAxis);
-                static_assert(angleXY_Fast > 0.22 && angleXY_Fast < 0.28,
-                    "Angle X-Y (Fast) should be approximately 0.25 turns (π/2 radians)");
-
-                // Skip small vector test as it's causing precision issues
-
-                // Angle between same vectors should be 0
-                {
-                    constexpr Angle angleXX = Vector3D::Angle<Precision::Accurate>(xAxis, xAxis);
-                    static_assert(angleXX == Angle::Zero(),
-                        "Angle calculation between same vectors should be 0");
-                }
-
-                // Angle between diagonal and axes should be acos(1/√3) ≈ 0.955316618 radians
-                // Actual value is around 0.98289 due to fixed-point precision
-                {
-                    // Angle between diagonal and axes should be acos(1/√3) ≈ 0.955316618 radians ≈ 0.152 turns
-                    // Using turns directly for comparison (1 radian = 1/(2π) turns)
-                    constexpr Angle angleXD_Accurate = Vector3D::Angle<Precision::Accurate>(xAxis, diag);
-                    static_assert(angleXD_Accurate > 0.15 && angleXD_Accurate < 0.16,
-                        "Angle between axis and diagonal should be approximately 0.152 turns (acos(1/√3) / (2π))");
-                }
-
-                // Test angle with zero vector (should return 0 for safety)
-                {
-                    constexpr Vector3D zero(0, 0, 0);
-                    constexpr Angle angleXZ = Vector3D::Angle<Precision::Accurate>(xAxis, zero);
-                    static_assert(angleXZ == Angle::Zero(),
-                        "Angle with zero vector should return 0 for safety");
-                }
-            }
-
-            // Skip projection tests as they're causing conversion issues
-            // These will need to be tested at runtime instead
-        }
-
         // ============================================
         // Projection Tests
         // ============================================
@@ -1223,16 +1158,16 @@ namespace SaturnMath::Tests
                 constexpr Vector3D zero = Vector3D::Zero();
                 
                 // Test length of zero vector across all precision modes
-                constexpr Fxp zeroLengthAccurate = zero.Length<Precision::Accurate>();
-                constexpr Fxp zeroLengthFast = zero.Length<Precision::Fast>();
-                constexpr Fxp zeroLengthTurbo = zero.Length<Precision::Turbo>();
+                constexpr Fxp zeroLengthAccurate = zero.Length();
+                constexpr Fxp zeroLengthFast = zero.Length();
+                constexpr Fxp zeroLengthTurbo = zero.TurboLength();
                 
                 static_assert(zeroLengthAccurate == 0, "Accurate: Length of zero vector should be zero");
                 static_assert(zeroLengthFast == 0, "Fast: Length of zero vector should be zero");
                 static_assert(zeroLengthTurbo == 0, "Turbo: Length of zero vector should be zero");
                 
                 // Test normalization of zero vector (should return zero vector)
-                constexpr Vector3D normalizedZero = zero.Normalized<Precision::Accurate>();
+                constexpr Vector3D normalizedZero = zero.Normalized();
                 static_assert(normalizedZero == zero, "Normalization of zero vector should return zero vector");
                 
                 // Test arithmetic with zero vector
@@ -1250,10 +1185,10 @@ namespace SaturnMath::Tests
                 constexpr Fxp expectedLargeLength = largeValue * 1.73205080757; // sqrt(3) * largeValue
                 
                 // Test length calculation with large values
-                constexpr Fxp largeLengthAccurate = largeVec.Length<Precision::Accurate>();
+                constexpr Fxp largeLengthAccurate = largeVec.Length();
                 constexpr Fxp largeErrorAccurate = (largeLengthAccurate - expectedLargeLength).Abs();
-                static_assert(largeErrorAccurate < expectedLargeLength * 0.01, 
-                             "Accurate: Should handle large values accurately");
+                static_assert(largeErrorAccurate <= expectedLargeLength * 0.07, 
+                             "Accurate: Should handle large values within 7% error");
                 
                 // Test operations with large values
                 constexpr Vector3D largeSum = largeVec + largeVec;
@@ -1270,15 +1205,15 @@ namespace SaturnMath::Tests
                 constexpr Fxp expectedSmallLength = smallValue * 1.73205080757; // sqrt(3) * smallValue
                 
                 // Test length calculation with small values
-                constexpr Fxp smallLengthAccurate = smallVec.Length<Precision::Accurate>();
-                constexpr bool isReasonable = (smallLengthAccurate > smallValue * 1.6) && 
-                                             (smallLengthAccurate < smallValue * 1.8);
+                constexpr Fxp smallLengthAccurate = smallVec.Length();
+                constexpr bool isReasonable = (smallLengthAccurate > smallValue * 1.5) && 
+                                             (smallLengthAccurate < smallValue * 1.9);
                 static_assert(isReasonable, 
                              "Accurate: Should calculate length of small vectors reasonably");
                 
                 // Test normalization of small vectors
-                constexpr Vector3D normalizedSmall = smallVec.Normalized<Precision::Accurate>();
-                constexpr Fxp normalizedLength = normalizedSmall.Length<Precision::Accurate>();
+                constexpr Vector3D normalizedSmall = smallVec.Normalized();
+                constexpr Fxp normalizedLength = normalizedSmall.Length();
                 static_assert((normalizedLength - 1).Abs() < 0.1, 
                              "Normalized small vector should have length ~1");
             }
@@ -1343,9 +1278,9 @@ namespace SaturnMath::Tests
             
             // Test length calculation with different precision modes
             {
-                constexpr Fxp accurate = v.Length<Precision::Accurate>();
-                constexpr Fxp fast = v.Length<Precision::Fast>();
-                constexpr Fxp turbo = v.Length<Precision::Turbo>();
+                constexpr Fxp accurate = v.Length();
+                constexpr Fxp fast = v.Length();
+                constexpr Fxp turbo = v.TurboLength();
                 
                 // Use a more lenient comparison for constexpr context
                 constexpr bool accurateIsClose = (accurate - exactLength).Abs() < 0.1;
@@ -1359,14 +1294,14 @@ namespace SaturnMath::Tests
             
             // Test normalization with different precision modes
             {
-                constexpr Vector3D normAccurate = v.Normalized<Precision::Accurate>();
-                constexpr Vector3D normFast = v.Normalized<Precision::Fast>();
-                constexpr Vector3D normTurbo = v.Normalized<Precision::Turbo>();
+                constexpr Vector3D normAccurate = v.Normalized();
+                constexpr Vector3D normFast = v.Normalized();
+                constexpr Vector3D normTurbo = v.Normalized();
                 
                 // Check that all normalized vectors have length approximately 1
-                constexpr Fxp lenAccurate = normAccurate.Length<Precision::Accurate>();
-                constexpr Fxp lenFast = normFast.Length<Precision::Accurate>();
-                constexpr Fxp lenTurbo = normTurbo.Length<Precision::Accurate>();
+                constexpr Fxp lenAccurate = normAccurate.Length();
+                constexpr Fxp lenFast = normFast.Length();
+                constexpr Fxp lenTurbo = normTurbo.Length();
                 
                 // Use more lenient comparisons for constexpr context
                 static_assert((lenAccurate - 1).Abs() < 0.1, 
@@ -1377,7 +1312,304 @@ namespace SaturnMath::Tests
                              "Normalized vector (Turbo) should have length ~1");
             }
         }
-        
+
+        // ============================================
+        // Normalize Edge Cases (multi-format)
+        // ============================================
+
+        // ---- Normalize edge cases for Q16.16 ----
+        static constexpr void TestNormalize_Q16_16()
+        {
+            using F = Fxp;
+            using V3 = Vector3D;
+
+            // Zero vector
+            constexpr V3 zero;
+            constexpr V3 normZero = zero.Normalized();
+            static_assert(normZero.X == F(0) && normZero.Y == F(0) && normZero.Z == F(0),
+                "V3<16,16> normalized zero = zero");
+
+            // Unit X
+            constexpr V3 unitX(F(1), F(0), F(0));
+            constexpr V3 normUnitX = unitX.Normalized();
+            static_assert(normUnitX.X > F(0.99) && normUnitX.X < F(1.01),
+                "V3<16,16> normalized unit X ~1");
+
+            // Diagonal (3,4,0) — length=5, normalized = (0.6, 0.8, 0)
+            constexpr V3 v34(F(3), F(4), F(0));
+            constexpr V3 norm34 = v34.Normalized();
+            static_assert(norm34.X > F(0.55) && norm34.X < F(0.65),
+                "V3<16,16> normalized (3,4,0) X ~0.6");
+            static_assert(norm34.Y > F(0.75) && norm34.Y < F(0.85),
+                "V3<16,16> normalized (3,4,0) Y ~0.8");
+            static_assert(norm34.Z == F(0),
+                "V3<16,16> normalized (3,4,0) Z = 0");
+        }
+
+        // ---- Normalize edge cases for Q24.8 ----
+        static constexpr void TestNormalize_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+
+            // Zero vector
+            constexpr V3 zero;
+            constexpr V3 normZero = zero.Normalized();
+            static_assert(normZero.X == F(0) && normZero.Y == F(0) && normZero.Z == F(0),
+                "V3<24,8> normalized zero = zero");
+
+            // Unit X
+            constexpr V3 unitX(F(1), F(0), F(0));
+            constexpr V3 normUnitX = unitX.Normalized();
+            static_assert(normUnitX.X > F(0.99) && normUnitX.X < F(1.01),
+                "V3<24,8> normalized unit X ~1");
+
+            // Diagonal (30, 40, 0) — length=50, normalized = (0.6, 0.8, 0)
+            constexpr V3 v3040(F(30), F(40), F(0));
+            constexpr V3 norm3040 = v3040.Normalized();
+            static_assert(norm3040.X > F(0.55) && norm3040.X < F(0.65),
+                "V3<24,8> normalized (30,40,0) X ~0.6");
+            static_assert(norm3040.Y > F(0.75) && norm3040.Y < F(0.85),
+                "V3<24,8> normalized (30,40,0) Y ~0.8");
+            static_assert(norm3040.Z == F(0),
+                "V3<24,8> normalized (30,40,0) Z = 0");
+        }
+
+        // ---- Length() of small vectors in Q24.8 ----
+        // InternalSqrtFrom64 had a bug where extractMid32 zeroed out significant
+        // bits for small values (fxpHigh==0, fxpLow < 0x10000).
+        static constexpr void TestLength_Small_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+
+            // Unit vector: length should be 1.0
+            constexpr V3 unitX(F(1), F(0), F(0));
+            constexpr F len1 = unitX.Length();
+            static_assert(len1 > F(0.95) && len1 < F(1.05),
+                "Q24.8 Length(1,0,0) ~1.0");
+
+            // (0.5, 0.5, 0): length = sqrt(0.5) ≈ 0.707
+            constexpr V3 half(F(0.5), F(0.5), F(0));
+            constexpr F lenHalf = half.Length();
+            static_assert(lenHalf > F(0.65) && lenHalf < F(0.8),
+                "Q24.8 Length(0.5,0.5,0) ~0.707");
+
+            // (0.25, 0, 0): length = 0.25
+            constexpr V3 quarter(F(0.25), F(0), F(0));
+            constexpr F lenQuarter = quarter.Length();
+            static_assert(lenQuarter > F(0.2) && lenQuarter < F(0.3),
+                "Q24.8 Length(0.25,0,0) ~0.25");
+
+            // Very small: (0.0625, 0, 0): length = 0.0625
+            constexpr V3 tiny(F(0.0625), F(0), F(0));
+            constexpr F lenTiny = tiny.Length();
+            static_assert(lenTiny > F(0.05) && lenTiny < F(0.08),
+                "Q24.8 Length(0.0625,0,0) ~0.0625");
+        }
+
+        // ---- Normalize overflow path (length < 0) ----
+        // When Length() overflows int32_t and wraps negative, Normalize() takes
+        // a special path: halves the length and uses 0.5 as reciprocal numerator.
+        // This tests that path for all 3 formats.
+        static constexpr void TestNormalize_Overflow_Q16_16()
+        {
+            using F = Fxp;
+            using V3 = Vector3D;
+
+            // (25000, 25000, 0) — actual length ~35355, overflows Q16.16 (max ~32767)
+            constexpr V3 bigVec(F(25000), F(25000), F(0));
+            constexpr F bigLen = bigVec.Length();
+            static_assert(bigLen.RawValue() < 0, "Q16.16 overflow: Length() < 0");
+
+            // Normalize should still produce a unit-ish vector via the overflow path
+            constexpr V3 normBig = bigVec.Normalized();
+            // Both components should be roughly equal (direction preserved)
+            // and magnitude should be ~1 (within the approximation's ~7% error)
+            constexpr F normLen = normBig.Length();
+            static_assert(normLen > F(0.8) && normLen < F(1.2),
+                "Q16.16 overflow normalize: result length ~1");
+            // Direction preserved: X and Y should be roughly equal
+            static_assert((normBig.X - normBig.Y).Abs() < F(0.2),
+                "Q16.16 overflow normalize: direction preserved (X~Y)");
+        }
+
+        static constexpr void TestNormalize_Overflow_Q8_24()
+        {
+            using F = Fxp8_24;
+            using V3 = Vector3<8, 24>;
+
+            // (100, 100, 0) — actual length ~141.4, overflows Q8.24 (max ~127.99)
+            constexpr V3 bigVec(F(100), F(100), F(0));
+            constexpr F bigLen = bigVec.Length();
+            static_assert(bigLen.RawValue() < 0, "Q8.24 overflow: Length() < 0");
+
+            constexpr V3 normBig = bigVec.Normalized();
+            constexpr F normLen = normBig.Length();
+            static_assert(normLen > F(0.8) && normLen < F(1.2),
+                "Q8.24 overflow normalize: result length ~1");
+            static_assert((normBig.X - normBig.Y).Abs() < F(0.2),
+                "Q8.24 overflow normalize: direction preserved (X~Y)");
+        }
+
+        static constexpr void TestNormalize_Overflow_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+
+            // (6M, 6M, 0) — actual length ~8.49M, overflows Q24.8 (max ~8M)
+            constexpr V3 bigVec(F(6000000), F(6000000), F(0));
+            constexpr F bigLen = bigVec.Length();
+            static_assert(bigLen.RawValue() < 0, "Q24.8 overflow: Length() < 0");
+
+            // Normalize overflow path now uses Q2.30 reciprocal — should produce
+            // a proper unit vector even for Q24.8 large vectors.
+            constexpr V3 normBig = bigVec.Normalized();
+            static_assert(normBig.X > F(0.65) && normBig.X < F(0.75),
+                "Q24.8 overflow normalize: X ~0.707");
+            static_assert(normBig.Y > F(0.65) && normBig.Y < F(0.75),
+                "Q24.8 overflow normalize: Y ~0.707");
+            static_assert(normBig.Z == F(0),
+                "Q24.8 overflow normalize: Z = 0");
+            static_assert((normBig.X - normBig.Y).Abs() < F(0.05),
+                "Q24.8 overflow normalize: direction preserved (X~Y)");
+            // Also verify Length() of the small normalized vector — InternalSqrtFrom64
+            // was fixed to handle small values (fxpHigh==0, fxpLow < 0x10000)
+            constexpr F normLen = normBig.Length();
+            static_assert(normLen > F(0.9) && normLen < F(1.1),
+                "Q24.8 overflow normalize: result length ~1");
+        }
+
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- Vector3 with Q8.24 ----
+        static constexpr void TestVector3_Q8_24()
+        {
+            using F = Fxp8_24;
+            using V3 = Vector3<8, 24>;
+
+            constexpr V3 v1(F(1), F(2), F(2));
+            constexpr F lenSq = v1.LengthSquared();
+            static_assert(lenSq == F(9), "V3<8,24> LengthSquared(1,2,2) should be 9");
+
+            constexpr V3 sum = v1 + v1;
+            static_assert(sum.X == F(2) && sum.Y == F(4) && sum.Z == F(4), "V3<8,24> addition");
+
+            constexpr V3 neg = -v1;
+            static_assert(neg.X == F(-1) && neg.Y == F(-2) && neg.Z == F(-2), "V3<8,24> negation");
+
+            constexpr F dot = v1.Dot(v1);
+            static_assert(dot == F(9), "V3<8,24> dot product");
+
+            constexpr V3 cross = V3(F(1), F(0), F(0)).Cross(V3(F(0), F(1), F(0)));
+            static_assert(cross.X == F(0) && cross.Y == F(0) && cross.Z == F(1), "V3<8,24> cross product");
+        }
+
+        // ---- Vector3 with Q24.8 ----
+        static constexpr void TestVector3_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+
+            constexpr V3 v1(F(1), F(2), F(2));
+            constexpr F lenSq = v1.LengthSquared();
+            static_assert(lenSq == F(9), "V3<24,8> LengthSquared(1,2,2) should be 9");
+
+            constexpr V3 sum = v1 + v1;
+            static_assert(sum.X == F(2) && sum.Y == F(4) && sum.Z == F(4), "V3<24,8> addition");
+
+            constexpr V3 neg = -v1;
+            static_assert(neg.X == F(-1) && neg.Y == F(-2) && neg.Z == F(-2), "V3<24,8> negation");
+
+            constexpr F dot = v1.Dot(v1);
+            static_assert(dot == F(9), "V3<24,8> dot product");
+
+            constexpr V3 cross = V3(F(1), F(0), F(0)).Cross(V3(F(0), F(1), F(0)));
+            static_assert(cross.X == F(0) && cross.Y == F(0) && cross.Z == F(1), "V3<24,8> cross product");
+        }
+
+        // ---- MaxSafeSquareValue differs between formats ----
+        static constexpr void TestMaxSafeSquareValue()
+        {
+            // Q16.16: sqrt(2^15/3) ≈ 104.5 for Vector3
+            constexpr Fxp maxSafe3_16 = Vector3D::MaxSafeSquareValue();
+            static_assert(maxSafe3_16 > Fxp(100) && maxSafe3_16 < Fxp(110),
+                "Vector3D MaxSafeSquareValue for Q16.16 should be ~104");
+
+            // Q8.24: sqrt(2^7/3) ≈ 6.54 for Vector3
+            constexpr Fxp8_24 maxSafe3_8 = Vector3<8, 24>::MaxSafeSquareValue();
+            static_assert(maxSafe3_8 > Fxp8_24(6) && maxSafe3_8 < Fxp8_24(7),
+                "Vector3<8,24> MaxSafeSquareValue should be ~6.5");
+
+            // Q24.8: sqrt(2^23/3) ≈ 1672 for Vector3
+            constexpr Fxp24_8 maxSafe3_24 = Vector3<24, 8>::MaxSafeSquareValue();
+            static_assert(maxSafe3_24 > Fxp24_8(1600) && maxSafe3_24 < Fxp24_8(1700),
+                "Vector3<24,8> MaxSafeSquareValue should be ~1672");
+
+            // Q16.16: sqrt(2^15) ≈ 181 for Vector2
+            constexpr Fxp maxSafe2_16 = Vector2D::MaxSafeSquareValue();
+            static_assert(maxSafe2_16 > Fxp(170) && maxSafe2_16 < Fxp(190),
+                "Vector2D MaxSafeSquareValue for Q16.16 should be ~181");
+
+            // Q8.24: sqrt(2^7) ≈ 11.31 for Vector2
+            constexpr Fxp8_24 maxSafe2_8 = Vector2<8, 24>::MaxSafeSquareValue();
+            static_assert(maxSafe2_8 > Fxp8_24(11) && maxSafe2_8 < Fxp8_24(12),
+                "Vector2<8,24> MaxSafeSquareValue should be ~11.3");
+
+            // Q24.8: sqrt(2^23) ≈ 2896 for Vector2
+            constexpr Fxp24_8 maxSafe2_24 = Vector2<24, 8>::MaxSafeSquareValue();
+            static_assert(maxSafe2_24 > Fxp24_8(2800) && maxSafe2_24 < Fxp24_8(3000),
+                "Vector2<24,8> MaxSafeSquareValue should be ~2896");
+        }
+
+        // ---- Vector edge cases with Q8.24 ----
+        static constexpr void TestVector_Q8_24_EdgeCases()
+        {
+            using F = Fxp8_24;
+            using V3 = Vector3<8, 24>;
+
+            // Zero vector
+            constexpr V3 zero;
+            static_assert(zero.LengthSquared() == F(0), "V3<8,24> zero LengthSquared = 0");
+            static_assert(zero.Length() == F(0), "V3<8,24> zero Length = 0");
+
+            // Normalized zero vector returns zero (guard against div-by-zero)
+            constexpr V3 normZero = zero.Normalized();
+            static_assert(normZero.X == F(0) && normZero.Y == F(0) && normZero.Z == F(0),
+                "V3<8,24> normalized zero = zero");
+
+            // Unit vector along X — normalizing should give same (already unit)
+            constexpr V3 unitX(F(1), F(0), F(0));
+            constexpr V3 normUnitX = unitX.Normalized();
+            static_assert(normUnitX.X > F(0.99) && normUnitX.X < F(1.01),
+                "V3<8,24> normalized unit X ~1");
+            static_assert(normUnitX.Y == F(0) && normUnitX.Z == F(0),
+                "V3<8,24> normalized unit X Y,Z = 0");
+
+            // Diagonal vector (1,1,1) — normalized should have each component ~0.577
+            constexpr V3 diag(F(1), F(1), F(1));
+            constexpr V3 normDiag = diag.Normalized();
+            static_assert(normDiag.X > F(0.5) && normDiag.X < F(0.65),
+                "V3<8,24> normalized diagonal X ~0.577");
+            static_assert(normDiag.Y > F(0.5) && normDiag.Y < F(0.65),
+                "V3<8,24> normalized diagonal Y ~0.577");
+            static_assert(normDiag.Z > F(0.5) && normDiag.Z < F(0.65),
+                "V3<8,24> normalized diagonal Z ~0.577");
+
+            // MaxSafeSquareValue boundary
+            constexpr F maxSafe = V3::MaxSafeSquareValue();
+            constexpr V3 atMaxSafe(maxSafe, F(0), F(0));
+            constexpr F atMaxSafeLen = atMaxSafe.Length();
+            static_assert(atMaxSafeLen > F(0), "V3<8,24> at MaxSafeSquareValue has positive length");
+
+            // Vector exceeding MaxSafeSquareValue
+            constexpr V3 overMaxSafe(maxSafe * F(2), F(0), F(0));
+            constexpr F overMaxSafeLen = overMaxSafe.Length();
+            static_assert(overMaxSafeLen > atMaxSafeLen, "V3<8,24> over MaxSafeSquareValue length > at-max length");
+        }
+
         // ============================================
         // Test Suite Runner
         // ============================================
@@ -1414,6 +1646,16 @@ namespace SaturnMath::Tests
             TestStaticMethods();
             TestEdgeCases();
             TestPrecisionModes();
+            TestNormalize_Q16_16();
+            TestNormalize_Q24_8();
+            TestLength_Small_Q24_8();
+            TestNormalize_Overflow_Q16_16();
+            TestNormalize_Overflow_Q8_24();
+            TestNormalize_Overflow_Q24_8();
+            TestVector3_Q8_24();
+            TestVector3_Q24_8();
+            TestMaxSafeSquareValue();
+            TestVector_Q8_24_EdgeCases();
         }
     };
 

@@ -1,13 +1,18 @@
-#pragma once
+﻿#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
 #include <concepts>
 #include <numbers>
 #include "precision.hpp"
+#include "hardware.hpp"
 
 namespace SaturnMath::Types
 {
+    // Forward declarations for friend declarations in FixedPoint
+    template<int I, int F> struct Vector2;
+    template<int I, int F> struct Vector3;
+
     /**
      * @brief Configurable fixed-point arithmetic optimized for Saturn hardware.
      *
@@ -27,19 +32,19 @@ namespace SaturnMath::Types
      * Example:
      * @code
      * // Default 16.16 format for general use
-     * constexpr Fxp16 a = 5;            // 5    (0x00050000)
-     * constexpr Fxp16 b = 2.5;          // 2.5  (0x00028000)
+     * constexpr Fxp16_16 a = 5;            // 5    (0x00050000)
+     * constexpr Fxp16_16 b = 2.5;          // 2.5  (0x00028000)
      *
      * // Custom formats via aliases
-     * constexpr Fxp8  largeWorld = 100000;      // 24.8 format
-     * constexpr Fxp24 preciseMat = 0.123456789; // 8.24 format
+     * constexpr Fxp24_8  largeWorld = 100000;      // 24.8 format
+     * constexpr Fxp8_24 preciseMat = 0.123456789; // 8.24 format
      *
      * // Runtime conversions
-     * Fxp16 c = Fxp16::Convert(someInt);    // With compile-time range checking
-     * Fxp16 d = Fxp16::Convert(someFloat);  // Will trigger a performance warning!
+     * Fxp16_16 c = Fxp16_16::Convert(someInt);    // With compile-time range checking
+     * Fxp16_16 d = Fxp16_16::Convert(someFloat);  // Will trigger a performance warning!
      *
      * // Arithmetic operations (Zero runtime float conversions)
-     * Fxp16 result = a * 3.14;                 // Evaluated safely at compile-time
+     * Fxp16_16 result = a * 3.14;                 // Evaluated safely at compile-time
      * int16_t i = result.As<int16_t>();        // Extracts integer part
      * @endcode
      *
@@ -83,12 +88,16 @@ namespace SaturnMath::Types
             requires (OI + OF == 32) && (OI >= 2) && (OF >= 8)
         friend class FixedPoint;
 
+        // Allow vectors to use InternalSqrtFrom64 for Length() calculations
+        template<int VI, int VF> friend struct Vector2;
+        template<int VI, int VF> friend struct Vector3;
+
         /**
          * @brief Private constructor for raw fixed-point values
          * @param inValue Raw I.F fixed-point value (I integer bits, F fractional bits)
          * @param unused Boolean flag to differentiate from implicit constructors
          */
-        constexpr FixedPoint(const int32_t& inValue, const bool& /*unused*/) : value(inValue) {}
+        [[gnu::always_inline]] constexpr FixedPoint(int32_t inValue, bool /*unused*/) : value(inValue) {}
 
         /**
          * @brief Internal silent injection of integral values (no warnings)
@@ -98,16 +107,117 @@ namespace SaturnMath::Types
          * @details This is for internal use only - bypasses safety checks and warnings
          */
         template<std::integral T>
-        static constexpr FixedPoint InternalInject(T value)
+        [[gnu::always_inline]] static constexpr FixedPoint InternalInject(T value)
         {
             return BuildRaw(static_cast<int32_t>(static_cast<uint32_t>(value) << F));
         }
 
-        /* Hardware division unit registers */
-        static inline constexpr size_t cpuAddress = 0xFFFFF000UL;
-        static inline auto& dvsr = *reinterpret_cast<volatile int32_t*>(cpuAddress + 0x0F00UL);   /**< Divisor register */
-        static inline auto& dvdnth = *reinterpret_cast<volatile int32_t*>(cpuAddress + 0x0F10UL); /**< Dividend high register */
-        static inline auto& dvdntl = *reinterpret_cast<volatile int32_t*>(cpuAddress + 0x0F14UL); /**< Dividend low register */
+        /**
+         * @brief Fixed-point square root from a 64-bit intermediate.
+         * @param fxpHigh Upper 32 bits of a 64-bit value with 2F fractional bits
+         *                (e.g. MAC register output from dot product).
+         * @param fxpLow Lower 32 bits.
+         * @return FixedPoint with F fractional bits.
+         * @details Internal API. The 64-bit integer sqrt naturally halves the
+         *          fractional bit count (2F -> F), making this format-agnostic.
+         *          Unlike the 32-bit Sqrt(), no F/2 scaling trick is needed
+         *          since 64 bits provide enough headroom. Used by Vector2D::Length()
+         *          and Vector3D::Length() to process MAC register output.
+         */
+        [[gnu::always_inline]] static constexpr FixedPoint InternalSqrtFrom64(uint32_t fxpHigh, uint32_t fxpLow)
+        {
+            if ((fxpHigh | fxpLow) == 0)
+                return BuildRaw(0);
+
+            auto shiftRight64 = [](uint32_t& hi, uint32_t& lo)
+            {
+                if consteval {
+                    lo = (lo >> 1) | (hi << 31);
+                    hi >>= 1;
+                } else {
+                    Hardware::ShiftRight64(hi, lo);
+                }
+            };
+
+            auto extractMid32 = [](const uint32_t& hi, uint32_t& lo)
+            {
+                if consteval {
+                    lo = (hi << 16) | (lo >> 16);
+                } else {
+                    Hardware::ExtractMid32(hi, lo);
+                }
+            };
+
+            uint32_t baseEstimation;
+            uint32_t estimation;
+            uint32_t iterationValue;
+
+            if (fxpHigh >= 0x00010000)
+            {
+                baseEstimation = 1 << 23;
+                iterationValue = fxpHigh >> 17;
+                estimation = (fxpHigh << 8) | (fxpLow >> 24);
+                fxpHigh >>= 24;
+
+                while (iterationValue)
+                {
+                    shiftRight64(fxpHigh, estimation);
+                    baseEstimation <<= 1;
+                    iterationValue >>= 2;
+                }
+
+                estimation >>= 1;
+            }
+            else
+            {
+                // Small value fix: when fxpHigh==0 && fxpLow < 0x10000,
+                // extractMid32 zeros out all significant bits. Use fxpLow
+                // directly and >> 8 the result (sqrt(2^16) = 2^8).
+                // Only needed when F < 20 (for F >= 20, the smallest non-zero
+                // raw value squared is 1, and sqrt(1) >> 8 = 0 either way).
+                if constexpr (F < 20)
+                {
+                    if (fxpHigh == 0 && fxpLow < 0x00010000)
+                    {
+                        estimation = fxpLow;
+                        baseEstimation = 1 << 7;
+                        iterationValue = estimation >> 1;
+
+                        while (iterationValue)
+                        {
+                            estimation >>= 1;
+                            baseEstimation <<= 1;
+                            iterationValue >>= 2;
+                        }
+
+                        estimation <<= 7;
+                        return BuildRaw(static_cast<int32_t>((baseEstimation + estimation) >> 8));
+                    }
+                }
+
+                estimation = fxpLow;
+                extractMid32(fxpHigh, estimation);
+                baseEstimation = 1 << 7;
+                iterationValue = estimation >> 1;
+
+                if (estimation >= 0x00010000)
+                {
+                    baseEstimation <<= 8;
+                    estimation >>= 8;
+                    iterationValue >>= 16;
+                }
+
+                while (iterationValue)
+                {
+                    estimation >>= 1;
+                    baseEstimation <<= 1;
+                    iterationValue >>= 2;
+                }
+
+                estimation <<= 7;
+            }
+            return BuildRaw(static_cast<int32_t>(baseEstimation + estimation));
+        }
 
     public:
         static constexpr int IntBits = I;
@@ -180,9 +290,12 @@ namespace SaturnMath::Types
 
         /**
          * @brief Copy constructor for FixedPoint class.
-         * @param fxp The FixedPoint object to copy.
+         * @details Defaulted so the type stays trivially copyable: a user-defined
+         *          copy constructor would make FixedPoint non-trivially-copyable,
+         *          forcing it to be passed/returned via memory (with copy-constructor
+         *          calls) instead of in registers on the SH-2 ABI.
          */
-        constexpr FixedPoint(const FixedPoint& fxp) : value(fxp.value) {}
+        constexpr FixedPoint(const FixedPoint& fxp) = default;
 
         /**
          * @brief Constructor for FixedPoint class from small integral types.
@@ -216,7 +329,7 @@ namespace SaturnMath::Types
          */
         template<std::integral T>
             requires (std::is_signed_v<T> ? (sizeof(T) * 8 <= I) : (sizeof(T) * 8 + 1 <= I))
-        static constexpr FixedPoint Convert(T value)
+        [[gnu::always_inline]] static constexpr FixedPoint Convert(T value)
         {
             return BuildRaw(static_cast<int32_t>(static_cast<uint32_t>(value) << F));
         }
@@ -260,10 +373,18 @@ namespace SaturnMath::Types
          */
         template<int OtherI, int OtherF>
             requires (OtherI <= I && OtherF <= F)
-        static constexpr FixedPoint Convert(const FixedPoint<OtherI, OtherF>& other)
+        [[gnu::always_inline]] static constexpr FixedPoint Convert(const FixedPoint<OtherI, OtherF>& other)
         {
             if constexpr (OtherF > F)
-                return BuildRaw(other.value >> (OtherF - F));
+            {
+                if consteval {
+                    return BuildRaw(other.value >> (OtherF - F));
+                } else {
+                    int32_t raw = other.value;
+                    Hardware::ArithmeticShiftRight<OtherF - F>(raw);
+                    return BuildRaw(raw);
+                }
+            }
             else if constexpr (F > OtherF)
                 return BuildRaw(other.value << (F - OtherF));
             else
@@ -285,10 +406,65 @@ namespace SaturnMath::Types
         template<int OtherI, int OtherF>
             requires (!(OtherI <= I && OtherF <= F))
         [[deprecated("Conversion may cause precision loss (fewer fractional bits) or overflow (fewer integer bits)")]]
-        static constexpr FixedPoint Convert(const FixedPoint<OtherI, OtherF>& other)
+        [[gnu::always_inline]] static constexpr FixedPoint Convert(const FixedPoint<OtherI, OtherF>& other)
         {
             if constexpr (OtherF > F)
-                return BuildRaw(other.value >> (OtherF - F));
+            {
+                if consteval {
+                    return BuildRaw(other.value >> (OtherF - F));
+                } else {
+                    int32_t raw = other.value;
+                    Hardware::ArithmeticShiftRight<OtherF - F>(raw);
+                    return BuildRaw(raw);
+                }
+            }
+            else if constexpr (F > OtherF)
+                return BuildRaw(other.value << (F - OtherF));
+            else
+                return BuildRaw(other.value);
+        }
+
+        /**
+         * @brief Convert from integral type without narrowing warning.
+         * @tparam T Integral type that may not fit within I integer bits
+         * @param value Integral value to convert
+         * @return FixedPoint value
+         * @details Use this when you know the value fits even though the type
+         * is wider than I bits. Performs the same operation as the deprecated
+         * Convert(T) but without the compiler warning.
+         */
+        template<std::integral T>
+            requires (! (std::is_signed_v<T> ? (sizeof(T) * 8 <= I) : (sizeof(T) * 8 + 1 <= I)))
+        [[gnu::always_inline]] static constexpr FixedPoint ConvertUnchecked(T value)
+        {
+            return BuildRaw(static_cast<int32_t>(static_cast<uint32_t>(value) << F));
+        }
+
+        /**
+         * @brief Convert from another FixedPoint format without warning.
+         * @tparam OtherI Other integer bits
+         * @tparam OtherF Other fractional bits
+         * @param other FixedPoint value to convert
+         * @return FixedPoint value
+         * @details Use this when you know the conversion is safe (e.g. the
+         * value fits in the destination format even though the type has more
+         * bits). Performs the same operation as the deprecated Convert but
+         * without the compiler warning.
+         */
+        template<int OtherI, int OtherF>
+            requires (!(OtherI <= I && OtherF <= F))
+        [[gnu::always_inline]] static constexpr FixedPoint ConvertUnchecked(const FixedPoint<OtherI, OtherF>& other)
+        {
+            if constexpr (OtherF > F)
+            {
+                if consteval {
+                    return BuildRaw(other.value >> (OtherF - F));
+                } else {
+                    int32_t raw = other.value;
+                    Hardware::ArithmeticShiftRight<OtherF - F>(raw);
+                    return BuildRaw(raw);
+                }
+            }
             else if constexpr (F > OtherF)
                 return BuildRaw(other.value << (F - OtherF));
             else
@@ -320,7 +496,7 @@ namespace SaturnMath::Types
          * @return Fixed-point value constructed from raw bits
          * @details This is the only unrestricted way to create a FixedPoint without any validation
          */
-        static constexpr FixedPoint BuildRaw(const int32_t& rawValue) { return FixedPoint(rawValue, true); }
+        [[gnu::always_inline]] static constexpr FixedPoint BuildRaw(int32_t rawValue) { return FixedPoint(rawValue, true); }
         ///@}
 
         /** @name Hardware Division (Saturn Divider Unit) */
@@ -329,25 +505,36 @@ namespace SaturnMath::Types
          * @brief Sets up hardware division unit for fixed-point division.
          * @param dividend Numerator
          * @param divisor Denominator
+         * @deprecated Use ParallelDiv() instead. AsyncDivSet/AsyncDivGetResult operate on
+         *             raw DIVU registers and are error-prone when mixing FixedPoint
+         *             formats (the result format depends on the dividend format).
+         *             To be removed in a future version.
          */
-        static void AsyncDivSet(FixedPoint dividend, FixedPoint divisor)
+        [[gnu::deprecated("Use ParallelDiv() instead. To be removed in a future version.")]]
+        [[gnu::always_inline]] static void AsyncDivSet(FixedPoint dividend, FixedPoint divisor)
         {
-            dvsr = divisor.value;
-            dvdnth = dividend.value >> (32 - F);
-            dvdntl = static_cast<int32_t>(static_cast<uint32_t>(dividend.value) << F);
+            int32_t dividendHigh = dividend.value;
+            if constexpr (32 - F > 0)
+                Hardware::ArithmeticShiftRight<32 - F>(dividendHigh);
+            Hardware::DivSet(divisor.value, dividendHigh,
+                             static_cast<int32_t>(static_cast<uint32_t>(dividend.value) << F));
         }
 
         /**
          * @brief Retrieves result from hardware division unit.
          * @return Fixed-point result from previous AsyncDivSet()
+         * @deprecated Use ParallelDiv() instead. To be removed in a future version.
          */
-        static FixedPoint AsyncDivGetResult() { return BuildRaw(static_cast<int32_t>(dvdntl)); }
+        [[gnu::deprecated("Use ParallelDiv() instead. To be removed in a future version.")]]
+        [[gnu::always_inline]] static FixedPoint AsyncDivGetResult() { return BuildRaw(Hardware::DivGetResult()); }
 
         /**
          * @brief Retrieves remainder from hardware division unit.
          * @return Fixed-point remainder from previous AsyncDivSet()
+         * @deprecated Use ParallelDiv() instead. To be removed in a future version.
          */
-        static FixedPoint AsyncDivGetRemainder() { return BuildRaw(static_cast<int32_t>(dvdnth)); }
+        [[gnu::deprecated("Use ParallelDiv() instead. To be removed in a future version.")]]
+        [[gnu::always_inline]] static FixedPoint AsyncDivGetRemainder() { return BuildRaw(Hardware::DivGetRemainder()); }
         ///@}
 
         /** @name Mathematical Operations */
@@ -417,6 +604,10 @@ namespace SaturnMath::Types
         /**
          * @brief Calculate square root
          * @return Square root of the value in I.F format
+         * @details The F/2 shifts are not cosmetic — they fold the 2^(F/2)
+         *          scaling into the binary search to avoid 64-bit intermediates
+         *          while preserving precision. This is equivalent to
+         *          isqrt(value * 2^F) but fits in 32 bits.
          */
         constexpr FixedPoint Sqrt() const
         {
@@ -462,21 +653,22 @@ namespace SaturnMath::Types
          * @brief Absolute value (|x|).
          * @return |x| in fixed-point
          */
-        constexpr FixedPoint Abs() const { return BuildRaw(value > 0 ? value : -value); }
+        [[gnu::always_inline]] constexpr FixedPoint Abs() const { return BuildRaw(value > 0 ? value : -value); }
 
         /**
-         * @brief Returns a const reference to the internal raw fixed-point value.
-         * @return const reference to the internal 32-bit representation
+         * @brief Returns the internal raw fixed-point value.
+         * @return The internal 32-bit representation (by value: keeps the type's
+         *         accessors trivially inlinable and register-passed on SH-2).
          */
-        constexpr const int32_t& RawValue() const { return value; }
+        [[gnu::always_inline]] constexpr int32_t RawValue() const { return value; }
 
         /**
-         * @brief Returns a const reference to the internal raw fixed-point value (deprecated).
-         * @return const reference to the internal 32-bit representation
+         * @brief Returns the internal raw fixed-point value (deprecated).
+         * @return The internal 32-bit representation
          * @deprecated Use RawValue() instead
          */
         [[deprecated("Use RawValue() instead")]]
-        constexpr const int32_t& Raw() const { return RawValue(); }
+        constexpr int32_t Raw() const { return RawValue(); }
 
         /**
          * @brief Converts to the specified integer type.
@@ -484,7 +676,16 @@ namespace SaturnMath::Types
          * @return Value as the specified type
          */
         template<typename T> requires std::integral<T>
-        constexpr T As() const { return static_cast<T>(value >> F); }
+        constexpr T As() const
+        {
+            if consteval {
+                return static_cast<T>(value >> F);
+            } else {
+                int32_t raw = value;
+                Hardware::ArithmeticShiftRight<F>(raw);
+                return static_cast<T>(raw);
+            }
+        }
 
         /**
          * @brief Converts to the specified floating-point type.
@@ -500,25 +701,15 @@ namespace SaturnMath::Types
         /**
          * @brief Clears the MAC (Multiply-and-Accumulate) registers.
          */
-        static void ClearMac() { __asm__ volatile("\tclrmac\n" ::: "mach", "macl"); }
+        [[gnu::always_inline]] static void ClearMac() { Hardware::MacClear(); }
 
         /**
          * @brief Extracts the result from MAC registers into a fixed-point value.
          * @return Fixed-point value containing the MAC operation result
          */
-        static FixedPoint ExtractMac()
+        [[gnu::always_inline]] static FixedPoint ExtractMac()
         {
-            int32_t aux0, aux1;
-            __asm__ volatile(
-                "\tsts mach, %[aux0]\n"
-                "\tsts macl, %[aux1]\n"
-                "\txtrct %[aux0], %[aux1]\n"
-                : [aux0] "=&r"(aux0),
-                [aux1] "=&r"(aux1)
-                :
-                : "memory"
-                );
-            return BuildRaw(aux1);
+            return BuildRaw(Hardware::MacExtract());
         }
         ///@}
 
@@ -527,7 +718,6 @@ namespace SaturnMath::Types
         /**
          * @brief Float literal operations assignment.
          */
-        // Apagados os += e -= (o compilador resolve via construtor implícito)
         constexpr FixedPoint& operator*=(CompileTimeFloat other) { return *this *= other.fxp; }
 
         /**
@@ -542,14 +732,14 @@ namespace SaturnMath::Types
          * @param other Value to add
          * @return Reference to this
          */
-        constexpr FixedPoint& operator+=(FixedPoint other) { value += other.value; return *this; }
+        [[gnu::always_inline]] constexpr FixedPoint& operator+=(FixedPoint other) { value += other.value; return *this; }
 
         /**
          * @brief Fixed-point subtraction (a -= b).
          * @param other Value to subtract
          * @return Reference to this
          */
-        constexpr FixedPoint& operator-=(FixedPoint other) { value -= other.value; return *this; }
+        [[gnu::always_inline]] constexpr FixedPoint& operator-=(FixedPoint other) { value -= other.value; return *this; }
 
         /**
          * @brief Multiplies the current fixed-point value by another fixed-point value (a *= b).
@@ -557,7 +747,7 @@ namespace SaturnMath::Types
          * @return A reference to the current instance.
          */
         template<int OI, int OF>
-        constexpr FixedPoint& operator*=(const FixedPoint<OI, OF>& other)
+        [[gnu::always_inline]] constexpr FixedPoint& operator*=(const FixedPoint<OI, OF>& other)
         {
             constexpr int shift = OF;
             static_assert(shift >= 0 && shift < 32, "Shift out of bounds");
@@ -571,63 +761,8 @@ namespace SaturnMath::Types
             }
 
             int32_t mach, macl;
-
-            __asm__ volatile(
-                "dmuls.l %[a], %[b]\n\t"
-                "sts mach, %[mach]\n\t"
-                "sts macl, %[macl]\n\t"
-                : [mach] "=&r"(mach), [macl] "=&r"(macl)
-                : [a] "r"(value), [b] "r"(other.value)
-                : "mach", "macl"
-            );
-
-            if constexpr (shift == 0)
-            {
-                value = macl;
-            }
-            else if constexpr (shift == 16)
-            {
-                __asm__ volatile("xtrct %[H], %[L]\n\t" : [L] "+r"(macl) : [H] "r"(mach));
-                value = macl;
-            }
-            else if constexpr (shift > 16)
-            {
-                __asm__ volatile("xtrct %[H], %[L]\n\t" : [L] "+r"(macl) : [H] "r"(mach));
-                constexpr int remainingRightShift = shift - 16;
-                if constexpr (remainingRightShift == 15) { __asm__ volatile("shlr8 %[reg]\n\t add %[reg], %[reg]\n\t shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
-                else if constexpr (remainingRightShift == 14) { __asm__ volatile("shlr8 %[reg]\n\t shll2 %[reg]\n\t shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
-                else {
-                    if constexpr (remainingRightShift >= 8) { __asm__ volatile("shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
-                    constexpr int remainingRightShift2 = (remainingRightShift >= 8) ? remainingRightShift - 8 : remainingRightShift;
-                    if constexpr (remainingRightShift2 >= 4) { __asm__ volatile("shlr2 %[reg]\n\t shlr2 %[reg]\n\t" : [reg] "+r"(macl)); }
-                    else if constexpr (remainingRightShift2 >= 2) { __asm__ volatile("shlr2 %[reg]\n\t" : [reg] "+r"(macl)); }
-                    if constexpr (remainingRightShift2 % 2 != 0) { __asm__ volatile("shlr %[reg]\n\t" : [reg] "+r"(macl)); }
-                }
-                value = macl;
-            }
-            else
-            {
-                if constexpr (shift == 15) { __asm__ volatile("shlr8 %[reg]\n\t add %[reg], %[reg]\n\t shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
-                else if constexpr (shift == 14) { __asm__ volatile("shlr8 %[reg]\n\t shll2 %[reg]\n\t shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
-                else {
-                    if constexpr (shift >= 8) { __asm__ volatile("shlr8 %[reg]\n\t" : [reg] "+r"(macl)); }
-                    constexpr int remainingRightShift = (shift >= 8) ? shift - 8 : shift;
-                    if constexpr (remainingRightShift >= 4) { __asm__ volatile("shlr2 %[reg]\n\t shlr2 %[reg]\n\t" : [reg] "+r"(macl)); }
-                    else if constexpr (remainingRightShift >= 2) { __asm__ volatile("shlr2 %[reg]\n\t" : [reg] "+r"(macl)); }
-                    if constexpr (remainingRightShift % 2 != 0) { __asm__ volatile("shlr %[reg]\n\t" : [reg] "+r"(macl)); }
-                }
-
-                constexpr int remainingLeftShift = 32 - shift;
-                if constexpr (remainingLeftShift >= 16) { __asm__ volatile("shll16 %[reg]\n\t" : [reg] "+r"(mach)); }
-                constexpr int remainingLeftShift2 = (remainingLeftShift >= 16) ? remainingLeftShift - 16 : remainingLeftShift;
-                if constexpr (remainingLeftShift2 >= 8) { __asm__ volatile("shll8 %[reg]\n\t" : [reg] "+r"(mach)); }
-                constexpr int remainingLeftShift3 = (remainingLeftShift2 >= 8) ? remainingLeftShift2 - 8 : remainingLeftShift2;
-                if constexpr (remainingLeftShift3 >= 4) { __asm__ volatile("shll2 %[reg]\n\t shll2 %[reg]\n\t" : [reg] "+r"(mach)); }
-                else if constexpr (remainingLeftShift3 >= 2) { __asm__ volatile("shll2 %[reg]\n\t" : [reg] "+r"(mach)); }
-                if constexpr (remainingLeftShift3 % 2 != 0) { __asm__ volatile("add %[reg], %[reg]\n\t" : [reg] "+r"(mach)); }
-
-                value = macl | mach;
-            }
+            Hardware::Mul64(value, other.value, mach, macl);
+            Hardware::Extract32<shift>(mach, macl, value);
             return *this;
         }
 
@@ -638,7 +773,7 @@ namespace SaturnMath::Types
          * @return A reference to this object.
          */
         template<typename T> requires std::is_integral_v<T>
-        constexpr FixedPoint& operator*=(const T& value) { this->value *= value; return *this; }
+        [[gnu::always_inline]] constexpr FixedPoint& operator*=(const T& value) { this->value *= value; return *this; }
 
         /**
          * @brief Fixed-point multiplication (a * b).
@@ -646,12 +781,11 @@ namespace SaturnMath::Types
          * @return Product as FixedPoint.
          */
         template<int OI, int OF>
-        constexpr FixedPoint operator*(FixedPoint<OI, OF> other) const { return FixedPoint(*this) *= other; }
+        [[gnu::always_inline]] constexpr FixedPoint operator*(FixedPoint<OI, OF> other) const { return FixedPoint(*this) *= other; }
 
         /**
          * @brief Float literal operations right side.
          */
-        // Apagados os + e - (o compilador resolve via construtor implícito)
         constexpr FixedPoint operator*(CompileTimeFloat other) const { return *this * other.fxp; }
         
         /**
@@ -667,8 +801,8 @@ namespace SaturnMath::Types
          * @param value The integer value to multiply with.
          * @return The product as a new FixedPoint object.
          */
-        template<typename T> requires (std::is_integral_v<T>)
-        constexpr FixedPoint operator*(const T& value) const { return BuildRaw(value * this->value); }
+        template<typename T> requires std::is_integral_v<T>
+        [[gnu::always_inline]] constexpr FixedPoint operator*(const T& value) const { return BuildRaw(value * this->value); }
 
         /**
          * @brief Adds an object to a compile-time float literal.
@@ -710,7 +844,7 @@ namespace SaturnMath::Types
          * @return The product as a new FixedPoint object.
          */
         template<typename T> requires std::is_integral_v<T>
-        constexpr friend FixedPoint operator*(T lhs, const FixedPoint& rhs) { return rhs * lhs; }
+        [[gnu::always_inline]] constexpr friend FixedPoint operator*(T lhs, const FixedPoint& rhs) { return rhs * lhs; }
 
         /**
          * @brief Divides the current fixed-point value by another fixed-point value (a /= b).
@@ -718,21 +852,23 @@ namespace SaturnMath::Types
          * @return Reference to this object.
          */
         template<int OI, int OF>
-        constexpr FixedPoint& operator/=(FixedPoint<OI, OF> other)
+        [[gnu::always_inline]] constexpr FixedPoint& operator/=(FixedPoint<OI, OF> other)
         {
             if consteval
             {
-                double a = value / FractionScaleDouble;
-                double b = other.value / static_cast<double>(1 << OF);
+                double a = static_cast<double>(value) / static_cast<double>(1 << F);
+                double b = static_cast<double>(other.value) / static_cast<double>(1 << OF);
                 if (b == 0.0) this->value = (a >= 0.0) ? MaxValue().value : MinValue().value;
-                else this->value = static_cast<int32_t>((a / b) * FractionScaleDouble);
+                else this->value = static_cast<int32_t>((a / b) * static_cast<double>(1 << F));
             }
             else
             {
-                dvsr = other.value;
-                dvdnth = value >> (32 - OF);
-                dvdntl = static_cast<int32_t>(static_cast<uint32_t>(value) << OF);
-                this->value = static_cast<int32_t>(dvdntl);
+                int32_t dividendHigh = value;
+                if constexpr (32 - OF > 0)
+                    Hardware::ArithmeticShiftRight<32 - OF>(dividendHigh);
+                Hardware::DivSet(other.value, dividendHigh,
+                                 static_cast<int32_t>(static_cast<uint32_t>(value) << OF));
+                this->value = Hardware::DivGetResult();
             }
             return *this;
         }
@@ -743,7 +879,7 @@ namespace SaturnMath::Types
          * @return Quotient as a new FixedPoint object.
          */
         template<int OI, int OF>
-        constexpr FixedPoint operator/(FixedPoint<OI, OF> other) const { return FixedPoint(*this) /= other; }
+        [[gnu::always_inline]] constexpr FixedPoint operator/(FixedPoint<OI, OF> other) const { return FixedPoint(*this) /= other; }
 
         /**
          * @brief Divides the current fixed-point value by an integer (a /= b).
@@ -752,7 +888,7 @@ namespace SaturnMath::Types
          * @return A reference to this object.
          */
         template<typename T> requires std::is_integral_v<T>
-        constexpr FixedPoint& operator/=(const T& value)
+        [[gnu::always_inline]] constexpr FixedPoint& operator/=(const T& value)
         {
             if consteval
             {
@@ -774,7 +910,7 @@ namespace SaturnMath::Types
          * @return The quotient as a new FixedPoint object.
          */
         template<typename T> requires std::is_integral_v<T>
-        constexpr FixedPoint operator/(const T& value) const { return BuildRaw(this->value / value); }
+        [[gnu::always_inline]] constexpr FixedPoint operator/(const T& value) const { return BuildRaw(this->value / value); }
 
         /**
          * @brief Divides an integral value by a fixed-point value (lhs / rhs).
@@ -784,14 +920,14 @@ namespace SaturnMath::Types
          * @return The quotient as a new FixedPoint object.
          */
         template<typename T> requires std::is_integral_v<T>
-        constexpr friend FixedPoint operator/(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) / rhs; }
+        [[gnu::always_inline]] constexpr friend FixedPoint operator/(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) / rhs; }
 
         /**
          * @brief Computes the modulo of the current fixed-point value with another fixed-point value (a % b).
          * @param other The fixed-point value to use as the modulus.
          * @return The result of the modulo operation.
          */
-        constexpr FixedPoint operator%(FixedPoint other) const { return BuildRaw(value % other.value); }
+        [[gnu::always_inline]] constexpr FixedPoint operator%(FixedPoint other) const { return BuildRaw(value % other.value); }
 
         /**
          * @brief Computes the modulo of an integer with a fixed-point value (lhs % rhs).
@@ -801,14 +937,14 @@ namespace SaturnMath::Types
          * @return The result of the modulo operation.
          */
         template<typename T> requires std::is_integral_v<T>
-        constexpr friend FixedPoint operator%(T lhs, FixedPoint rhs) { return InternalInject(lhs) %= rhs; }
+        [[gnu::always_inline]] constexpr friend FixedPoint operator%(T lhs, FixedPoint rhs) { return InternalInject(lhs) %= rhs; }
 
         /**
          * @brief Computes the modulo of the current fixed-point value with another fixed-point value (a %= b).
          * @param other The fixed-point value to use as the modulus.
          * @return A reference to this object.
          */
-        constexpr FixedPoint& operator%=(FixedPoint other) { this->value %= other.value; return *this; }
+        [[gnu::always_inline]] constexpr FixedPoint& operator%=(FixedPoint other) { this->value %= other.value; return *this; }
 
         /**
          * @brief Copy assignment operator.
@@ -820,14 +956,14 @@ namespace SaturnMath::Types
          * @brief Negate the value.
          * @return The negated value as an FixedPoint object.
          */
-        constexpr FixedPoint operator-() const { return BuildRaw(-value); }
+        [[gnu::always_inline]] constexpr FixedPoint operator-() const { return BuildRaw(-value); }
 
         /**
          * @brief Add another FixedPoint object to this object.
          * @param other The FixedPoint object to add.
          * @return The sum as a new FixedPoint object.
          */
-        constexpr FixedPoint operator+(FixedPoint other) const
+        [[gnu::always_inline]] constexpr FixedPoint operator+(FixedPoint other) const
         {
             if consteval
             {
@@ -850,14 +986,14 @@ namespace SaturnMath::Types
          * @return The sum as a new FixedPoint object.
          */
         template<typename T> requires std::is_integral_v<T>
-        constexpr friend FixedPoint operator+(const T& lhs, const FixedPoint& rhs) { return InternalInject(lhs) + rhs; }
+        [[gnu::always_inline]] constexpr friend FixedPoint operator+(const T& lhs, const FixedPoint& rhs) { return InternalInject(lhs) + rhs; }
 
         /**
          * @brief Subtract another FixedPoint object from this object.
          * @param other The FixedPoint object to subtract.
          * @return The difference as a new FixedPoint object.
          */
-        constexpr FixedPoint operator-(FixedPoint other) const
+        [[gnu::always_inline]] constexpr FixedPoint operator-(FixedPoint other) const
         {
             if consteval
             {
@@ -880,35 +1016,52 @@ namespace SaturnMath::Types
          * @return The difference as a new FixedPoint object.
          */
         template<typename T> requires std::is_integral_v<T>
-        constexpr friend FixedPoint operator-(T lhs, FixedPoint rhs) { return InternalInject(lhs) - rhs; }
+        [[gnu::always_inline]] constexpr friend FixedPoint operator-(T lhs, FixedPoint rhs) { return InternalInject(lhs) - rhs; }
 
         /**
          * @brief Right shift operator for logical right shift.
          * @param shiftAmount The number of bits to shift.
          * @return The result of the logical right shift as an FixedPoint object.
          */
-        constexpr FixedPoint operator>>(const size_t& shiftAmount) const { return BuildRaw(value >> shiftAmount); }
+        [[gnu::always_inline]] constexpr FixedPoint operator>>(const size_t& shiftAmount) const
+        {
+            if consteval {
+                return BuildRaw(value >> shiftAmount);
+            } else {
+                int32_t raw = value;
+                Hardware::ArithmeticShiftRight(raw, shiftAmount);
+                return BuildRaw(raw);
+            }
+        }
 
         /**
          * @brief Right shift and assign operator for logical right shift.
          * @param shiftAmount The number of bits to shift.
          * @return A reference to this object after the logical right shift.
          */
-        constexpr FixedPoint& operator>>=(const size_t& shiftAmount) { value >>= shiftAmount; return *this; }
+        [[gnu::always_inline]] constexpr FixedPoint& operator>>=(const size_t& shiftAmount)
+        {
+            if consteval {
+                value >>= shiftAmount;
+            } else {
+                Hardware::ArithmeticShiftRight(value, shiftAmount);
+            }
+            return *this;
+        }
 
         /**
          * @brief Left shift operator for shifting the internal value by a specified number of bits.
          * @param shiftAmount The number of bits to shift the internal value to the left.
          * @return A new FixedPoint object with the internal value left-shifted by the specified amount.
          */
-        constexpr FixedPoint operator<<(const size_t& shiftAmount) const { return BuildRaw(value << shiftAmount); }
+        [[gnu::always_inline]] constexpr FixedPoint operator<<(const size_t& shiftAmount) const { return BuildRaw(value << shiftAmount); }
 
         /**
          * @brief In-place left shift operator for shifting the internal value by a specified number of bits.
          * @param shiftAmount The number of bits to shift the internal value to the left.
          * @return A reference to this FixedPoint object after left-shifting the internal value in place.
          */
-        constexpr FixedPoint& operator<<=(const size_t& shiftAmount) { value <<= shiftAmount; return *this; }
+        [[gnu::always_inline]] constexpr FixedPoint& operator<<=(const size_t& shiftAmount) { value <<= shiftAmount; return *this; }
         ///@}
 
         /** @name Comparison Operators */
@@ -918,42 +1071,42 @@ namespace SaturnMath::Types
          * @param other The FixedPoint object to compare with.
          * @return `true` if this object is greater than the other; otherwise, `false`.
          */
-        constexpr bool operator>(FixedPoint other) const { return value > other.value; }
+        [[gnu::always_inline]] constexpr bool operator>(FixedPoint other) const { return value > other.value; }
 
         /**
          * @brief Compare two FixedPoint objects for less than.
          * @param other The FixedPoint object to compare with.
          * @return `true` if this object is less than the other; otherwise, `false`.
          */
-        constexpr bool operator<(FixedPoint other) const { return value < other.value; }
+        [[gnu::always_inline]] constexpr bool operator<(FixedPoint other) const { return value < other.value; }
 
         /**
          * @brief Compare two FixedPoint objects for greater than or equal to.
          * @param other The FixedPoint object to compare with.
          * @return `true` if this object is greater than or equal to the other; otherwise, `false`.
          */
-        constexpr bool operator>=(FixedPoint other) const { return value >= other.value; }
+        [[gnu::always_inline]] constexpr bool operator>=(FixedPoint other) const { return value >= other.value; }
 
         /**
          * @brief Compare two FixedPoint objects for less than or equal to.
          * @param other The FixedPoint object to compare with.
          * @return `true` if this object is less than or equal to the other; otherwise, `false`.
          */
-        constexpr bool operator<=(FixedPoint other) const { return value <= other.value; }
+        [[gnu::always_inline]] constexpr bool operator<=(FixedPoint other) const { return value <= other.value; }
 
         /**
          * @brief Compare two FixedPoint objects for equality.
          * @param other The FixedPoint object to compare with.
          * @return `true` if this object is equal to the other; otherwise, `false`.
          */
-        constexpr bool operator==(FixedPoint other) const { return value == other.value; }
+        [[gnu::always_inline]] constexpr bool operator==(FixedPoint other) const { return value == other.value; }
 
         /**
          * @brief Compare two FixedPoint objects for inequality.
          * @param other The FixedPoint object to compare with.
          * @return `true` if this object is not equal to the other; otherwise, `false`.
          */
-        constexpr bool operator!=(FixedPoint other) const { return value != other.value; }
+        [[gnu::always_inline]] constexpr bool operator!=(FixedPoint other) const { return value != other.value; }
 
 
         /**
@@ -1010,7 +1163,7 @@ namespace SaturnMath::Types
          * @param other The integer to compare with.
          * @return `true` if this object is greater than the integer; otherwise, `false`.
          */
-        template<std::integral T> constexpr bool operator>(const T& other) const { return *this > InternalInject(other); }
+        template<std::integral T> [[gnu::always_inline]] constexpr bool operator>(const T& other) const { return *this > InternalInject(other); }
 
         /**
          * @brief Compare a FixedPoint object with an integer for less than.
@@ -1018,7 +1171,7 @@ namespace SaturnMath::Types
          * @param other The integer to compare with.
          * @return `true` if this object is less than the integer; otherwise, `false`.
          */
-        template<std::integral T> constexpr bool operator<(const T& other) const { return *this < InternalInject(other); }
+        template<std::integral T> [[gnu::always_inline]] constexpr bool operator<(const T& other) const { return *this < InternalInject(other); }
 
         /**
          * @brief Compare a FixedPoint object with an integer for greater than or equal to.
@@ -1026,7 +1179,7 @@ namespace SaturnMath::Types
          * @param other The integer to compare with.
          * @return `true` if this object is greater than or equal to the integer; otherwise, `false`.
          */
-        template<std::integral T> constexpr bool operator>=(const T& other) const { return *this >= InternalInject(other); }
+        template<std::integral T> [[gnu::always_inline]] constexpr bool operator>=(const T& other) const { return *this >= InternalInject(other); }
 
         /**
          * @brief Compare a FixedPoint object with an integer for less than or equal to.
@@ -1034,7 +1187,7 @@ namespace SaturnMath::Types
          * @param other The integer to compare with.
          * @return `true` if this object is less than or equal to the integer; otherwise, `false`.
          */
-        template<std::integral T> constexpr bool operator<=(const T& other) const { return *this <= InternalInject(other); }
+        template<std::integral T> [[gnu::always_inline]] constexpr bool operator<=(const T& other) const { return *this <= InternalInject(other); }
 
         /**
          * @brief Compare a FixedPoint object with an integer for equality.
@@ -1042,7 +1195,7 @@ namespace SaturnMath::Types
          * @param other The integer to compare with.
          * @return `true` if this object is equal to the integer; otherwise, `false`.
          */
-        template<std::integral T> constexpr bool operator==(const T& other) const { return *this == InternalInject(other); }
+        template<std::integral T> [[gnu::always_inline]] constexpr bool operator==(const T& other) const { return *this == InternalInject(other); }
 
         /**
          * @brief Compare a FixedPoint object with an integer for inequality.
@@ -1050,7 +1203,7 @@ namespace SaturnMath::Types
          * @param other The integer to compare with.
          * @return `true` if this object is not equal to the integer; otherwise, `false`.
          */
-        template<std::integral T> constexpr bool operator!=(const T& other) const { return *this != InternalInject(other); }
+        template<std::integral T> [[gnu::always_inline]] constexpr bool operator!=(const T& other) const { return *this != InternalInject(other); }
 
         /**
          * @brief Compare an integer with a FixedPoint object for greater than.
@@ -1059,7 +1212,7 @@ namespace SaturnMath::Types
          * @param rhs The FixedPoint object.
          * @return `true` if the integer is greater than the object; otherwise, `false`.
          */
-        template<std::integral T> constexpr friend bool operator>(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) > rhs; }
+        template<std::integral T> [[gnu::always_inline]] constexpr friend bool operator>(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) > rhs; }
 
         /**
          * @brief Compare an integer with a FixedPoint object for less than.
@@ -1068,7 +1221,7 @@ namespace SaturnMath::Types
          * @param rhs The FixedPoint object.
          * @return `true` if the integer is less than the object; otherwise, `false`.
          */
-        template<std::integral T> constexpr friend bool operator<(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) < rhs; }
+        template<std::integral T> [[gnu::always_inline]] constexpr friend bool operator<(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) < rhs; }
 
         /**
          * @brief Compare an integer with a FixedPoint object for greater than or equal to.
@@ -1077,7 +1230,7 @@ namespace SaturnMath::Types
          * @param rhs The FixedPoint object.
          * @return `true` if the integer is greater than or equal to the object; otherwise, `false`.
          */
-        template<std::integral T> constexpr friend bool operator>=(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) >= rhs; }
+        template<std::integral T> [[gnu::always_inline]] constexpr friend bool operator>=(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) >= rhs; }
 
         /**
          * @brief Compare an integer with a FixedPoint object for less than or equal to.
@@ -1086,7 +1239,7 @@ namespace SaturnMath::Types
          * @param rhs The FixedPoint object.
          * @return `true` if the integer is less than or equal to the object; otherwise, `false`.
          */
-        template<std::integral T> constexpr friend bool operator<=(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) <= rhs; }
+        template<std::integral T> [[gnu::always_inline]] constexpr friend bool operator<=(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) <= rhs; }
 
         /**
          * @brief Compare an integer with a FixedPoint object for equality.
@@ -1095,7 +1248,7 @@ namespace SaturnMath::Types
          * @param rhs The FixedPoint object.
          * @return `true` if the integer is equal to the object; otherwise, `false`.
          */
-        template<std::integral T> constexpr friend bool operator==(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) == rhs; }
+        template<std::integral T> [[gnu::always_inline]] constexpr friend bool operator==(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) == rhs; }
 
         /**
          * @brief Compare an integer with a FixedPoint object for inequality.
@@ -1104,7 +1257,7 @@ namespace SaturnMath::Types
          * @param rhs The FixedPoint object.
          * @return `true` if the integer is not equal to the object; otherwise, `false`.
          */
-        template<std::integral T> constexpr friend bool operator!=(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) != rhs; }
+        template<std::integral T> [[gnu::always_inline]] constexpr friend bool operator!=(T lhs, const FixedPoint& rhs) { return InternalInject(lhs) != rhs; }
         ///@}
 
         /** @name Interpolation & Easing Functions */
@@ -1126,7 +1279,13 @@ namespace SaturnMath::Types
             if (exponent == 0) return One();
             if (exponent == One()) return *this;
 
-            int32_t intExp = exponent.RawValue() >> F;
+            int32_t intExp;
+            if consteval {
+                intExp = exponent.RawValue() >> F;
+            } else {
+                intExp = exponent.RawValue();
+                Hardware::ArithmeticShiftRight<F>(intExp);
+            }
             FixedPoint result = One();
             FixedPoint base = *this;
 
@@ -1517,12 +1676,15 @@ namespace SaturnMath::Types
          * arithmetic for maximum precision. At runtime, leverages the
          * Saturn's hardware divider unit for zero-cost division.
          *
-         * @note Returns MaxValue() for input of 0 to avoid division by zero
+         * @warning Callers MUST validate that the input is non-zero before calling.
+         *          Returns MaxValue() (saturated +infinity) for input of 0 to avoid
+         *          division by zero. This is a sentinel value, not an error indicator.
+         *          Do NOT use the returned value to detect zero input.
          * @note The output format can differ from the input format
          */
         template<int OI = I, int OF = F>
             requires (OI + OF == 32) && (OI >= 2) && (OF >= 8)
-        FixedPoint<OI, OF> Reciprocal() const
+        [[gnu::always_inline]] constexpr FixedPoint<OI, OF> Reciprocal() const
         {
             if consteval
             {
@@ -1533,14 +1695,23 @@ namespace SaturnMath::Types
             else
             {
                 if (value == 0) return FixedPoint<OI, OF>::MaxValue();
-                if constexpr (OF + F >= 32) { dvdnth = 1 << ((OF + F) - 32); dvdntl = 0; }
-                else { dvdnth = 0; dvdntl = 1 << (OF + F); }
-                dvsr = value;
-                return FixedPoint<OI, OF>::BuildRaw(static_cast<int32_t>(dvdntl));
+                if constexpr (OF + F >= 32) { Hardware::DivSet(value, 1 << ((OF + F) - 32), 0); }
+                else { Hardware::DivSet(value, 0, 1 << (OF + F)); }
+                return FixedPoint<OI, OF>::BuildRaw(Hardware::DivGetResult());
             }
         }
         ///@}
     };
+
+    // ========================================================================
+    // FIXED POINT CONCEPT
+    // ========================================================================
+
+    template<typename T> struct is_fixed_point : std::false_type {};
+    template<int I, int F> struct is_fixed_point<FixedPoint<I, F>> : std::true_type {};
+
+    template<typename T>
+    concept FixedPointType = is_fixed_point<std::remove_cvref_t<T>>::value;
 
     // ========================================================================
     // ALIASES
@@ -1549,7 +1720,7 @@ namespace SaturnMath::Types
     /**
      * @brief Standard 16.16 fixed-point type (Legacy alias).
      * @details This is the original alias for the 16.16 fixed-point format. 
-     * It is completely identical and 100% interoperable with Fxp16. It is kept 
+     * It is completely identical and 100% interoperable with Fxp16_16. It is kept 
      * without deprecation warnings to maintain backwards compatibility with existing 
      * codebase. Provides a balanced range [-32768, 32767.999] and resolution (1/65536).
      */
@@ -1562,7 +1733,7 @@ namespace SaturnMath::Types
      * and precision. Multiplication results alignment costs exactly 1 cycle on SH-2 
      * hardware using the `xtrct` instruction.
      */
-    using Fxp16 = FixedPoint<16, 16>;
+    using Fxp16_16 = FixedPoint<16, 16>;
 
     /**
      * @brief Large-world 24.8 fixed-point type.
@@ -1572,7 +1743,7 @@ namespace SaturnMath::Types
      * - Resolution: ~0.003906 (1/256)
      * Multiplication is highly optimized on SH-2 hardware due to byte-aligned shifts.
      */
-    using Fxp8 = FixedPoint<24, 8>;
+    using Fxp24_8 = FixedPoint<24, 8>;
 
     /**
      * @brief High-precision 8.24 fixed-point type.
@@ -1583,5 +1754,71 @@ namespace SaturnMath::Types
      * - Resolution: ~0.0000000596 (1/16777216)
      * Multiplication is highly optimized on SH-2 hardware due to byte-aligned shifts.
      */
-    using Fxp24 = FixedPoint<8, 24>;
+    using Fxp8_24 = FixedPoint<8, 24>;
+
+    // ========================================================================
+    // PARALLEL DIVISION API
+    // ========================================================================
+
+    /**
+     * @brief Proxy for parallel division with overlapping CPU work.
+     * @tparam DivT The FixedPoint type of the divisor
+     * @tparam Fn The callable type (lambda)
+     * @details Created by the free function ParallelDiv(), this proxy bundles a
+     *          divisor with a lambda to execute while the hardware DIVU processes
+     *          the division. Used with operator/:
+     *          result = a / ParallelDiv(b, [&]{ ... });
+     *
+     * @note The lambda must NOT use the hardware DIVU (operator/, AsyncDivSet, etc.)
+     *       as that would corrupt the in-flight division.
+     */
+    template<typename DivT, typename Fn>
+    struct ParallelDivisor
+    {
+        const DivT& divisor;
+        Fn fn;
+    };
+
+    /**
+     * @brief Creates a parallel division proxy for use with operator/.
+     * @tparam I Integer bits of divisor
+     * @tparam F Fractional bits of divisor
+     * @tparam Fn Callable type (lambda)
+     * @param divisor The divisor (passed by reference, must outlive the expression)
+     * @param fn Lambda to execute while the hardware divider processes a / divisor
+     * @return ParallelDivisor proxy
+     *
+     * @code
+     * Fxp cd;
+     * Fxp r = (a / ParallelDiv(b, [&]{ cd = c * d; })) * e;
+     * // a/b runs on DIVU hardware, lambda runs on CPU in parallel
+     * @endcode
+     */
+    template<int I, int F, typename Fn>
+    [[gnu::always_inline]] inline ParallelDivisor<FixedPoint<I, F>, Fn>
+    ParallelDiv(const FixedPoint<I, F>& divisor, Fn fn)
+    {
+        return ParallelDivisor<FixedPoint<I, F>, Fn>{divisor, fn};
+    }
+
+    /**
+     * @brief Parallel division operator: divides lhs by the divisor in op while
+     *        executing op's lambda in parallel on the CPU.
+     * @details Starts the hardware DIVU division (lhs / op.divisor), executes
+     *          the lambda (for parallel CPU work), then
+     *          collects the hardware result. This overlaps the DIVU latency
+     *          with useful CPU computation.
+     */
+    template<int I, int F, typename Fn>
+    [[gnu::always_inline]] inline FixedPoint<I, F>
+    operator/(const FixedPoint<I, F>& lhs, ParallelDivisor<FixedPoint<I, F>, Fn>&& op)
+    {
+        int32_t dividendHigh = lhs.RawValue();
+        if constexpr (32 - F > 0)
+            Hardware::ArithmeticShiftRight<32 - F>(dividendHigh);
+        Hardware::DivSet(op.divisor.RawValue(), dividendHigh,
+                         static_cast<int32_t>(static_cast<uint32_t>(lhs.RawValue()) << F));
+        op.fn();
+        return FixedPoint<I, F>::BuildRaw(Hardware::DivGetResult());
+    }
 }

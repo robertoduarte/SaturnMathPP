@@ -8,7 +8,7 @@ namespace SaturnMath::Types
     /**
      * @brief High-performance 3x3 matrix implementation optimized for Saturn hardware.
      *
-     * @details The Matrix33 class provides a comprehensive set of matrix operations
+     * @details The Matrix3x3 class provides a comprehensive set of matrix operations
      * optimized for 3D transformations, rotations, and linear algebra calculations
      * on Saturn hardware. It uses fixed-point arithmetic for all operations to ensure
      * consistent behavior across platforms and maximize performance.
@@ -55,11 +55,12 @@ namespace SaturnMath::Types
      * @see MatrixStack For hierarchical transformations
      * @see Vector3D For the underlying vector implementation
      */
-    struct Matrix33
+    template<int I = 16, int F = 16> struct Matrix3x3
     {
-        Vector3D Row0; /**< The right vector (XAxis) of the transformation. */
-        Vector3D Row1; /**< The up vector (YAxis) of the transformation. */
-        Vector3D Row2; /**< The forward vector (ZAxis) of the transformation. */
+        using T = FixedPoint<I, F>;
+        Vector3<I, F> Row0; /**< The right vector (XAxis) of the transformation. */
+        Vector3<I, F> Row1; /**< The up vector (YAxis) of the transformation. */
+        Vector3<I, F> Row2; /**< The forward vector (ZAxis) of the transformation. */
 
         /**
          * @brief Default constructor initializing to a zero matrix.
@@ -73,7 +74,7 @@ namespace SaturnMath::Types
          *     | 0 0 0 |
          *     | 0 0 0 |
          */
-        constexpr Matrix33() : Row0(), Row1(), Row2() {}
+        constexpr Matrix3x3() : Row0(), Row1(), Row2() {}
 
         /**
          * @brief Creates rotation matrix from up and direction vectors.
@@ -87,13 +88,13 @@ namespace SaturnMath::Types
          * @note Ensure that up and direction vectors are not collinear to avoid undefined behavior.
          *
          * @code {.cpp}
-         * Matrix33 rotation = Matrix33(
+         * Matrix3x3 rotation = Matrix3x3(
          *     Vector3D(0, 1, 0),    // Up vector
          *     Vector3D(0, 0, 1)     // Direction vector
          * );
          * @endcode 
          */
-        constexpr Matrix33(const Vector3D& up, const Vector3D& direction)
+        constexpr Matrix3x3(const Vector3<I, F>& up, const Vector3<I, F>& direction)
         {
             // Normalize direction first
             Row2 = direction.Normalize();
@@ -118,14 +119,14 @@ namespace SaturnMath::Types
          * @note For proper rotation matrices, ensure the row vectors are orthonormal.
          *
          * @code {.cpp}
-         * Matrix33 matrix = Matrix33(
+         * Matrix3x3 matrix = Matrix3x3(
          *     Vector3D(1, 0, 0),    // Right vector
          *     Vector3D(0, 1, 0),    // Up vector
          *     Vector3D(0, 0, 1)     // Forward vector
          * );
          * @endcode 
          */
-        constexpr Matrix33(const Vector3D& row0In, const Vector3D& row1In, const Vector3D& row2In) : Row0(row0In), Row1(row1In), Row2(row2In) {}
+        constexpr Matrix3x3(const Vector3<I, F>& row0In, const Vector3<I, F>& row1In, const Vector3<I, F>& row2In) : Row0(row0In), Row1(row1In), Row2(row2In) {}
 
         /**
          * @brief Multiply this matrix by another matrix in-place.
@@ -140,25 +141,25 @@ namespace SaturnMath::Types
          * @note Matrix multiplication is not commutative, meaning A * B ≠ B * A.
          *
          * @code {.cpp}
-         * Matrix33 matA = Matrix33::CreateRotationX(Angle::FromDegrees(90));
-         * Matrix33 matB = Matrix33::CreateRotationY(Angle::FromDegrees(45));
+         * Matrix3x3 matA = Matrix3x3::CreateRotationX(Angle::FromDegrees(90));
+         * Matrix3x3 matB = Matrix3x3::CreateRotationY(Angle::FromDegrees(45));
          * matA *= matB; // Combines rotations, first X then Y
          * @endcode 
          */
-        constexpr Matrix33& operator*=(const Matrix33& other)
+        constexpr Matrix3x3& operator*=(const Matrix3x3& other)
         {
             // Store current values since we'll be modifying the matrix
-            const Vector3D oldRow0 = Row0;
-            const Vector3D oldRow1 = Row1;
-            const Vector3D oldRow2 = Row2;
+            const Vector3<I, F> oldRow0 = Row0;
+            const Vector3<I, F> oldRow1 = Row1;
+            const Vector3<I, F> oldRow2 = Row2;
 
             // Create a transposed version of the other matrix to access columns efficiently
-            const Matrix33 transposed = other.Transposed();
+            const Matrix3x3 transposed = other.Transposed();
 
             // Compute new rows using Dot product for better performance
-            Row0 = Vector3D(oldRow0.Dot(transposed.Row0), oldRow0.Dot(transposed.Row1), oldRow0.Dot(transposed.Row2));
-            Row1 = Vector3D(oldRow1.Dot(transposed.Row0), oldRow1.Dot(transposed.Row1), oldRow1.Dot(transposed.Row2));
-            Row2 = Vector3D(oldRow2.Dot(transposed.Row0), oldRow2.Dot(transposed.Row1), oldRow2.Dot(transposed.Row2));
+            Row0 = Vector3<I, F>(oldRow0.Dot(transposed.Row0), oldRow0.Dot(transposed.Row1), oldRow0.Dot(transposed.Row2));
+            Row1 = Vector3<I, F>(oldRow1.Dot(transposed.Row0), oldRow1.Dot(transposed.Row1), oldRow1.Dot(transposed.Row2));
+            Row2 = Vector3<I, F>(oldRow2.Dot(transposed.Row0), oldRow2.Dot(transposed.Row1), oldRow2.Dot(transposed.Row2));
 
             return *this;
         }
@@ -175,12 +176,12 @@ namespace SaturnMath::Types
          * @note This is equivalent to creating a copy of this matrix and using operator*=.
          *
          * @code {.cpp}
-         * Matrix33 combined = rotationMatrix * scaleMatrix;
+         * Matrix3x3 combined = rotationMatrix * scaleMatrix;
          * @endcode 
          */
-        constexpr Matrix33 operator*(const Matrix33& other) const
+        constexpr Matrix3x3 operator*(const Matrix3x3& other) const
         {
-            Matrix33 result(*this);
+            Matrix3x3 result(*this);
             result *= other;
             return result;
         }
@@ -194,12 +195,12 @@ namespace SaturnMath::Types
          * @return true if all components are equal, false otherwise.
          *
          * @code {.cpp}
-         * Matrix33 a = Matrix33::Identity();
-         * Matrix33 b = Matrix33::Identity();
+         * Matrix3x3 a = Matrix3x3::Identity();
+         * Matrix3x3 b = Matrix3x3::Identity();
          * bool equal = (a == b);  // true
          * @endcode
          */
-        constexpr bool operator==(const Matrix33& other) const
+        constexpr bool operator==(const Matrix3x3& other) const
         {
             return Row0 == other.Row0 && 
                    Row1 == other.Row1 && 
@@ -215,12 +216,12 @@ namespace SaturnMath::Types
          * @return true if any component is not equal, false otherwise.
          *
          * @code {.cpp}
-         * Matrix33 a = Matrix33::Identity();
-         * Matrix33 b = Matrix33::CreateScale(2.0f);
+         * Matrix3x3 a = Matrix3x3::Identity();
+         * Matrix3x3 b = Matrix3x3::CreateScale(2.0f);
          * bool notEqual = (a != b);  // true
          * @endcode
          */
-        constexpr bool operator!=(const Matrix33& other) const
+        constexpr bool operator!=(const Matrix3x3& other) const
         {
             return !(*this == other);
         }
@@ -241,13 +242,13 @@ namespace SaturnMath::Types
          *
          * @code {.cpp}
          * Vector3D direction(0, 0, 1);
-         * Matrix33 rotation = Matrix33::CreateRotationY(Angle::FromDegrees(90));
+         * Matrix3x3 rotation = Matrix3x3::CreateRotationY(Angle::FromDegrees(90));
          * Vector3D rotated = rotation * direction; // Rotates the vector 90° around Y axis
          * @endcode 
          */
-        constexpr Vector3D operator*(const Vector3D& v) const 
+        constexpr Vector3<I, F> operator*(const Vector3<I, F>& v) const 
         { 
-            return Vector3D(Row0.Dot(v), Row1.Dot(v), Row2.Dot(v)); 
+            return Vector3<I, F>(Row0.Dot(v), Row1.Dot(v), Row2.Dot(v)); 
         }
 
         /**
@@ -267,24 +268,24 @@ namespace SaturnMath::Types
          * the transpose is equal to the inverse.
          *
          * @code {.cpp}
-         * Matrix33 mat = Matrix33::CreateRotationX(Angle::FromDegrees(45));
+         * Matrix3x3 mat = Matrix3x3::CreateRotationX(Angle::FromDegrees(45));
          * mat.Transpose(); // Transposes the matrix in-place
          * @endcode 
          */
-        constexpr Matrix33& Transpose()
+        constexpr Matrix3x3& Transpose()
         {
             // Swap row0.y and row1.x
-            const Fxp m01 = Row0.Y;
+            const T m01 = Row0.Y;
             Row0.Y = Row1.X;
             Row1.X = m01;
 
             // Swap row0.z and row2.x
-            const Fxp m02 = Row0.Z;
+            const T m02 = Row0.Z;
             Row0.Z = Row2.X;
             Row2.X = m02;
 
             // Swap row1.z and row2.y
-            const Fxp m12 = Row1.Z;
+            const T m12 = Row1.Z;
             Row1.Z = Row2.Y;
             Row2.Y = m12;
 
@@ -309,24 +310,24 @@ namespace SaturnMath::Types
          * as it modifies the existing matrix rather than creating a new one.
          *
          * @code {.cpp}
-         * Matrix33 transform = Matrix33::Identity();
+         * Matrix3x3 transform = Matrix3x3::Identity();
          * transform.RotateX(Angle::FromDegrees(45)); // Rotate 45° around X
          * @endcode 
          */
-        constexpr Matrix33& RotateX(const Angle& angleX)
+        constexpr Matrix3x3& RotateX(const Angle& angleX)
         {
             // Compute sin and cos values for the angleX using SinCos
  
-            const Fxp sinValue = Trigonometry::Sin(angleX);
-            const Fxp cosValue = Trigonometry::Cos(angleX);
+            const T sinValue = Trigonometry::Sin<T>(angleX);
+            const T cosValue = Trigonometry::Cos<T>(angleX);
 
             // Update matrix elements to perform rotation around the X-axis
-            const Fxp m01 = Row0.Y;
-            const Fxp m02 = Row0.Z;
-            const Fxp m11 = Row1.Y;
-            const Fxp m12 = Row1.Z;
-            const Fxp m21 = Row2.Y;
-            const Fxp m22 = Row2.Z;
+            const T m01 = Row0.Y;
+            const T m02 = Row0.Z;
+            const T m11 = Row1.Y;
+            const T m12 = Row1.Z;
+            const T m21 = Row2.Y;
+            const T m22 = Row2.Z;
 
             Row0.Y = (m01 * cosValue) + (m02 * sinValue);
             Row0.Z = -(m01 * sinValue) + (m02 * cosValue);
@@ -355,18 +356,18 @@ namespace SaturnMath::Types
          * @return A new rotation matrix.
          *
          * @code {.cpp}
-         * Matrix33 rotation = Matrix33::CreateRotationX(Angle::FromDegrees(90));
+         * Matrix3x3 rotation = Matrix3x3::CreateRotationX(Angle::FromDegrees(90));
          * Vector3D rotated = rotation * Vector3D(0, 1, 0); // Rotates (0,1,0) to (0,0,1)
          * @endcode 
          */
-        static constexpr Matrix33 CreateRotationX(const Angle& angle)
+        static constexpr Matrix3x3 CreateRotationX(const Angle& angle)
         {
-            const Fxp sinValue = Trigonometry::Sin(angle);
-            const Fxp cosValue = Trigonometry::Cos(angle);
-            return Matrix33{
-                Vector3D(1, 0, 0),
-                Vector3D(0, cosValue, -sinValue),
-                Vector3D(0, sinValue, cosValue)
+            const T sinValue = Trigonometry::Sin<T>(angle);
+            const T cosValue = Trigonometry::Cos<T>(angle);
+            return Matrix3x3{
+                Vector3<I, F>(1, 0, 0),
+                Vector3<I, F>(0, cosValue, -sinValue),
+                Vector3<I, F>(0, sinValue, cosValue)
             };
         }
 
@@ -388,22 +389,22 @@ namespace SaturnMath::Types
          * as it modifies the existing matrix rather than creating a new one.
          *
          * @code {.cpp}
-         * Matrix33 transform = Matrix33::Identity();
+         * Matrix3x3 transform = Matrix3x3::Identity();
          * transform.RotateY(Angle::FromDegrees(45)); // Rotate 45° around Y
          * @endcode 
          */
-        constexpr Matrix33& RotateY(const Angle& angleY)
+        constexpr Matrix3x3& RotateY(const Angle& angleY)
         {
-            const Fxp sinValue = Trigonometry::Sin(angleY);
-            const Fxp cosValue = Trigonometry::Cos(angleY);
+            const T sinValue = Trigonometry::Sin<T>(angleY);
+            const T cosValue = Trigonometry::Cos<T>(angleY);
 
             // Update matrix elements to perform rotation around the Y-axis
-            const Fxp m00 = Row0.X;
-            const Fxp m02 = Row0.Z;
-            const Fxp m10 = Row1.X;
-            const Fxp m12 = Row1.Z;
-            const Fxp m20 = Row2.X;
-            const Fxp m22 = Row2.Z;
+            const T m00 = Row0.X;
+            const T m02 = Row0.Z;
+            const T m10 = Row1.X;
+            const T m12 = Row1.Z;
+            const T m20 = Row2.X;
+            const T m22 = Row2.Z;
 
             Row0.X = (m00 * cosValue) - (m02 * sinValue);
             Row0.Z = (m00 * sinValue) + (m02 * cosValue);
@@ -432,19 +433,19 @@ namespace SaturnMath::Types
          * @return A new rotation matrix.
          *
          * @code {.cpp}
-         * Matrix33 rotation = Matrix33::CreateRotationY(Angle::FromDegrees(90));
+         * Matrix3x3 rotation = Matrix3x3::CreateRotationY(Angle::FromDegrees(90));
          * Vector3D rotated = rotation * Vector3D(1, 0, 0); // Rotates (1,0,0) to (0,0,-1)
          * @endcode 
          */
-        static constexpr Matrix33 CreateRotationY(const Angle& angle)
+        static constexpr Matrix3x3 CreateRotationY(const Angle& angle)
         {
-            const Fxp sinValue = Trigonometry::Sin(angle);
-            const Fxp cosValue = Trigonometry::Cos(angle);
+            const T sinValue = Trigonometry::Sin<T>(angle);
+            const T cosValue = Trigonometry::Cos<T>(angle);
 
-            return Matrix33{
-                Vector3D(cosValue, 0, sinValue),
-                Vector3D(0, 1, 0),
-                Vector3D(-sinValue, 0, cosValue)
+            return Matrix3x3{
+                Vector3<I, F>(cosValue, 0, sinValue),
+                Vector3<I, F>(0, 1, 0),
+                Vector3<I, F>(-sinValue, 0, cosValue)
             };
         }
 
@@ -466,22 +467,22 @@ namespace SaturnMath::Types
          * as it modifies the existing matrix rather than creating a new one.
          *
          * @code {.cpp}
-         * Matrix33 transform = Matrix33::Identity();
+         * Matrix3x3 transform = Matrix3x3::Identity();
          * transform.RotateZ(Angle::FromDegrees(45)); // Rotate 45° around Z
          * @endcode 
          */
-        constexpr Matrix33& RotateZ(const Angle& angleZ)
+        constexpr Matrix3x3& RotateZ(const Angle& angleZ)
         {
-            const Fxp sinValue = Trigonometry::Sin(angleZ);
-            const Fxp cosValue = Trigonometry::Cos(angleZ);
+            const T sinValue = Trigonometry::Sin<T>(angleZ);
+            const T cosValue = Trigonometry::Cos<T>(angleZ);
 
             // Update matrix elements to perform rotation around the Z-axis
-            const Fxp m00 = Row0.X;
-            const Fxp m01 = Row0.Y;
-            const Fxp m10 = Row1.X;
-            const Fxp m11 = Row1.Y;
-            const Fxp m20 = Row2.X;
-            const Fxp m21 = Row2.Y;
+            const T m00 = Row0.X;
+            const T m01 = Row0.Y;
+            const T m10 = Row1.X;
+            const T m11 = Row1.Y;
+            const T m20 = Row2.X;
+            const T m21 = Row2.Y;
 
             Row0.X = (m00 * cosValue) + (m01 * sinValue);
             Row0.Y = -(m00 * sinValue) + (m01 * cosValue);
@@ -510,19 +511,19 @@ namespace SaturnMath::Types
          * @return A new rotation matrix.
          *
          * @code {.cpp}
-         * Matrix33 rotation = Matrix33::CreateRotationZ(Angle::FromDegrees(90));
+         * Matrix3x3 rotation = Matrix3x3::CreateRotationZ(Angle::FromDegrees(90));
          * Vector3D rotated = rotation * Vector3D(1, 0, 0); // Rotates (1,0,0) to (0,1,0)
          * @endcode 
          */
-        static constexpr Matrix33 CreateRotationZ(const Angle& angle)
+        static constexpr Matrix3x3 CreateRotationZ(const Angle& angle)
         {
-            const Fxp sinValue = Trigonometry::Sin(angle);
-            const Fxp cosValue = Trigonometry::Cos(angle);
+            const T sinValue = Trigonometry::Sin<T>(angle);
+            const T cosValue = Trigonometry::Cos<T>(angle);
             
-            return Matrix33{
-                Vector3D(cosValue, -sinValue, 0),
-                Vector3D(sinValue, cosValue, 0),
-                Vector3D(0, 0, 1)
+            return Matrix3x3{
+                Vector3<I, F>(cosValue, -sinValue, 0),
+                Vector3<I, F>(sinValue, cosValue, 0),
+                Vector3<I, F>(0, 0, 1)
             };
         }
 
@@ -548,36 +549,36 @@ namespace SaturnMath::Types
          * in a different final orientation.
          *
          * @code {.cpp}
-         * Matrix33 rotation = Matrix33::CreateRotation(
+         * Matrix3x3 rotation = Matrix3x3::CreateRotation(
          *     Angle::FromDegrees(30),  // X rotation (pitch)
          *     Angle::FromDegrees(45),  // Y rotation (yaw)
          *     Angle::FromDegrees(60)   // Z rotation (roll)
          * );
          * @endcode 
          */
-        static constexpr Matrix33 CreateRotation(const Angle& angleX, const Angle& angleY, const Angle& angleZ)
+        static constexpr Matrix3x3 CreateRotation(const Angle& angleX, const Angle& angleY, const Angle& angleZ)
         {
-            const Fxp sinX = Trigonometry::Sin(angleX);
-            const Fxp cosX = Trigonometry::Cos(angleX);
-            const Fxp sinY = Trigonometry::Sin(angleY);
-            const Fxp cosY = Trigonometry::Cos(angleY);
-            const Fxp sinZ = Trigonometry::Sin(angleZ);
-            const Fxp cosZ = Trigonometry::Cos(angleZ);
+            const T sinX = Trigonometry::Sin<T>(angleX);
+            const T cosX = Trigonometry::Cos<T>(angleX);
+            const T sinY = Trigonometry::Sin<T>(angleY);
+            const T cosY = Trigonometry::Cos<T>(angleY);
+            const T sinZ = Trigonometry::Sin<T>(angleZ);
+            const T cosZ = Trigonometry::Cos<T>(angleZ);
 
-            const Fxp m00 = cosY * cosZ;
-            const Fxp m01 = -cosY * sinZ;
-            const Fxp m02 = sinY;
-            const Fxp m10 = sinX * sinY * cosZ + cosX * sinZ;
-            const Fxp m11 = -sinX * sinY * sinZ + cosX * cosZ;
-            const Fxp m12 = -sinX * cosY;
-            const Fxp m20 = -cosX * sinY * cosZ + sinX * sinZ;
-            const Fxp m21 = cosX * sinY * sinZ + sinX * cosZ;
-            const Fxp m22 = cosX * cosY;
+            const T m00 = cosY * cosZ;
+            const T m01 = -cosY * sinZ;
+            const T m02 = sinY;
+            const T m10 = sinX * sinY * cosZ + cosX * sinZ;
+            const T m11 = -sinX * sinY * sinZ + cosX * cosZ;
+            const T m12 = -sinX * cosY;
+            const T m20 = -cosX * sinY * cosZ + sinX * sinZ;
+            const T m21 = cosX * sinY * sinZ + sinX * cosZ;
+            const T m22 = cosX * cosY;
 
-            return Matrix33{
-                Vector3D(m00, m01, m02),
-                Vector3D(m10, m11, m12),
-                Vector3D(m20, m21, m22)
+            return Matrix3x3{
+                Vector3<I, F>(m00, m01, m02),
+                Vector3<I, F>(m10, m11, m12),
+                Vector3<I, F>(m20, m21, m22)
             };
         }
 
@@ -600,11 +601,11 @@ namespace SaturnMath::Types
          * For pure scaling, use CreateScale instead.
          *
          * @code {.cpp}
-         * Matrix33 transform = Matrix33::Identity();
+         * Matrix3x3 transform = Matrix3x3::Identity();
          * transform.Scale(Vector3D(2, 1, 0.5)); // Scale x by 2, y by 1, z by 0.5
          * @endcode 
          */
-        constexpr Matrix33& Scale(const Vector3D& scale)
+        constexpr Matrix3x3& Scale(const Vector3<I, F>& scale)
         {
             Row0.X *= scale.X;
             Row0.Y *= scale.Y;
@@ -640,11 +641,11 @@ namespace SaturnMath::Types
          * - |det| represents the scale factor of the transformation
          *
          * @code {.cpp}
-         * Matrix33 rotation = Matrix33::CreateRotationX(Angle::FromDegrees(90));
+         * Matrix3x3 rotation = Matrix3x3::CreateRotationX(Angle::FromDegrees(90));
          * Fxp det = rotation.Determinant(); // Should be close to 1
          * @endcode 
          */
-        constexpr Fxp Determinant() const
+        constexpr T Determinant() const
         {
             return Row0.X * (Row1.Y * Row2.Z - Row1.Z * Row2.Y) -
                    Row0.Y * (Row1.X * Row2.Z - Row1.Z * Row2.X) +
@@ -672,19 +673,19 @@ namespace SaturnMath::Types
          * the inverse is equal to the transpose.
          *
          * @code {.cpp}
-         * Matrix33 transform = Matrix33::CreateRotationY(Angle::FromDegrees(45));
-         * Matrix33 inverse;
+         * Matrix3x3 transform = Matrix3x3::CreateRotationY(Angle::FromDegrees(45));
+         * Matrix3x3 inverse;
          * if (transform.TryInverse(inverse)) {
          *     // inverse * transform ≈ Identity
          * }
          * @endcode 
          */
-        bool constexpr TryInverse(Matrix33& out) const
+        bool constexpr TryInverse(Matrix3x3& out) const
         {
-            const Fxp det = Determinant();
-            if (det == 0.0) return false;
+            const T det = Determinant();
+            if (det == 0) return false;
 
-            const Fxp invDet = 1.0 / det;
+            const T invDet = T(1.0) / det;
 
             // Calculate cofactors and adjugate matrix
             out.Row0.X = (Row1.Y * Row2.Z - Row1.Z * Row2.Y) * invDet;
@@ -720,16 +721,16 @@ namespace SaturnMath::Types
          * that only represents scaling, without affecting rotation.
          *
          * @code {.cpp}
-         * Matrix33 scaleMatrix = Matrix33::CreateScale(Vector3D(2, 2, 2)); // Uniform scale by 2
+         * Matrix3x3 scaleMatrix = Matrix3x3::CreateScale(Vector3D(2, 2, 2)); // Uniform scale by 2
          * Vector3D scaled = scaleMatrix * Vector3D(1, 1, 1); // Results in (2, 2, 2)
          * @endcode 
          */
-        static constexpr Matrix33 CreateScale(const Vector3D& scale)
+        static constexpr Matrix3x3 CreateScale(const Vector3<I, F>& scale)
         {
-            return Matrix33(
-                Vector3D(scale.X, 0, 0),
-                Vector3D(0, scale.Y, 0),
-                Vector3D(0, 0, scale.Z)
+            return Matrix3x3(
+                Vector3<I, F>(scale.X, 0, 0),
+                Vector3<I, F>(0, scale.Y, 0),
+                Vector3<I, F>(0, 0, scale.Z)
             );
         }
 
@@ -752,17 +753,17 @@ namespace SaturnMath::Types
          * @return The 3x3 identity matrix.
          *
          * @code {.cpp}
-         * Matrix33 identity = Matrix33::Identity();
+         * Matrix3x3 identity = Matrix3x3::Identity();
          * Vector3D v(1, 2, 3);
          * Vector3D result = identity * v; // Same as v
          * @endcode 
          */
-        static consteval Matrix33 Identity()
+        static consteval Matrix3x3 Identity()
         {
-            return Matrix33(
-                Vector3D(1, 0, 0),
-                Vector3D(0, 1, 0),
-                Vector3D(0, 0, 1)
+            return Matrix3x3(
+                Vector3<I, F>(1, 0, 0),
+                Vector3<I, F>(0, 1, 0),
+                Vector3<I, F>(0, 0, 1)
             );
         }
 
@@ -771,82 +772,114 @@ namespace SaturnMath::Types
          * 
          * @return A new transposed matrix.
          */
-        constexpr Matrix33 Transposed() const
+        constexpr Matrix3x3 Transposed() const
         {
-            return Matrix33(
-                Vector3D(Row0.X, Row1.X, Row2.X),
-                Vector3D(Row0.Y, Row1.Y, Row2.Y),
-                Vector3D(Row0.Z, Row1.Z, Row2.Z)
+            return Matrix3x3(
+                Vector3<I, F>(Row0.X, Row1.X, Row2.X),
+                Vector3<I, F>(Row0.Y, Row1.Y, Row2.Y),
+                Vector3<I, F>(Row0.Z, Row1.Z, Row2.Z)
             );
         }
 
 
-        // Matrix addition
-        constexpr Matrix33 operator+(const Matrix33& other) const
+        /** @name Arithmetic Operators */
+        ///@{
+        /**
+         * @brief Matrix addition operator.
+         * @param other Matrix to add.
+         * @return New matrix that is the sum of this and other.
+         */
+        constexpr Matrix3x3 operator+(const Matrix3x3& other) const
         {
-            return Matrix33(
+            return Matrix3x3(
                 Row0 + other.Row0,
                 Row1 + other.Row1,
                 Row2 + other.Row2
             );
         }
 
-        // Matrix subtraction
-        constexpr Matrix33 operator-(const Matrix33& other) const
+        /**
+         * @brief Matrix subtraction operator.
+         * @param other Matrix to subtract.
+         * @return New matrix that is the difference of this and other.
+         */
+        constexpr Matrix3x3 operator-(const Matrix3x3& other) const
         {
-            return Matrix33(
+            return Matrix3x3(
                 Row0 - other.Row0,
                 Row1 - other.Row1,
                 Row2 - other.Row2
             );
         }
 
-        // Scalar multiplication
-        constexpr Matrix33 operator*(const Fxp& scalar) const
+        /**
+         * @brief Scalar multiplication operator.
+         * @param scalar Fixed-point value to multiply by.
+         * @return New matrix with all elements scaled by scalar.
+         */
+        constexpr Matrix3x3 operator*(const T& scalar) const
         {
-            return Matrix33(
+            return Matrix3x3(
                 Row0 * scalar,
                 Row1 * scalar,
                 Row2 * scalar
             );
         }
 
-        // Scalar multiplication for integral types (optimized)
-        template <typename T>
-            requires std::is_integral_v<T>
-        constexpr Matrix33 operator*(const T& scalar) const
+        /**
+         * @brief Scalar multiplication operator for integral types.
+         * @tparam U Integral type of the scalar.
+         * @param scalar Integer value to multiply by.
+         * @return New matrix with all elements scaled by scalar.
+         */
+        template <typename U>
+            requires std::is_integral_v<U>
+        constexpr Matrix3x3 operator*(const U& scalar) const
         {
-            return Matrix33(
+            return Matrix3x3(
                 Row0 * scalar,
                 Row1 * scalar,
                 Row2 * scalar
             );
         }
 
-        // Scalar division
-        constexpr Matrix33 operator/(const Fxp& scalar) const
+        /**
+         * @brief Scalar division operator.
+         * @param scalar Fixed-point value to divide by.
+         * @return New matrix with all elements divided by scalar.
+         */
+        constexpr Matrix3x3 operator/(const T& scalar) const
         {
-            return Matrix33(
+            return Matrix3x3(
                 Row0 / scalar,
                 Row1 / scalar,
                 Row2 / scalar
             );
         }
 
-        // Scalar division for integral types (optimized)
-        template <typename T>
-            requires std::is_integral_v<T>
-        constexpr Matrix33 operator/(const T& scalar) const
+        /**
+         * @brief Scalar division operator for integral types.
+         * @tparam U Integral type of the scalar.
+         * @param scalar Integer value to divide by.
+         * @return New matrix with all elements divided by scalar.
+         */
+        template <typename U>
+            requires std::is_integral_v<U>
+        constexpr Matrix3x3 operator/(const U& scalar) const
         {
-            return Matrix33(
+            return Matrix3x3(
                 Row0 / scalar,
                 Row1 / scalar,
                 Row2 / scalar
             );
         }
 
-        // Compound addition assignment
-        constexpr Matrix33& operator+=(const Matrix33& other)
+        /**
+         * @brief Compound addition assignment operator.
+         * @param other Matrix to add.
+         * @return Reference to this matrix after addition.
+         */
+        constexpr Matrix3x3& operator+=(const Matrix3x3& other)
         {
             Row0 += other.Row0;
             Row1 += other.Row1;
@@ -854,8 +887,12 @@ namespace SaturnMath::Types
             return *this;
         }
 
-        // Compound subtraction assignment
-        constexpr Matrix33& operator-=(const Matrix33& other)
+        /**
+         * @brief Compound subtraction assignment operator.
+         * @param other Matrix to subtract.
+         * @return Reference to this matrix after subtraction.
+         */
+        constexpr Matrix3x3& operator-=(const Matrix3x3& other)
         {
             Row0 -= other.Row0;
             Row1 -= other.Row1;
@@ -863,8 +900,12 @@ namespace SaturnMath::Types
             return *this;
         }
 
-        // Compound scalar multiplication assignment
-        constexpr Matrix33& operator*=(const Fxp& scalar)
+        /**
+         * @brief Compound scalar multiplication assignment operator.
+         * @param scalar Fixed-point value to multiply by.
+         * @return Reference to this matrix after scaling.
+         */
+        constexpr Matrix3x3& operator*=(const T& scalar)
         {
             Row0 *= scalar;
             Row1 *= scalar;
@@ -872,10 +913,15 @@ namespace SaturnMath::Types
             return *this;
         }
 
-        // Compound scalar multiplication assignment for integral types (optimized)
-        template <typename T>
-            requires std::is_integral_v<T>
-        constexpr Matrix33& operator*=(const T& scalar)
+        /**
+         * @brief Compound scalar multiplication assignment for integral types.
+         * @tparam U Integral type of the scalar.
+         * @param scalar Integer value to multiply by.
+         * @return Reference to this matrix after scaling.
+         */
+        template <typename U>
+            requires std::is_integral_v<U>
+        constexpr Matrix3x3& operator*=(const U& scalar)
         {
             Row0 *= scalar;
             Row1 *= scalar;
@@ -883,8 +929,12 @@ namespace SaturnMath::Types
             return *this;
         }
 
-        // Compound scalar division assignment
-        constexpr Matrix33& operator/=(const Fxp& scalar)
+        /**
+         * @brief Compound scalar division assignment operator.
+         * @param scalar Fixed-point value to divide by.
+         * @return Reference to this matrix after division.
+         */
+        constexpr Matrix3x3& operator/=(const T& scalar)
         {
             Row0 /= scalar;
             Row1 /= scalar;
@@ -892,10 +942,15 @@ namespace SaturnMath::Types
             return *this;
         }
 
-        // Compound scalar division assignment for integral types (optimized)
-        template <typename T>
-            requires std::is_integral_v<T>
-        constexpr Matrix33& operator/=(const T& scalar)
+        /**
+         * @brief Compound scalar division assignment for integral types.
+         * @tparam U Integral type of the scalar.
+         * @param scalar Integer value to divide by.
+         * @return Reference to this matrix after division.
+         */
+        template <typename U>
+            requires std::is_integral_v<U>
+        constexpr Matrix3x3& operator/=(const U& scalar)
         {
             Row0 /= scalar;
             Row1 /= scalar;
@@ -903,16 +958,27 @@ namespace SaturnMath::Types
             return *this;
         }
 
-        // Friend function to allow scalar * matrix
-        friend constexpr Matrix33 operator*(const Fxp& scalar, const Matrix33& mat)
+        /**
+         * @brief Friend function for scalar * matrix multiplication.
+         * @param scalar Fixed-point value to multiply by.
+         * @param mat Matrix to multiply.
+         * @return New scaled matrix.
+         */
+        friend constexpr Matrix3x3 operator*(const T& scalar, const Matrix3x3& mat)
         {
             return mat * scalar;
         }
 
-        // Friend function to allow integral scalar * matrix (optimized)
-        template <typename T>
-            requires std::is_integral_v<T>
-        friend constexpr Matrix33 operator*(const T& scalar, const Matrix33& mat)
+        /**
+         * @brief Friend function for integral scalar * matrix multiplication.
+         * @tparam U Integral type of the scalar.
+         * @param scalar Integer value to multiply by.
+         * @param mat Matrix to multiply.
+         * @return New scaled matrix.
+         */
+        template <typename U>
+            requires std::is_integral_v<U>
+        friend constexpr Matrix3x3 operator*(const U& scalar, const Matrix3x3& mat)
         {
             return mat * scalar;
         }
@@ -926,17 +992,21 @@ namespace SaturnMath::Types
          * 
          * Example usage:
          * @code
-         * Matrix33 m(Vector3D(1, 2, 3), Vector3D(4, 5, 6), Vector3D(7, 8, 9));
-         * Matrix33 neg = -m;  // Results in [(-1,-2,-3), (-4,-5,-6), (-7,-8,-9)]
+         * Matrix3x3 m(Vector3D(1, 2, 3), Vector3D(4, 5, 6), Vector3D(7, 8, 9));
+         * Matrix3x3 neg = -m;  // Results in [(-1,-2,-3), (-4,-5,-6), (-7,-8,-9)]
          * @endcode
          */
-        constexpr Matrix33 operator-() const
+        constexpr Matrix3x3 operator-() const
         {
-            return Matrix33(
+            return Matrix3x3(
                 -Row0,
                 -Row1,
                 -Row2
             );
         }
+        ///@}
     };
+
+    // Legacy alias for default precision (Q16.16)
+    using Matrix33    = Matrix3x3<>;
 }
