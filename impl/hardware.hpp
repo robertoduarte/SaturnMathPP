@@ -52,8 +52,6 @@ namespace SaturnMath::Hardware
             "\tsts mach, %[hi]\n"
             "\tsts macl, %[lo]\n"
             : [hi] "=&r"(hi), [lo] "=&r"(lo)
-            :
-            : "memory"
         );
     }
 
@@ -66,8 +64,6 @@ namespace SaturnMath::Hardware
             "\tsts macl, %[lo]\n"
             "\txtrct %[hi], %[lo]\n"
             : [hi] "=&r"(hi), [lo] "=&r"(lo)
-            :
-            : "memory"
         );
         return lo;
     }
@@ -475,7 +471,7 @@ namespace SaturnMath::Hardware
                 "\tmac.l @%[a]+, @%[b]+\n"
                 : [a] "+r"(a), [b] "+r"(b)
                 : "m"(*a), "m"(*b)
-                : "mach", "macl", "memory"
+                : "mach", "macl"
             );
             MacAccumulate<N - 1>(a, b);
         }
