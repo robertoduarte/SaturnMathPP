@@ -23,7 +23,13 @@ namespace SaturnMath
         static constexpr double halfPi = pi / 2.0;
         static constexpr double quarterPi = pi / 4.0;
 
-        static constexpr double abs(double x) { return x < 0 ? -x : x; }
+        /**
+         * @brief Absolute value.
+         *
+         * @param x Input value.
+         * @return x if x >= 0, -x otherwise.
+         */
+        static constexpr double Abs(double x) { return x < 0 ? -x : x; }
 
         /**
          * @brief Reduce angle to [-π, π].
@@ -31,7 +37,7 @@ namespace SaturnMath
          * @param x Angle in radians.
          * @return Equivalent angle in range [-π, π].
          */
-        static constexpr double reduceToPi(double x)
+        static constexpr double ReduceToPi(double x)
         {
             while (x > pi) x -= twoPi;
             while (x < -pi) x += twoPi;
@@ -51,7 +57,7 @@ namespace SaturnMath
             if (x < 0) return 0;
             if (x == 0) return 0;
             double next = (guess + x / guess) * 0.5;
-            if (abs(next - guess) < 1e-15 * guess) return next;
+            if (Abs(next - guess) < 1e-15 * guess) return next;
             return Sqrt(x, next);
         }
 
@@ -66,7 +72,7 @@ namespace SaturnMath
         static constexpr double Sin(double x)
         {
             // Reduce to [-π, π]
-            x = reduceToPi(x);
+            x = ReduceToPi(x);
             // Reduce to [-π/2, π/2] using sin(π - x) = sin(x)
             if (x > halfPi) x = pi - x;
             if (x < -halfPi) x = -pi - x;
@@ -105,7 +111,7 @@ namespace SaturnMath
         static constexpr double Tan(double x)
         {
             double c = Cos(x);
-            if (abs(c) < 1e-15) return (Sin(x) >= 0) ? 1e15 : -1e15;
+            if (Abs(c) < 1e-15) return (Sin(x) >= 0) ? 1e15 : -1e15;
             return Sin(x) / c;
         }
 

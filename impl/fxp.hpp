@@ -1707,9 +1707,25 @@ namespace SaturnMath::Types
     // FIXED POINT CONCEPT
     // ========================================================================
 
+    /**
+     * @brief Type trait that detects FixedPoint instantiations.
+     * @tparam T Type to test
+     */
     template<typename T> struct is_fixed_point : std::false_type {};
+
+    /**
+     * @brief Specialization that matches any FixedPoint<I, F> instantiation.
+     * @tparam I Integer bits of the fixed-point format
+     * @tparam F Fractional bits of the fixed-point format
+     */
     template<int I, int F> struct is_fixed_point<FixedPoint<I, F>> : std::true_type {};
 
+    /**
+     * @brief Concept that constrains a type to FixedPoint instantiations.
+     * @details Accepts any cv-ref-qualified FixedPoint<I, F> — useful for
+     * constraining template parameters to fixed-point types.
+     * @tparam T Type to constrain
+     */
     template<typename T>
     concept FixedPointType = is_fixed_point<std::remove_cvref_t<T>>::value;
 
