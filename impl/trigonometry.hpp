@@ -170,20 +170,30 @@ namespace SaturnMath
         // Sin table — 64 entries, 10-bit interpolation, 8.24 internal format
         // ================================================================
 
+        /**
+         * @brief Table specification for the sine lookup table.
+         *
+         * Covers a full turn (0 to 2π) with uniform spacing.
+         */
         struct SinSpec
         {
-            static constexpr int entryCount = 64;
-            static constexpr uint32_t interpolationMask = 0x3FF;
-            static constexpr int multiplierBits = 10;
-            static constexpr int extractShift = 16;
-            static constexpr int internalFractionalBits = 24;
-            using ValueType = int32_t;
+            static constexpr int entryCount = 64;                        /**< Number of table entries */
+            static constexpr uint32_t interpolationMask = 0x3FF;         /**< Fraction bits mask (10-bit interpolation) */
+            static constexpr int multiplierBits = 10;                    /**< Bits in the interpolation multiplier */
+            static constexpr int extractShift = 16;                      /**< Bit offset for extracting result from 64-bit product */
+            static constexpr int internalFractionalBits = 24;            /**< Fractional bits of the internal 8.24 format */
+            using ValueType = int32_t;                                   /**< Table entry value type */
         };
 
         using SinEntry = LookupCache<SinSpec::ValueType,
                                      SinSpec::interpolationMask,
                                      SinSpec::extractShift>;
 
+        /**
+         * @brief Builds a single sine lookup table entry.
+         * @param index Table index (0 to entryCount - 1)
+         * @return Populated lookup entry with value and interpolation multiplicand
+         */
         constexpr SinEntry BuildSinEntry(int index)
         {
             double angle = static_cast<double>(index) / SinSpec::entryCount * 2.0 * pi;
@@ -198,6 +208,7 @@ namespace SaturnMath
             };
         }
 
+        /** @brief Sine lookup table covering a full turn (64 entries, 8.24 internal format). */
         inline constexpr auto sinTable = MakeLookupTable<SinEntry, SinSpec::entryCount, BuildSinEntry>();
 
         // ================================================================
@@ -205,22 +216,32 @@ namespace SaturnMath
         // Range: 0 to 0x3C00 (0° to 84.375°), step = 1024 raw units
         // ================================================================
 
+        /**
+         * @brief Table specification for the first tangent lookup table.
+         *
+         * Covers raw angles 0 to 0x3C00 (0° to 84.375°) in 8.24 internal format.
+         */
         struct Tan1Spec
         {
-            static constexpr int entryCount = 15;
-            static constexpr uint32_t interpolationMask = 0x3FF;
-            static constexpr int multiplierBits = 10;
-            static constexpr int extractShift = 0;
-            static constexpr int internalFractionalBits = 24;
-            static constexpr uint32_t baseAngle = 0;
-            static constexpr int stepSize = 1024;
-            using ValueType = int32_t;
+            static constexpr int entryCount = 15;                        /**< Number of table entries */
+            static constexpr uint32_t interpolationMask = 0x3FF;         /**< Fraction bits mask (10-bit interpolation) */
+            static constexpr int multiplierBits = 10;                    /**< Bits in the interpolation multiplier */
+            static constexpr int extractShift = 0;                       /**< Bit offset for extracting result from 64-bit product */
+            static constexpr int internalFractionalBits = 24;            /**< Fractional bits of the internal 8.24 format */
+            static constexpr uint32_t baseAngle = 0;                     /**< First raw angle covered by this table */
+            static constexpr int stepSize = 1024;                        /**< Raw angle step between entries */
+            using ValueType = int32_t;                                   /**< Table entry value type */
         };
 
         using Tan1Entry = LookupCache<Tan1Spec::ValueType,
                                       Tan1Spec::interpolationMask,
                                       Tan1Spec::extractShift>;
 
+        /**
+         * @brief Builds a single entry of the first tangent lookup table.
+         * @param index Table index (0 to entryCount - 1)
+         * @return Populated lookup entry with value and interpolation multiplicand
+         */
         constexpr Tan1Entry BuildTan1Entry(int index)
         {
             double angle = static_cast<double>(Tan1Spec::baseAngle + index * Tan1Spec::stepSize) / 65536.0 * 2.0 * pi;
@@ -235,6 +256,7 @@ namespace SaturnMath
             };
         }
 
+        /** @brief Tangent lookup table for raw angles 0 to 0x3C00 (0° to 84.375°). */
         inline constexpr auto tanTable1 = MakeLookupTable<Tan1Entry, Tan1Spec::entryCount, BuildTan1Entry>();
 
         // ================================================================
@@ -242,22 +264,32 @@ namespace SaturnMath
         // Range: 0x3C00 to 0x3F00 (84.375° to 87.1875°), step = 256 raw units
         // ================================================================
 
+        /**
+         * @brief Table specification for the second tangent lookup table.
+         *
+         * Covers raw angles 0x3C00 to 0x3F00 (84.375° to 87.1875°) in 8.24 internal format.
+         */
         struct Tan2Spec
         {
-            static constexpr int entryCount = 3;
-            static constexpr uint32_t interpolationMask = 0x0FF;
-            static constexpr int multiplierBits = 8;
-            static constexpr int extractShift = 0;
-            static constexpr int internalFractionalBits = 24;
-            static constexpr uint32_t baseAngle = 0x3C00;
-            static constexpr int stepSize = 256;
-            using ValueType = int32_t;
+            static constexpr int entryCount = 3;                         /**< Number of table entries */
+            static constexpr uint32_t interpolationMask = 0x0FF;         /**< Fraction bits mask (8-bit interpolation) */
+            static constexpr int multiplierBits = 8;                     /**< Bits in the interpolation multiplier */
+            static constexpr int extractShift = 0;                       /**< Bit offset for extracting result from 64-bit product */
+            static constexpr int internalFractionalBits = 24;            /**< Fractional bits of the internal 8.24 format */
+            static constexpr uint32_t baseAngle = 0x3C00;                /**< First raw angle covered by this table */
+            static constexpr int stepSize = 256;                         /**< Raw angle step between entries */
+            using ValueType = int32_t;                                   /**< Table entry value type */
         };
 
         using Tan2Entry = LookupCache<Tan2Spec::ValueType,
                                       Tan2Spec::interpolationMask,
                                       Tan2Spec::extractShift>;
 
+        /**
+         * @brief Builds a single entry of the second tangent lookup table.
+         * @param index Table index (0 to entryCount - 1)
+         * @return Populated lookup entry with value and interpolation multiplicand
+         */
         constexpr Tan2Entry BuildTan2Entry(int index)
         {
             double angle = static_cast<double>(Tan2Spec::baseAngle + index * Tan2Spec::stepSize) / 65536.0 * 2.0 * pi;
@@ -272,6 +304,7 @@ namespace SaturnMath
             };
         }
 
+        /** @brief Tangent lookup table for raw angles 0x3C00 to 0x3F00 (84.375° to 87.1875°). */
         inline constexpr auto tanTable2 = MakeLookupTable<Tan2Entry, Tan2Spec::entryCount, BuildTan2Entry>();
 
         // ================================================================
@@ -279,22 +312,32 @@ namespace SaturnMath
         // Range: 0x3F00 to 0x3FC0 (87.1875° to 88.59°), step = 64 raw units
         // ================================================================
 
+        /**
+         * @brief Table specification for the third tangent lookup table.
+         *
+         * Covers raw angles 0x3F00 to 0x3FC0 (87.1875° to 88.59°) in 8.24 internal format.
+         */
         struct Tan3Spec
         {
-            static constexpr int entryCount = 3;
-            static constexpr uint32_t interpolationMask = 0x03F;
-            static constexpr int multiplierBits = 6;
-            static constexpr int extractShift = 0;
-            static constexpr int internalFractionalBits = 24;
-            static constexpr uint32_t baseAngle = 0x3F00;
-            static constexpr int stepSize = 64;
-            using ValueType = int32_t;
+            static constexpr int entryCount = 3;                         /**< Number of table entries */
+            static constexpr uint32_t interpolationMask = 0x03F;         /**< Fraction bits mask (6-bit interpolation) */
+            static constexpr int multiplierBits = 6;                     /**< Bits in the interpolation multiplier */
+            static constexpr int extractShift = 0;                       /**< Bit offset for extracting result from 64-bit product */
+            static constexpr int internalFractionalBits = 24;            /**< Fractional bits of the internal 8.24 format */
+            static constexpr uint32_t baseAngle = 0x3F00;                /**< First raw angle covered by this table */
+            static constexpr int stepSize = 64;                          /**< Raw angle step between entries */
+            using ValueType = int32_t;                                   /**< Table entry value type */
         };
 
         using Tan3Entry = LookupCache<Tan3Spec::ValueType,
                                       Tan3Spec::interpolationMask,
                                       Tan3Spec::extractShift>;
 
+        /**
+         * @brief Builds a single entry of the third tangent lookup table.
+         * @param index Table index (0 to entryCount - 1)
+         * @return Populated lookup entry with value and interpolation multiplicand
+         */
         constexpr Tan3Entry BuildTan3Entry(int index)
         {
             double angle = static_cast<double>(Tan3Spec::baseAngle + index * Tan3Spec::stepSize) / 65536.0 * 2.0 * pi;
@@ -309,6 +352,7 @@ namespace SaturnMath
             };
         }
 
+        /** @brief Tangent lookup table for raw angles 0x3F00 to 0x3FC0 (87.1875° to 88.59°). */
         inline constexpr auto tanTable3 = MakeLookupTable<Tan3Entry, Tan3Spec::entryCount, BuildTan3Entry>();
 
         // ================================================================
@@ -317,22 +361,33 @@ namespace SaturnMath
         // Values clamped to 32767 to prevent overflow in 16.16 format.
         // ================================================================
 
+        /**
+         * @brief Table specification for the fourth tangent lookup table.
+         *
+         * Covers raw angles 0x3FC0 to 0x3FF0 (88.59° to 89.45°) in 16.16 internal format.
+         * Values are clamped to 32767 to prevent overflow.
+         */
         struct Tan4Spec
         {
-            static constexpr int entryCount = 3;
-            static constexpr uint32_t interpolationMask = 0x00F;
-            static constexpr int multiplierBits = 4;
-            static constexpr int extractShift = 4;
-            static constexpr int internalFractionalBits = 16;
-            static constexpr uint32_t baseAngle = 0x3FC0;
-            static constexpr int stepSize = 16;
-            using ValueType = int32_t;
+            static constexpr int entryCount = 3;                         /**< Number of table entries */
+            static constexpr uint32_t interpolationMask = 0x00F;         /**< Fraction bits mask (4-bit interpolation) */
+            static constexpr int multiplierBits = 4;                     /**< Bits in the interpolation multiplier */
+            static constexpr int extractShift = 4;                       /**< Bit offset for extracting result from 64-bit product */
+            static constexpr int internalFractionalBits = 16;            /**< Fractional bits of the internal 16.16 format */
+            static constexpr uint32_t baseAngle = 0x3FC0;                /**< First raw angle covered by this table */
+            static constexpr int stepSize = 16;                          /**< Raw angle step between entries */
+            using ValueType = int32_t;                                   /**< Table entry value type */
         };
 
         using Tan4Entry = LookupCache<Tan4Spec::ValueType,
                                       Tan4Spec::interpolationMask,
                                       Tan4Spec::extractShift>;
 
+        /**
+         * @brief Builds a single entry of the fourth tangent lookup table.
+         * @param index Table index (0 to entryCount - 1)
+         * @return Populated lookup entry with value and interpolation multiplicand
+         */
         constexpr Tan4Entry BuildTan4Entry(int index)
         {
             double angle = static_cast<double>(Tan4Spec::baseAngle + index * Tan4Spec::stepSize) / 65536.0 * 2.0 * pi;
@@ -352,6 +407,7 @@ namespace SaturnMath
             };
         }
 
+        /** @brief Tangent lookup table for raw angles 0x3FC0 to 0x3FF0 (88.59° to 89.45°). */
         inline constexpr auto tanTable4 = MakeLookupTable<Tan4Entry, Tan4Spec::entryCount, BuildTan4Entry>();
 
         // ================================================================
@@ -360,22 +416,33 @@ namespace SaturnMath
         // Values clamped to 32767. 5th entry is sentinel for clamping.
         // ================================================================
 
+        /**
+         * @brief Table specification for the fifth tangent lookup table.
+         *
+         * Covers raw angles 0x3FF0 to 0x4000 (89.45° to 90°) in 16.16 internal format.
+         * Values are clamped to 32767; the 5th entry is a sentinel for clamping.
+         */
         struct Tan5Spec
         {
-            static constexpr int entryCount = 5;
-            static constexpr uint32_t interpolationMask = 0x003;
-            static constexpr int multiplierBits = 2;
-            static constexpr int extractShift = 2;
-            static constexpr int internalFractionalBits = 16;
-            static constexpr uint32_t baseAngle = 0x3FF0;
-            static constexpr int stepSize = 4;
-            using ValueType = int32_t;
+            static constexpr int entryCount = 5;                         /**< Number of table entries (includes sentinel) */
+            static constexpr uint32_t interpolationMask = 0x003;         /**< Fraction bits mask (2-bit interpolation) */
+            static constexpr int multiplierBits = 2;                     /**< Bits in the interpolation multiplier */
+            static constexpr int extractShift = 2;                       /**< Bit offset for extracting result from 64-bit product */
+            static constexpr int internalFractionalBits = 16;            /**< Fractional bits of the internal 16.16 format */
+            static constexpr uint32_t baseAngle = 0x3FF0;                /**< First raw angle covered by this table */
+            static constexpr int stepSize = 4;                           /**< Raw angle step between entries */
+            using ValueType = int32_t;                                   /**< Table entry value type */
         };
 
         using Tan5Entry = LookupCache<Tan5Spec::ValueType,
                                       Tan5Spec::interpolationMask,
                                       Tan5Spec::extractShift>;
 
+        /**
+         * @brief Builds a single entry of the fifth tangent lookup table.
+         * @param index Table index (0 to entryCount - 1)
+         * @return Populated lookup entry with value and interpolation multiplicand
+         */
         constexpr Tan5Entry BuildTan5Entry(int index)
         {
             if (index >= 4)
@@ -401,6 +468,7 @@ namespace SaturnMath
             };
         }
 
+        /** @brief Tangent lookup table for raw angles 0x3FF0 to 0x4000 (89.45° to 90°), including sentinel entry. */
         inline constexpr auto tanTable5 = MakeLookupTable<Tan5Entry, Tan5Spec::entryCount, BuildTan5Entry>();
 
         // ================================================================
@@ -408,19 +476,29 @@ namespace SaturnMath
         // Maps ratio [0, 1] to angle [0, π/4] in turns
         // ================================================================
 
+        /**
+         * @brief Table specification for the atan2 lookup table.
+         *
+         * Maps ratio [0, 1] to angle [0, π/4] in turns.
+         */
         struct Atan2Spec
         {
-            static constexpr int entryCount = 33;
-            static constexpr uint32_t interpolationMask = 0x7FF;
-            static constexpr int multiplierBits = 11;
-            static constexpr int extractShift = 16;
-            using ValueType = uint16_t;
+            static constexpr int entryCount = 33;                        /**< Number of table entries */
+            static constexpr uint32_t interpolationMask = 0x7FF;         /**< Fraction bits mask (11-bit interpolation) */
+            static constexpr int multiplierBits = 11;                    /**< Bits in the interpolation multiplier */
+            static constexpr int extractShift = 16;                      /**< Bit offset for extracting result from 64-bit product */
+            using ValueType = uint16_t;                                  /**< Table entry value type */
         };
 
         using Atan2Entry = LookupCache<Atan2Spec::ValueType,
                                        Atan2Spec::interpolationMask,
                                        Atan2Spec::extractShift>;
 
+        /**
+         * @brief Builds a single entry of the atan2 lookup table.
+         * @param index Table index (0 to entryCount - 1)
+         * @return Populated lookup entry with value and interpolation multiplicand
+         */
         constexpr Atan2Entry BuildAtan2Entry(int index)
         {
             double ratio = static_cast<double>(index) / 32.0;
@@ -444,6 +522,7 @@ namespace SaturnMath
             return { value, static_cast<uint16_t>(multiplicand) };
         }
 
+        /** @brief Atan2 lookup table mapping ratio [0, 1] to angle [0, π/4] in turns. */
         inline constexpr auto atan2Table = MakeLookupTable<Atan2Entry, Atan2Spec::entryCount, BuildAtan2Entry>();
     }
 
@@ -468,14 +547,21 @@ namespace SaturnMath
     class Trigonometry final
     {
     private:
-        static constexpr auto& sinTable = detail::sinTable;
-        static constexpr auto& tanTable1 = detail::tanTable1;
-        static constexpr auto& tanTable2 = detail::tanTable2;
-        static constexpr auto& tanTable3 = detail::tanTable3;
-        static constexpr auto& tanTable4 = detail::tanTable4;
-        static constexpr auto& tanTable5 = detail::tanTable5;
-        static constexpr auto& atan2Table = detail::atan2Table;
+        static constexpr auto& sinTable = detail::sinTable;     /**< Sine lookup table (64 entries, 8.24 internal) */
+        static constexpr auto& tanTable1 = detail::tanTable1;   /**< Tangent table for 0° to 84.375° (8.24 internal) */
+        static constexpr auto& tanTable2 = detail::tanTable2;   /**< Tangent table for 84.375° to 87.1875° (8.24 internal) */
+        static constexpr auto& tanTable3 = detail::tanTable3;   /**< Tangent table for 87.1875° to 88.59° (8.24 internal) */
+        static constexpr auto& tanTable4 = detail::tanTable4;   /**< Tangent table for 88.59° to 89.45° (16.16 internal, clamped) */
+        static constexpr auto& tanTable5 = detail::tanTable5;   /**< Tangent table for 89.45° to 90° (16.16 internal, clamped, with sentinel) */
+        static constexpr auto& atan2Table = detail::atan2Table; /**< Atan2 lookup table (33 entries, ratio to angle in turns) */
 
+        /**
+         * @brief Converts a raw internal-format value to the requested output format.
+         * @tparam Out Output fixed-point type
+         * @tparam InternalFractionalBits Fractional bits of the internal table format
+         * @param raw Raw value in internal fixed-point format
+         * @return Value converted to the output format
+         */
         template<typename Out, int InternalFractionalBits>
         [[gnu::always_inline]] static constexpr Out ConvertFromInternal(int32_t raw)
         {
@@ -498,12 +584,31 @@ namespace SaturnMath
                 return Out::BuildRaw(raw);
         }
 
+        /**
+         * @brief Applies the second-quadrant sign fix to a tangent result and converts to the output format.
+         * @tparam Out Output fixed-point type
+         * @tparam InternalFractionalBits Fractional bits of the internal table format
+         * @param ret Raw value read from a tangent table
+         * @param secondQuarter True when the input angle was mirrored from the second quarter
+         * @return Signed tangent value in the output format
+         */
         template<typename Out, int InternalFractionalBits>
         [[gnu::always_inline]] static constexpr Out TanResult(int32_t ret, bool secondQuarter)
         {
             return ConvertFromInternal<Out, InternalFractionalBits>(secondQuarter ? -ret : ret);
         }
 
+        /**
+         * @brief Looks up and interpolates a tangent value from one of the tangent tables.
+         * @tparam Out Output fixed-point type
+         * @tparam TableType Lookup table type
+         * @tparam InternalFractionalBits Fractional bits of the internal table format
+         * @param table Tangent lookup table to use
+         * @param tempAngle Raw input angle (already folded into [0, π/2])
+         * @param baseRange First raw angle covered by this table
+         * @param secondQuarter True when the input angle was mirrored from the second quarter
+         * @return Tangent value in the output format
+         */
         template<typename Out, typename TableType, int InternalFractionalBits>
         [[gnu::always_inline]] static constexpr Out CalcTan(
             const TableType& table, uint16_t tempAngle, uint16_t baseRange, bool secondQuarter)
