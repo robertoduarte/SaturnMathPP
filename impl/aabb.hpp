@@ -31,20 +31,22 @@ namespace SaturnMath::Types
      * inefficient for rotated objects. Consider using oriented bounding boxes (OBBs)
      * for objects that undergo significant rotation.
      */
-    class AABB
+    template<int I = 16, int F = 16>
+    class AABBX
     {
+        using T = FixedPoint<I, F>;
     public:
         /**
          * @brief Creates AABB at origin with zero size.
          */
-        constexpr AABB() : position(), halfExtents() {}
+        constexpr AABBX() : position(), halfExtents() {}
 
         /**
          * @brief Creates AABB from center and size.
          * @param center Center point
          * @param size Half-extents in each axis
          */
-        constexpr AABB(const Vector3D& center, const Fxp& size)
+        constexpr AABBX(const Vector3<I, F>& center, const T& size)
             : position(center), halfExtents(size.Abs(), size.Abs(), size.Abs())
         {
         }
@@ -54,7 +56,7 @@ namespace SaturnMath::Types
          * @param center Center point
          * @param halfExtents Half-extents for each axis
          */
-        constexpr AABB(const Vector3D& center, const Vector3D& halfExtents)
+        constexpr AABBX(const Vector3<I, F>& center, const Vector3<I, F>& halfExtents)
             : position(center), halfExtents(halfExtents.X.Abs(), halfExtents.Y.Abs(), halfExtents.Z.Abs())
         {
         }
@@ -65,28 +67,28 @@ namespace SaturnMath::Types
          * @param maxPoint Maximum point (x,y,z)
          * @return AABB containing the points
          */
-        static constexpr AABB FromMinMax(const Vector3D& minPoint, const Vector3D& maxPoint)
+        static constexpr AABBX FromMinMax(const Vector3<I, F>& minPoint, const Vector3<I, F>& maxPoint)
         {
-            Vector3D actualMin(
-                Fxp::Min(minPoint.X, maxPoint.X),
-                Fxp::Min(minPoint.Y, maxPoint.Y),
-                Fxp::Min(minPoint.Z, maxPoint.Z)
+            Vector3<I, F> actualMin(
+                T::Min(minPoint.X, maxPoint.X),
+                T::Min(minPoint.Y, maxPoint.Y),
+                T::Min(minPoint.Z, maxPoint.Z)
             );
-            Vector3D actualMax(
-                Fxp::Max(minPoint.X, maxPoint.X),
-                Fxp::Max(minPoint.Y, maxPoint.Y),
-                Fxp::Max(minPoint.Z, maxPoint.Z)
+            Vector3<I, F> actualMax(
+                T::Max(minPoint.X, maxPoint.X),
+                T::Max(minPoint.Y, maxPoint.Y),
+                T::Max(minPoint.Z, maxPoint.Z)
             );
-            Vector3D center = (actualMin + actualMax) / 2;
-            Vector3D halfExtents = (actualMax - actualMin) / 2;
-            return AABB(center, halfExtents);
+            Vector3<I, F> center = (actualMin + actualMax) / 2;
+            Vector3<I, F> halfExtents = (actualMax - actualMin) / 2;
+            return AABBX(center, halfExtents);
         }
 
         /**
          * @brief Gets box half-extents.
          * @return The half-extents of the AABB in each axis.
          */
-        constexpr Vector3D GetHalfExtents() const { return halfExtents; }
+        constexpr Vector3<I, F> GetHalfExtents() const { return halfExtents; }
 
         /**
          * @brief Check if the AABB is degenerate (has zero size in any dimension)
@@ -98,13 +100,15 @@ namespace SaturnMath::Types
 
         /**
          * @brief Gets minimum corner point.
+         * @return The minimum corner as a Vector3<I, F>.
          */
-        constexpr Vector3D GetMin() const { return position - halfExtents; }
+        constexpr Vector3<I, F> GetMin() const { return position - halfExtents; }
 
         /**
          * @brief Gets maximum corner point.
+         * @return The maximum corner as a Vector3<I, F>.
          */
-        constexpr Vector3D GetMax() const { return position + halfExtents; }
+        constexpr Vector3<I, F> GetMax() const { return position + halfExtents; }
 
         /**
          * @brief Calculate the volume of the AABB.
@@ -125,7 +129,7 @@ namespace SaturnMath::Types
          * 
          * @return The volume as an Fxp value, representing the total volume of the AABB.
          */
-        constexpr Fxp GetVolume() const
+        constexpr T GetVolume() const
         {
             return halfExtents.X * halfExtents.Y * halfExtents.Z * 8;
         }
@@ -150,7 +154,7 @@ namespace SaturnMath::Types
          * 
          * @return The surface area as an Fxp value, representing the total surface area of the AABB.
          */
-        constexpr Fxp GetSurfaceArea() const
+        constexpr T GetSurfaceArea() const
         {
             return (halfExtents.X * halfExtents.Y + halfExtents.Y * halfExtents.Z + halfExtents.Z * halfExtents.X) * 8;
         }
@@ -160,14 +164,14 @@ namespace SaturnMath::Types
          * @param margin The margin to expand by (added to each half-extent).
          * @return A new expanded AABB.
          */
-        constexpr AABB Expand(const Fxp& margin) const
+        constexpr AABBX Expand(const T& margin) const
         {
-            Vector3D newHalfExtents(
-                Fxp::Max(Fxp(0), halfExtents.X + margin),
-                Fxp::Max(Fxp(0), halfExtents.Y + margin),
-                Fxp::Max(Fxp(0), halfExtents.Z + margin)
+            Vector3<I, F> newHalfExtents(
+                T::Max(T(0), halfExtents.X + margin),
+                T::Max(T(0), halfExtents.Y + margin),
+                T::Max(T(0), halfExtents.Z + margin)
             );
-            return AABB(position, newHalfExtents);
+            return AABBX(position, newHalfExtents);
         }
 
         /**
@@ -185,97 +189,58 @@ namespace SaturnMath::Types
          * // expanded now goes from (-1,-1,-1) to (2,1,1)
          * @endcode
          */
-        constexpr AABB Encapsulate(const Vector3D& point) const
+        constexpr AABBX Encapsulate(const Vector3<I, F>& point) const
         {
-            Vector3D min = GetMin();
-            Vector3D max = GetMax();
+            Vector3<I, F> min = GetMin();
+            Vector3<I, F> max = GetMax();
 
-            Vector3D newMin(
-                Fxp::Min(min.X, point.X),
-                Fxp::Min(min.Y, point.Y),
-                Fxp::Min(min.Z, point.Z)
+            Vector3<I, F> newMin(
+                T::Min(min.X, point.X),
+                T::Min(min.Y, point.Y),
+                T::Min(min.Z, point.Z)
             );
 
-            Vector3D newMax(
-                Fxp::Max(max.X, point.X),
-                Fxp::Max(max.Y, point.Y),
-                Fxp::Max(max.Z, point.Z)
+            Vector3<I, F> newMax(
+                T::Max(max.X, point.X),
+                T::Max(max.Y, point.Y),
+                T::Max(max.Z, point.Z)
             );
 
             return FromMinMax(newMin, newMax);
         }
 
         /**
-         * @brief Create a new AABB that fully contains both this AABB and another AABB.
-         * @param other The other AABB to encapsulate.
-         * @return A new AABB that contains both AABBs.
-         * 
-         * @details If the other AABB is already fully contained within this AABB,
-         * returns a copy of this AABB. Otherwise, returns the minimal AABB
-         * that contains both AABBs.
-         * 
-         * Example usage:
-         * @code
-         * AABB box1(Vector3D(0, 0, 0), Vector3D(1, 1, 1));
-         * AABB box2(Vector3D(1, 1, 1), Vector3D(1, 1, 1));
-         * AABB result = box1.Encapsulate(box2);
-         * // result now goes from (-1,-1,-1) to (2,2,2)
-         * @endcode
-         */
-        /**
-         * @brief Create a new AABB that fully contains both this AABB and another AABB.
-         * @param other The other AABB to encapsulate.
-         * @return A new AABB that contains both AABBs.
-         * 
-         * @details Returns the minimal AABB that contains both this AABB and the other AABB.
-         * This is done by computing the component-wise minimum of the minimum points
-         * and the component-wise maximum of the maximum points.
-         * 
-         * Example usage:
-         * @code
-         * AABB box1(Vector3D(0, 0, 0), Vector3D(1, 1, 1));
-         * AABB box2(Vector3D(1, 1, 1), Vector3D(1, 1, 1));
-         * AABB result = box1.Encapsulate(box2);
-         * // result now goes from (-1,-1,-1) to (2,2,2)
-         * @endcode
-         */
-        /**
          * @brief Compute the minimal AABB that contains both this AABB and another AABB.
          * @param other The other AABB to encapsulate.
          * @return A new AABB that is the minimal AABB containing both input AABBs.
-         * 
-         * @details This method computes the minimal axis-aligned bounding box that
-         * contains both this AABB and the other AABB. The result is always the
-         * smallest AABB that fully contains both input AABBs, regardless of whether
-         * they overlap or not.
-         * 
-         * The algorithm works by taking the component-wise minimum of the min points
+         *
+         * @details Takes the component-wise minimum of the min points
          * and the component-wise maximum of the max points of both AABBs.
-         * 
-         * Example usage:
+         *
          * @code
-         * AABB box1(Vector3D(0, 0, 0), Vector3D(1, 1, 1));  // Box from (-1,-1,-1) to (1,1,1)
-         * AABB box2(Vector3D(1, 1, 1), Vector3D(1, 1, 1));  // Box from (0,0,0) to (2,2,2)
-         * AABB result = box1.Encapsulate(box2);  // Result is box from (-1,-1,-1) to (2,2,2)
+         * AABB box1(Vector3D(0, 0, 0), Vector3D(1, 1, 1));
+         * AABB box2(Vector3D(1, 1, 1), Vector3D(1, 1, 1));
+         * AABB result = box1.Encapsulate(box2);
+         * // result goes from (-1,-1,-1) to (2,2,2)
          * @endcode
          */
-        constexpr AABB Encapsulate(const AABB& other) const
+        constexpr AABBX Encapsulate(const AABBX& other) const
         {
             // Get the min and max points of both AABBs
-            const Vector3D thisMin = GetMin();
-            const Vector3D thisMax = GetMax();
-            const Vector3D otherMin = other.GetMin();
-            const Vector3D otherMax = other.GetMax();
+            const Vector3<I, F> thisMin = GetMin();
+            const Vector3<I, F> thisMax = GetMax();
+            const Vector3<I, F> otherMin = other.GetMin();
+            const Vector3<I, F> otherMax = other.GetMax();
             
             // Compute the minimal AABB that contains both AABBs by taking the
             // component-wise min of the min points and component-wise max of the max points
-            return AABB::FromMinMax(
-                Vector3D(Fxp::Min(thisMin.X, otherMin.X),
-                        Fxp::Min(thisMin.Y, otherMin.Y),
-                        Fxp::Min(thisMin.Z, otherMin.Z)),
-                Vector3D(Fxp::Max(thisMax.X, otherMax.X),
-                        Fxp::Max(thisMax.Y, otherMax.Y),
-                        Fxp::Max(thisMax.Z, otherMax.Z))
+            return AABBX::FromMinMax(
+                Vector3<I, F>(T::Min(thisMin.X, otherMin.X),
+                        T::Min(thisMin.Y, otherMin.Y),
+                        T::Min(thisMin.Z, otherMin.Z)),
+                Vector3<I, F>(T::Max(thisMax.X, otherMax.X),
+                        T::Max(thisMax.Y, otherMax.Y),
+                        T::Max(thisMax.Z, otherMax.Z))
             );
         }
 
@@ -284,9 +249,9 @@ namespace SaturnMath::Types
          * @param scale The scale factor.
          * @return A new scaled AABB.
          */
-        constexpr AABB Scale(const Fxp& scale) const
+        constexpr AABBX Scale(const T& scale) const
         {
-            return AABB(position, halfExtents * scale.Abs());
+            return AABBX(position, halfExtents * scale.Abs());
         }
 
         /**
@@ -294,16 +259,16 @@ namespace SaturnMath::Types
          * @param point Target point
          * @return Closest point on AABB surface or inside
          */
-        constexpr Vector3D GetClosestPoint(const Vector3D& point) const
+        constexpr Vector3<I, F> GetClosestPoint(const Vector3<I, F>& point) const
         {
             // Clamp point to AABB bounds
-            Vector3D min = GetMin();
-            Vector3D max = GetMax();
+            Vector3<I, F> min = GetMin();
+            Vector3<I, F> max = GetMax();
 
-            return Vector3D(
-                Fxp::Max(min.X, Fxp::Min(point.X, max.X)),
-                Fxp::Max(min.Y, Fxp::Min(point.Y, max.Y)),
-                Fxp::Max(min.Z, Fxp::Min(point.Z, max.Z))
+            return Vector3<I, F>(
+                T::Max(min.X, T::Min(point.X, max.X)),
+                T::Max(min.Y, T::Min(point.Y, max.Y)),
+                T::Max(min.Z, T::Min(point.Z, max.Z))
             );
         }
 
@@ -311,21 +276,21 @@ namespace SaturnMath::Types
          * @brief Get all 8 vertices of the AABB.
          * @return Array of 8 vertices in counter-clockwise order.
          */
-        constexpr std::array<Vector3D, 8> GetVertices() const
+        constexpr std::array<Vector3<I, F>, 8> GetVertices() const
         {
             // More efficient to calculate min/max once and reuse
-            Vector3D min = GetMin();
-            Vector3D max = GetMax();
+            Vector3<I, F> min = GetMin();
+            Vector3<I, F> max = GetMax();
 
             return {
-                Vector3D(min.X, min.Y, min.Z), // 0: left bottom back
-                Vector3D(max.X, min.Y, min.Z), // 1: right bottom back
-                Vector3D(max.X, max.Y, min.Z), // 2: right top back
-                Vector3D(min.X, max.Y, min.Z), // 3: left top back
-                Vector3D(min.X, min.Y, max.Z), // 4: left bottom front
-                Vector3D(max.X, min.Y, max.Z), // 5: right bottom front
-                Vector3D(max.X, max.Y, max.Z), // 6: right top front
-                Vector3D(min.X, max.Y, max.Z)  // 7: left top front
+                Vector3<I, F>(min.X, min.Y, min.Z), // 0: left bottom back
+                Vector3<I, F>(max.X, min.Y, min.Z), // 1: right bottom back
+                Vector3<I, F>(max.X, max.Y, min.Z), // 2: right top back
+                Vector3<I, F>(min.X, max.Y, min.Z), // 3: left top back
+                Vector3<I, F>(min.X, min.Y, max.Z), // 4: left bottom front
+                Vector3<I, F>(max.X, min.Y, max.Z), // 5: right bottom front
+                Vector3<I, F>(max.X, max.Y, max.Z), // 6: right top front
+                Vector3<I, F>(min.X, max.Y, max.Z)  // 7: left top front
             };
         }
 
@@ -333,31 +298,31 @@ namespace SaturnMath::Types
          * @brief Set the position of the AABB.
          * @param pos The new position of the AABB.
          */
-        constexpr void SetPosition(const Vector3D& pos) { position = pos; }
+        constexpr void SetPosition(const Vector3<I, F>& pos) { position = pos; }
 
         /**
          * @brief Merge this AABB with another AABB to create a new AABB that encompasses both.
          * @param other The other AABB to merge with.
          * @return A new AABB that contains both input AABBs.
          */
-        constexpr AABB Merge(const AABB& other) const
+        constexpr AABBX Merge(const AABBX& other) const
         {
-            Vector3D min = GetMin();
-            Vector3D max = GetMax();
+            Vector3<I, F> min = GetMin();
+            Vector3<I, F> max = GetMax();
 
-            Vector3D otherMin = other.GetMin();
-            Vector3D otherMax = other.GetMax();
+            Vector3<I, F> otherMin = other.GetMin();
+            Vector3<I, F> otherMax = other.GetMax();
 
-            Vector3D mergedMin(
-                std::min(min.X, otherMin.X),
-                std::min(min.Y, otherMin.Y),
-                std::min(min.Z, otherMin.Z)
+            Vector3<I, F> mergedMin(
+                T::Min(min.X, otherMin.X),
+                T::Min(min.Y, otherMin.Y),
+                T::Min(min.Z, otherMin.Z)
             );
 
-            Vector3D mergedMax(
-                std::max(max.X, otherMax.X),
-                std::max(max.Y, otherMax.Y),
-                std::max(max.Z, otherMax.Z)
+            Vector3<I, F> mergedMax(
+                T::Max(max.X, otherMax.X),
+                T::Max(max.Y, otherMax.Y),
+                T::Max(max.Z, otherMax.Z)
             );
 
             return FromMinMax(mergedMin, mergedMax);
@@ -367,7 +332,7 @@ namespace SaturnMath::Types
          * @brief Get the position of the AABB.
          * @return The position of the AABB.
          */
-        constexpr Vector3D GetPosition() const
+        constexpr Vector3<I, F> GetPosition() const
         {
             return position;
         }
@@ -376,14 +341,16 @@ namespace SaturnMath::Types
          * @brief Creates an AABB that contains all points in space
          * @return AABB An infinite AABB
          */
-        static constexpr AABB Infinite() {
-            // Using max Fxp value that can be represented
-            const Fxp maxExtent = Fxp::MaxValue();
-            return AABB(Vector3D::Zero(), maxExtent);
+        static constexpr AABBX Infinite() {
+            // Using max value that can be represented
+            const T maxExtent = T::MaxValue();
+            return AABBX(Vector3<I, F>::Zero(), maxExtent);
         }
 
     private:
-        Vector3D position;     /**< Center position of the AABB */
-        Vector3D halfExtents;  /**< Half-extents in each axis (distance from center to each face) */
+        Vector3<I, F> position;     /**< Center position of the AABB */
+        Vector3<I, F> halfExtents;  /**< Half-extents in each axis (distance from center to each face) */
     };
+
+    using AABB = AABBX<>;  /**< Default instantiation alias */
 }

@@ -302,6 +302,52 @@ namespace SaturnMath::Tests
          *
          * Executes all test functions to verify the Trigonometry class functionality
          */
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- Trigonometry with Q8.24 output ----
+        static constexpr void TestTrigonometry_Q8_24()
+        {
+            using F = Fxp8_24;
+
+            constexpr Angle zero = Angle::FromTurns(0);
+            constexpr F sin0 = Trigonometry::Sin<F>(zero);
+            static_assert(sin0 > F(-0.01) && sin0 < F(0.01), "Trig<8,24> Sin(0) ~0");
+
+            constexpr Angle quarter = Angle::FromTurns(0.25);
+            constexpr F sin90 = Trigonometry::Sin<F>(quarter);
+            static_assert(sin90 > F(0.99) && sin90 < F(1.01), "Trig<8,24> Sin(90) ~1");
+
+            constexpr F cos0 = Trigonometry::Cos<F>(zero);
+            static_assert(cos0 > F(0.99) && cos0 < F(1.01), "Trig<8,24> Cos(0) ~1");
+
+            constexpr Angle half = Angle::FromTurns(0.5);
+            constexpr F cos180 = Trigonometry::Cos<F>(half);
+            static_assert(cos180 > F(-1.01) && cos180 < F(-0.99), "Trig<8,24> Cos(180) ~-1");
+        }
+
+        // ---- Trigonometry with Q24.8 output ----
+        static constexpr void TestTrigonometry_Q24_8()
+        {
+            using F = Fxp24_8;
+
+            constexpr Angle zero = Angle::FromTurns(0);
+            constexpr F sin0 = Trigonometry::Sin<F>(zero);
+            static_assert(sin0 > F(-0.01) && sin0 < F(0.01), "Trig<24,8> Sin(0) ~0");
+
+            constexpr Angle quarter = Angle::FromTurns(0.25);
+            constexpr F sin90 = Trigonometry::Sin<F>(quarter);
+            static_assert(sin90 > F(0.99) && sin90 < F(1.01), "Trig<24,8> Sin(90) ~1");
+
+            constexpr F cos0 = Trigonometry::Cos<F>(zero);
+            static_assert(cos0 > F(0.99) && cos0 < F(1.01), "Trig<24,8> Cos(0) ~1");
+
+            constexpr Angle half = Angle::FromTurns(0.5);
+            constexpr F cos180 = Trigonometry::Cos<F>(half);
+            static_assert(cos180 > F(-1.01) && cos180 < F(-0.99), "Trig<24,8> Cos(180) ~-1");
+        }
+
         static constexpr void RunAll()
         {
             TestSine();
@@ -309,6 +355,8 @@ namespace SaturnMath::Tests
             TestTangent();
             TestAtan2();
             TestPythagoreanIdentities();
+            TestTrigonometry_Q8_24();
+            TestTrigonometry_Q24_8();
         }
     };
 

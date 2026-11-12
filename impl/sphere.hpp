@@ -47,32 +47,34 @@ namespace SaturnMath::Types
      * @see Shape For the base class interface
      * @see Plane For plane intersection tests
      */
-    class Sphere
+    template<int I = 16, int F = 16>
+    class SphereX
     {
+        using T = FixedPoint<I, F>;
     public:
         /**
          * @brief Default constructor creates a unit sphere at origin.
          */
-        constexpr Sphere() : position(Vector3D::Zero()), radius(Fxp(1)) {}
+        constexpr SphereX() : position(Vector3<I, F>::Zero()), radius(T(1)) {}
         
         /**
          * @brief Creates sphere from center and radius.
          * @param center Center point of sphere
          * @param radius Radius of sphere (must be >= 0)
          */
-        constexpr Sphere(const Vector3D& center, const Fxp& radius)
+        constexpr SphereX(const Vector3<I, F>& center, const T& radius)
             : position(center)
             , radius(radius)
         {}
 
         /** @brief Gets sphere radius. */
-        constexpr Fxp GetRadius() const { return radius; }
+        constexpr T GetRadius() const { return radius; }
         
         /** @brief Gets sphere center position. */
-        constexpr Vector3D GetPosition() const { return position; }
+        constexpr Vector3<I, F> GetPosition() const { return position; }
         
         /** @brief Sets sphere center position. */
-        constexpr void SetPosition(const Vector3D& pos) { position = pos; }
+        constexpr void SetPosition(const Vector3<I, F>& pos) { position = pos; }
         
         /**
          * @brief Checks if the sphere is valid (has non-negative radius).
@@ -84,35 +86,35 @@ namespace SaturnMath::Types
          * @brief Gets the volume of the sphere.
          * @return Volume as (4/3) * π * r³
          */
-        constexpr Fxp GetVolume() const 
+        constexpr T GetVolume() const 
         { 
-            return (Fxp(4) / 3) * Fxp::Pi() * radius * radius * radius; 
+            return (T(4) / 3) * T::Pi() * radius * radius * radius; 
         }
         
         /**
          * @brief Gets the surface area of the sphere.
          * @return Surface area as 4 * π * r²
          */
-        constexpr Fxp GetSurfaceArea() const 
+        constexpr T GetSurfaceArea() const 
         { 
-            return 4 * Fxp::Pi() * radius * radius; 
+            return 4 * T::Pi() * radius * radius; 
         }
         
         /**
          * @brief Gets the diameter of the sphere.
          * @return Diameter as 2 * radius
          */
-        constexpr Fxp GetDiameter() const { return radius * 2; }
+        constexpr T GetDiameter() const { return radius * 2; }
 
         /**
          * @brief Tests intersection with another sphere.
          * @param other Sphere to test against.
          * @return true if spheres intersect or touch.
          */
-        constexpr bool Intersects(const Sphere& other) const
+        constexpr bool Intersects(const SphereX& other) const
         {
-            Fxp distanceSquared = (GetPosition() - other.GetPosition()).LengthSquared();
-            Fxp sumOfRadii = radius + other.GetRadius();
+            T distanceSquared = (GetPosition() - other.GetPosition()).LengthSquared();
+            T sumOfRadii = radius + other.GetRadius();
             return distanceSquared <= sumOfRadii * sumOfRadii;
         }
 
@@ -123,9 +125,9 @@ namespace SaturnMath::Types
          * @param translation The translation vector
          * @return A new translated sphere
          */
-        constexpr Sphere Translate(const Vector3D& translation) const
+        constexpr SphereX Translate(const Vector3<I, F>& translation) const
         {
-            return Sphere(GetPosition() + translation, radius);
+            return SphereX(GetPosition() + translation, radius);
         }
         
         /**
@@ -133,9 +135,9 @@ namespace SaturnMath::Types
          * @param scaleFactor The scale factor to apply
          * @return A new scaled sphere
          */
-        constexpr Sphere Scale(const Fxp& scaleFactor) const
+        constexpr SphereX Scale(const T& scaleFactor) const
         {
-            return Sphere(GetPosition() * scaleFactor, radius * scaleFactor);
+            return SphereX(GetPosition() * scaleFactor, radius * scaleFactor);
         }
         
         /**
@@ -143,16 +145,16 @@ namespace SaturnMath::Types
          * @param scaleFactors The scale factors for each axis
          * @return A new scaled sphere (uses minimum scale component for radius)
          */
-        constexpr Sphere Scale(const Vector3D& scaleFactors) const
+        constexpr SphereX Scale(const Vector3<I, F>& scaleFactors) const
         {
             // Find minimum scale component in a constexpr-friendly way
-            Fxp minScale = scaleFactors.X;
+            T minScale = scaleFactors.X;
             if (scaleFactors.Y < minScale) minScale = scaleFactors.Y;
             if (scaleFactors.Z < minScale) minScale = scaleFactors.Z;
             
             // Scale the position by the scale factors (component-wise) and the radius by the minimum scale
-            const Vector3D& pos = GetPosition();
-            return Sphere(Vector3D(pos.X * scaleFactors.X, pos.Y * scaleFactors.Y, pos.Z * scaleFactors.Z), 
+            const Vector3<I, F>& pos = GetPosition();
+            return SphereX(Vector3<I, F>(pos.X * scaleFactors.X, pos.Y * scaleFactors.Y, pos.Z * scaleFactors.Z), 
                          radius * minScale);
         }
         
@@ -165,30 +167,31 @@ namespace SaturnMath::Types
          * @note For most game physics and collision detection, the default Fast precision is sufficient.
          * Use Precision::Accurate only when higher precision is required at the cost of performance.
          */
-        template<Precision P = Precision::Default>
-        constexpr Vector3D GetClosestPoint(const Vector3D& point) const
+        constexpr Vector3<I, F> GetClosestPoint(const Vector3<I, F>& point) const
         {
             if (radius <= 0) return GetPosition();  // Degenerate case
             
-            Vector3D direction = point - GetPosition();
-            Fxp distanceSq = direction.LengthSquared();
-            Fxp radiusSq = radius * radius;
+            Vector3<I, F> direction = point - GetPosition();
+            T distanceSq = direction.LengthSquared();
+            T radiusSq = radius * radius;
             
             // If the point is at the center, return any point on the sphere
-            if (distanceSq <= Fxp::Epsilon())
-                return GetPosition() + Vector3D(radius, 0, 0);
+            if (distanceSq <= T::Epsilon())
+                return GetPosition() + Vector3<I, F>(radius, 0, 0);
             
             // If point is inside or on the sphere, return the point itself
             if (distanceSq <= radiusSq)
                 return point;
                 
             // Point is outside the sphere, project onto surface
-            Fxp distance = distanceSq.Sqrt<P>();
+            T distance = distanceSq.Sqrt();
             return GetPosition() + (direction * (radius / distance));
         }
 
     private:
-        Vector3D position;  /**< Center position of the sphere */
-        Fxp radius;          /**< Radius of the sphere */  /**< Sphere radius (always >= 0) */
+        Vector3<I, F> position;  /**< Center position of the sphere */
+        T radius;          /**< Sphere radius (always >= 0) */
     };
+
+    using Sphere = SphereX<>;  /**< Default instantiation alias */
 }

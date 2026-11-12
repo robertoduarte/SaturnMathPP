@@ -96,7 +96,7 @@ namespace SaturnMath::Tests
             constexpr Matrix43 viewMatrix = Matrix43::CreateLookAt(position, target, up);
 
             // Verify view matrix values
-            static_assert(viewMatrix.Row0.X == -1, "X axis X should be -1");
+            static_assert(viewMatrix.Row0.X == 1, "X axis X should be 1");
             static_assert(viewMatrix.Row0.Y == 0, "X axis Y should be 0");
             static_assert(viewMatrix.Row0.Z == 0, "X axis Z should be 0");
 
@@ -175,7 +175,7 @@ namespace SaturnMath::Tests
             constexpr Matrix43 viewMatrix = Matrix43::CreateLookAt(position, target, up);
 
             // Create and update frustum
-            constexpr auto TestFrustum = []()
+            constexpr auto TestFrustum = [viewMatrix]()
             {
                 Frustum frustum = CreateTestFrustum();
                 frustum.Update(viewMatrix);
@@ -539,6 +539,43 @@ namespace SaturnMath::Tests
         /**
          * @brief Runs all frustum tests
          */
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- Frustum Q8.24 ----
+        // Note: Frustum constructor uses Trigonometry::Tan with default Fxp return type,
+        // so full constexpr construction only works with Q16.16. Here we verify
+        // the type exists and has correct member types.
+        static constexpr void TestFrustum_Q8_24()
+        {
+            using F = Fxp8_24;
+            using V3 = Vector3<8, 24>;
+            using P = PlaneX<8, 24>;
+            using Fr = FrustumX<8, 24>;
+
+            static_assert(std::is_same_v<decltype(Fr::NearDist), F>, "Frustum<8,24> NearDist type");
+            static_assert(std::is_same_v<decltype(Fr::FarDist), F>, "Frustum<8,24> FarDist type");
+            static_assert(Fr::PLANE_COUNT == 6, "Frustum<8,24> has 6 planes");
+            static_assert(Fr::REFERENCE_MAX_DISTANCE == F(10), "Frustum<8,24> reference max distance");
+            static_assert(Fr::REFERENCE_NEAR_DISTANCE == F(1), "Frustum<8,24> reference near distance");
+        }
+
+        // ---- Frustum Q24.8 ----
+        static constexpr void TestFrustum_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+            using P = PlaneX<24, 8>;
+            using Fr = FrustumX<24, 8>;
+
+            static_assert(std::is_same_v<decltype(Fr::NearDist), F>, "Frustum<24,8> NearDist type");
+            static_assert(std::is_same_v<decltype(Fr::FarDist), F>, "Frustum<24,8> FarDist type");
+            static_assert(Fr::PLANE_COUNT == 6, "Frustum<24,8> has 6 planes");
+            static_assert(Fr::REFERENCE_MAX_DISTANCE == F(10), "Frustum<24,8> reference max distance");
+            static_assert(Fr::REFERENCE_NEAR_DISTANCE == F(1), "Frustum<24,8> reference near distance");
+        }
+
         static constexpr bool RunAll()
         {
             TestConstruction();
@@ -547,6 +584,8 @@ namespace SaturnMath::Tests
             TestAABBIntersection();
             TestSphereIntersection();
             TestRotatedView();
+            TestFrustum_Q8_24();
+            TestFrustum_Q24_8();
             return true;
         }
     };

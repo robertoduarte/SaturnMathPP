@@ -146,9 +146,11 @@ namespace SaturnMath::Types
          * 
          * Values outside the range [0,1] are automatically wrapped around.
          */
-        template <typename T>
-        requires std::integral<T> || std::floating_point<T>
+        template <std::integral T>
         constexpr Angle(const T& turns) : Angle(Fxp(turns)) {}
+
+        template <std::floating_point T>
+        consteval Angle(const T& turns) : Angle(Fxp(turns)) {}
         /** @} */
 
         /**

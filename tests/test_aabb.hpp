@@ -902,6 +902,65 @@ namespace SaturnMath::Tests
          * @note This method is called by the static_assert at file scope
          * to verify all tests pass at compile time.
          */
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- AABB with Q8.24 ----
+        static constexpr void TestAABB_Q8_24()
+        {
+            using F = Fxp8_24;
+            using V3 = Vector3<8, 24>;
+            using B = AABBX<8, 24>;
+
+            constexpr V3 minP(F(-5), F(-5), F(-5));
+            constexpr V3 maxP(F(5), F(5), F(5));
+            constexpr B box = B::FromMinMax(minP, maxP);
+
+            constexpr V3 boxMin = box.GetMin();
+            constexpr V3 boxMax = box.GetMax();
+            static_assert(boxMin.X == F(-5) && boxMin.Y == F(-5) && boxMin.Z == F(-5),
+                "AABB<8,24> GetMin");
+            static_assert(boxMax.X == F(5) && boxMax.Y == F(5) && boxMax.Z == F(5),
+                "AABB<8,24> GetMax");
+
+            // GetClosestPoint for a point inside returns the point itself (clamped to bounds)
+            constexpr V3 inside(F(0), F(0), F(0));
+            constexpr V3 closestInside = box.GetClosestPoint(inside);
+            static_assert(closestInside.X == F(0) && closestInside.Y == F(0) && closestInside.Z == F(0),
+                "AABB<8,24> closest point to inside point is the point itself");
+
+            // GetClosestPoint for a point outside returns the closest point on the box
+            constexpr V3 outside(F(10), F(0), F(0));
+            constexpr V3 closestOutside = box.GetClosestPoint(outside);
+            static_assert(closestOutside.X == F(5) && closestOutside.Y == F(0) && closestOutside.Z == F(0),
+                "AABB<8,24> closest point to outside point is on the box surface");
+        }
+
+        // ---- AABB with Q24.8 ----
+        static constexpr void TestAABB_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+            using B = AABBX<24, 8>;
+
+            constexpr V3 minP(F(-5), F(-5), F(-5));
+            constexpr V3 maxP(F(5), F(5), F(5));
+            constexpr B box = B::FromMinMax(minP, maxP);
+
+            constexpr V3 boxMin = box.GetMin();
+            constexpr V3 boxMax = box.GetMax();
+            static_assert(boxMin.X == F(-5) && boxMin.Y == F(-5) && boxMin.Z == F(-5),
+                "AABB<24,8> GetMin");
+            static_assert(boxMax.X == F(5) && boxMax.Y == F(5) && boxMax.Z == F(5),
+                "AABB<24,8> GetMax");
+
+            constexpr V3 outside(F(10), F(0), F(0));
+            constexpr V3 closestOutside = box.GetClosestPoint(outside);
+            static_assert(closestOutside.X == F(5) && closestOutside.Y == F(0) && closestOutside.Z == F(0),
+                "AABB<24,8> closest point to outside point is on the box surface");
+        }
+
         static constexpr bool RunAll()
         {
             // Execute each 
@@ -914,6 +973,8 @@ namespace SaturnMath::Tests
             TestEncapsulatePoint();  // 7. Test point encapsulation
             TestEncapsulateAABB();   // 8. Test AABB encapsulation
             TestEdgeCases();         // 9. Test edge cases and special scenarios
+            TestAABB_Q8_24();
+            TestAABB_Q24_8();
             
             return true;
         }

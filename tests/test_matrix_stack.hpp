@@ -129,6 +129,42 @@ namespace SaturnMath::Tests
             }
         }
 
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- MatrixStack Q8.24 ----
+        static constexpr void TestMatrixStack_Q8_24()
+        {
+            using F = Fxp8_24;
+            using V3 = Vector3<8, 24>;
+            using MS = MatrixStackX<8, 24>;
+            using M43 = Matrix4x3<8, 24>;
+
+            constexpr MS stack;
+            static_assert(stack.IsEmpty(), "MatrixStack<8,24> starts empty");
+            static_assert(stack.GetDepth() == 0, "MatrixStack<8,24> initial depth 0");
+
+            constexpr M43 top = stack.Top();
+            static_assert(top.Row0.X == F(1), "MatrixStack<8,24> initial top is identity");
+        }
+
+        // ---- MatrixStack Q24.8 ----
+        static constexpr void TestMatrixStack_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+            using MS = MatrixStackX<24, 8>;
+            using M43 = Matrix4x3<24, 8>;
+
+            constexpr MS stack;
+            static_assert(stack.IsEmpty(), "MatrixStack<24,8> starts empty");
+            static_assert(stack.GetDepth() == 0, "MatrixStack<24,8> initial depth 0");
+
+            constexpr M43 top = stack.Top();
+            static_assert(top.Row0.X == F(1), "MatrixStack<24,8> initial top is identity");
+        }
+
         static constexpr void RunAll()
         {
             TestConstructionAndIdentity();
@@ -136,6 +172,8 @@ namespace SaturnMath::Tests
             TestClear();
             TestTransformations();
             TestTransformPointVector();
+            TestMatrixStack_Q8_24();
+            TestMatrixStack_Q24_8();
         }
     };
 

@@ -315,6 +315,46 @@ namespace SaturnMath::Tests
         // that are not part of the core Plane class. These would typically be tested in a separate
         // test file that includes the necessary math utilities.
         
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- Plane with Q8.24 ----
+        static constexpr void TestPlane_Q8_24()
+        {
+            using F = Fxp8_24;
+            using V3 = Vector3<8, 24>;
+            using P = PlaneX<8, 24>;
+
+            constexpr V3 normal(F(0), F(1), F(0));
+            constexpr V3 point(F(0), F(5), F(0));
+            constexpr P plane(normal, point);
+
+            constexpr F dist = plane.GetSignedDistance(V3(F(0), F(10), F(0)));
+            static_assert(dist == F(5), "Plane<8,24> signed distance should be 5");
+
+            constexpr F dist2 = plane.GetSignedDistance(V3(F(0), F(0), F(0)));
+            static_assert(dist2 == F(-5), "Plane<8,24> signed distance below plane should be -5");
+        }
+
+        // ---- Plane with Q24.8 ----
+        static constexpr void TestPlane_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+            using P = PlaneX<24, 8>;
+
+            constexpr V3 normal(F(0), F(1), F(0));
+            constexpr V3 point(F(0), F(5), F(0));
+            constexpr P plane(normal, point);
+
+            constexpr F dist = plane.GetSignedDistance(V3(F(0), F(10), F(0)));
+            static_assert(dist == F(5), "Plane<24,8> signed distance should be 5");
+
+            constexpr F dist2 = plane.GetSignedDistance(V3(F(0), F(0), F(0)));
+            static_assert(dist2 == F(-5), "Plane<24,8> signed distance below plane should be -5");
+        }
+
         // Run all tests
         static constexpr void RunAll()
         {
@@ -322,6 +362,8 @@ namespace SaturnMath::Tests
             TestNormalization();
             TestDistance();
             TestProjectionAndReflection();
+            TestPlane_Q8_24();
+            TestPlane_Q24_8();
             
             // All tests passed
             return;

@@ -331,7 +331,7 @@ namespace SaturnMath::Tests
             // Point inside the sphere
             {
                 constexpr Vector3D inside(1, 0, 0);
-                constexpr Vector3D closestInside = sphere.GetClosestPoint<Precision::Accurate>(inside);
+                constexpr Vector3D closestInside = sphere.GetClosestPoint(inside);
                 static_assert(closestInside.X == 1 && closestInside.Y == 0 && closestInside.Z == 0,
                     "Closest point to a point inside should be the point itself");
             }
@@ -339,7 +339,7 @@ namespace SaturnMath::Tests
             // Point outside the sphere
             {
                 constexpr Vector3D outside(4, 0, 0);
-                constexpr Vector3D closestOutside = sphere.GetClosestPoint<Precision::Accurate>(outside);
+                constexpr Vector3D closestOutside = sphere.GetClosestPoint(outside);
                 static_assert(closestOutside.X == 2 && closestOutside.Y == 0 && closestOutside.Z == 0,
                     "Closest point to a point outside should be on the sphere surface in the direction of the point");
             }
@@ -347,7 +347,7 @@ namespace SaturnMath::Tests
             // Point on the sphere's surface
             {
                 constexpr Vector3D onSurface(0, 2, 0);
-                constexpr Vector3D closestOnSurface = sphere.GetClosestPoint<Precision::Accurate>(onSurface);
+                constexpr Vector3D closestOnSurface = sphere.GetClosestPoint(onSurface);
                 static_assert(closestOnSurface.X == 0 && closestOnSurface.Y == 2 && closestOnSurface.Z == 0,
                     "Closest point to a point on the surface should be the point itself");
             }
@@ -355,7 +355,7 @@ namespace SaturnMath::Tests
             // Point outside in diagonal direction
             {
                 constexpr Vector3D outsideDiagonal(3, 3, 3);
-                constexpr Vector3D closestDiagonal = sphere.GetClosestPoint<Precision::Accurate>(outsideDiagonal);
+                constexpr Vector3D closestDiagonal = sphere.GetClosestPoint(outsideDiagonal);
 
                 // The point should be on the sphere surface in the direction of the diagonal
                 // For a unit vector in the direction (1,1,1), the length is sqrt(3)
@@ -382,6 +382,58 @@ namespace SaturnMath::Tests
          * It executes each test case in sequence and will fail at compile-time
          * if any test fails due to the use of static_assert.
          */
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- Sphere with Q8.24 ----
+        static constexpr void TestSphere_Q8_24()
+        {
+            using F = Fxp8_24;
+            using V3 = Vector3<8, 24>;
+            using S = SphereX<8, 24>;
+
+            constexpr V3 center(F(0), F(0), F(0));
+            constexpr F radius(F(5));
+            constexpr S sphere(center, radius);
+
+            static_assert(sphere.IsValid(), "Sphere<8,24> with positive radius should be valid");
+            static_assert(sphere.GetRadius() == F(5), "Sphere<8,24> radius");
+            static_assert(sphere.GetPosition() == center, "Sphere<8,24> position");
+
+            // Test intersection: two overlapping spheres
+            constexpr S other(V3(F(3), F(0), F(0)), F(3));
+            static_assert(sphere.Intersects(other), "Sphere<8,24> overlapping spheres should intersect");
+
+            // Test intersection: non-overlapping spheres
+            constexpr S far(V3(F(20), F(0), F(0)), F(1));
+            static_assert(!sphere.Intersects(far), "Sphere<8,24> distant spheres should not intersect");
+        }
+
+        // ---- Sphere with Q24.8 ----
+        static constexpr void TestSphere_Q24_8()
+        {
+            using F = Fxp24_8;
+            using V3 = Vector3<24, 8>;
+            using S = SphereX<24, 8>;
+
+            constexpr V3 center(F(0), F(0), F(0));
+            constexpr F radius(F(5));
+            constexpr S sphere(center, radius);
+
+            static_assert(sphere.IsValid(), "Sphere<24,8> with positive radius should be valid");
+            static_assert(sphere.GetRadius() == F(5), "Sphere<24,8> radius");
+            static_assert(sphere.GetPosition() == center, "Sphere<24,8> position");
+
+            // Test intersection: two overlapping spheres
+            constexpr S other(V3(F(3), F(0), F(0)), F(3));
+            static_assert(sphere.Intersects(other), "Sphere<24,8> overlapping spheres should intersect");
+
+            // Test intersection: non-overlapping spheres
+            constexpr S far(V3(F(20), F(0), F(0)), F(1));
+            static_assert(!sphere.Intersects(far), "Sphere<24,8> distant spheres should not intersect");
+        }
+
         static constexpr bool RunAll()
         {
             // Execute each test case in sequence
@@ -390,6 +442,8 @@ namespace SaturnMath::Tests
             TestProperties();        // Test geometric properties
             TestTransformation();    // Test transformations (translate, scale)
             TestClosestPoint();      // Test closest point calculations
+            TestSphere_Q8_24();
+            TestSphere_Q24_8();
             
             // If we reach this point, all tests passed
             return true;

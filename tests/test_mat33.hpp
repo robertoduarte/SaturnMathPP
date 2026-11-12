@@ -191,7 +191,7 @@ namespace SaturnMath::Tests
 
             // Test compound assignment operators
             {
-                constexpr auto TestCompound = []() {
+                constexpr auto TestCompound = [a, b]() {
                     Matrix33 m1 = a;
                     const Matrix33 m2 = b;
                     
@@ -382,7 +382,7 @@ namespace SaturnMath::Tests
                         Vector3D(0, 0, 4)
                     );
                     
-                    constexpr auto testInverse = []() {
+                    constexpr auto testInverse = [m]() {
                         Matrix33 inverse;
                         bool success = m.TryInverse(inverse);
                         if (!success) return false;
@@ -405,7 +405,7 @@ namespace SaturnMath::Tests
                         Vector3D(7, 8, 9)  // Linearly dependent rows
                     );
                     
-                    constexpr auto testSingularInverse = []() {
+                    constexpr auto testSingularInverse = [singular]() {
                         Matrix33 inverse;
                         bool success = singular.TryInverse(inverse);
                         return !success;  // Should fail to invert
@@ -602,6 +602,54 @@ namespace SaturnMath::Tests
          * This method executes all test cases in the correct order.
          * The tests are organized from basic to more complex functionality.
          */
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- Matrix3x3 with Q8.24 ----
+        static constexpr void TestMat33_Q8_24()
+        {
+            using F = Fxp8_24;
+            using M33 = Matrix3x3<8, 24>;
+
+            constexpr M33 identity = M33::Identity();
+            static_assert(identity.Row0.X == F(1) && identity.Row0.Y == F(0) && identity.Row0.Z == F(0),
+                "M33<8,24> identity Row0");
+            static_assert(identity.Row1.X == F(0) && identity.Row1.Y == F(1) && identity.Row1.Z == F(0),
+                "M33<8,24> identity Row1");
+            static_assert(identity.Row2.X == F(0) && identity.Row2.Y == F(0) && identity.Row2.Z == F(1),
+                "M33<8,24> identity Row2");
+
+            using V3 = Vector3<8, 24>;
+            constexpr M33 scale = M33::CreateScale(V3(F(2), F(3), F(4)));
+            static_assert(scale.Row0.X == F(2) && scale.Row1.Y == F(3) && scale.Row2.Z == F(4),
+                "M33<8,24> CreateScale");
+
+            constexpr M33 product = identity * scale;
+            static_assert(product.Row0.X == F(2) && product.Row1.Y == F(3) && product.Row2.Z == F(4),
+                "M33<8,24> identity * scale = scale");
+        }
+
+        // ---- Matrix3x3 with Q24.8 ----
+        static constexpr void TestMat33_Q24_8()
+        {
+            using F = Fxp24_8;
+            using M33 = Matrix3x3<24, 8>;
+
+            constexpr M33 identity = M33::Identity();
+            static_assert(identity.Row0.X == F(1) && identity.Row0.Y == F(0) && identity.Row0.Z == F(0),
+                "M33<24,8> identity Row0");
+
+            using V3 = Vector3<24, 8>;
+            constexpr M33 scale = M33::CreateScale(V3(F(2), F(3), F(4)));
+            static_assert(scale.Row0.X == F(2) && scale.Row1.Y == F(3) && scale.Row2.Z == F(4),
+                "M33<24,8> CreateScale");
+
+            constexpr M33 product = identity * scale;
+            static_assert(product.Row0.X == F(2) && product.Row1.Y == F(3) && product.Row2.Z == F(4),
+                "M33<24,8> identity * scale = scale");
+        }
+
         static constexpr void RunAll()
         {
             // Construction and Factory Methods
@@ -621,6 +669,8 @@ namespace SaturnMath::Tests
             
             // Edge Cases and Special Matrices
             TestEdgeCases();
+            TestMat33_Q8_24();
+            TestMat33_Q24_8();
         }
     };
     

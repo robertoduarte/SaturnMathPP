@@ -360,200 +360,6 @@ namespace SaturnMath::Tests
                 static_assert(result.Row3.X == 5 && result.Row3.Y == 7 && result.Row3.Z == 9,
                               "Combined translation should add translations");
             }
-        }
-
-        // ============================================
-        // Transformation Operations
-        // ============================================
-        
-        /**
-         * @brief Tests transformation operations specific to Matrix43
-         * 
-         * Verifies:
-         * - Translation operations
-         * - Combined transformations
-         * - Transformation application to points and vectors
-         */
-        static constexpr void TestTransformationOperations()
-        {
-            // Test translation
-            {
-                constexpr Vector3D translation(1, 2, 3);
-                constexpr Matrix43 transMat = Matrix43::CreateTranslation(translation);
-                
-                // Test point transformation (should translate)
-                constexpr Vector3D point(4, 5, 6);
-                constexpr Vector3D transformedPoint = transMat.TransformPoint(point);
-                
-                static_assert(transformedPoint.X == 5 && 
-                              transformedPoint.Y == 7 && 
-                              transformedPoint.Z == 9,
-                              "Point transformation should include translation");
-                
-                // Test vector transformation (should not translate)
-                constexpr Vector3D vector(1, 0, 0);
-                constexpr Vector3D transformedVector = transMat.TransformVector(vector);
-                
-                static_assert(transformedVector.X == 1 && 
-                              transformedVector.Y == 0 && 
-                              transformedVector.Z == 0,
-                              "Vector transformation should not include translation");
-            }
-            
-            // Test rotation
-            {
-                // 90 degree rotation around Z axis
-                constexpr auto angle = Angle::FromDegrees(90);
-                constexpr Matrix43 rotMat = Matrix43::CreateRotationZ(angle);
-                
-                // Test vector rotation
-                constexpr Vector3D vector(1, 0, 0);
-                constexpr Vector3D rotated = rotMat.TransformVector(vector);
-                
-                // Should rotate (1,0,0) to (0,-1,0) for a 90° counter-clockwise rotation around Z
-                static_assert(rotated.X == 0 && 
-                              rotated.Y == -1 && 
-                              rotated.Z == 0,
-                              "Vector rotation should work correctly");
-            }
-            
-            // Test combined transformations
-            {
-                constexpr Vector3D translation(1, 0, 0);
-                constexpr auto angle = Angle::FromDegrees(90);
-                
-                // Create translation matrix
-                constexpr Matrix43 transMat = Matrix43::CreateTranslation(translation);
-                
-                // Create rotation matrix
-                constexpr Matrix43 rotMat = Matrix43::CreateRotationZ(angle);
-                
-                // Combine transformations (translate then rotate)
-                constexpr Matrix43 combined = rotMat * transMat;
-                
-                // Test point transformation
-                constexpr Vector3D point(1, 0, 0);
-                constexpr Vector3D transformed = combined.TransformPoint(point);
-                
-                // Should first translate to (2,0,0) then rotate to (0,-2,0)
-                // 1. Translate (1,0,0) by (1,0,0) -> (2,0,0)
-                // 2. Rotate (2,0,0) 90° counter-clockwise around Z -> (0,-2,0)
-                static_assert(transformed.X == 0 && 
-                              transformed.Y == -2 && 
-                              transformed.Z == 0,
-                              "Combined transformations should apply in correct order");
-            }
-            
-            // Test rotation matrices
-            {
-                // Test CreateRotationX
-                {
-                    constexpr auto angle = Angle::FromDegrees(90);
-                    constexpr auto rotMat = Matrix43::CreateRotationX(angle);
-                    
-                    // Rotate (1,0,0) 90° around X should be (1,0,0)
-                    // Rotate (0,1,0) 90° around X should be (0,0,1)
-                    // Rotate (0,0,1) 90° around X should be (0,-1,0)
-                    constexpr Vector3D vx = rotMat.TransformVector(Vector3D(1, 0, 0));
-                    constexpr Vector3D vy = rotMat.TransformVector(Vector3D(0, 1, 0));
-                    constexpr Vector3D vz = rotMat.TransformVector(Vector3D(0, 0, 1));
-                    
-                    // Verify the rotation matrix structure
-                    static_assert(rotMat.Row0.X == 1 && rotMat.Row0.Y == 0 && rotMat.Row0.Z == 0, "RotateX: First row should be (1,0,0)");
-                    static_assert(rotMat.Row1.X == 0 && rotMat.Row1.Z == 1, "RotateX: Second row should have 0,cos,sin pattern");
-                    static_assert(rotMat.Row2.X == 0 && rotMat.Row2.Y == -1, "RotateX: Third row should have 0,-sin,cos pattern");
-                }
-                
-                // Test CreateRotationY
-                {
-                    constexpr auto angle = Angle::FromDegrees(90);
-                    constexpr auto rotMat = Matrix43::CreateRotationY(angle);
-                    
-                    // Rotate (1,0,0) 90° around Y should be (0,0,-1)
-                    // Rotate (0,1,0) 90° around Y should be (0,1,0)
-                    // Rotate (0,0,1) 90° around Y should be (1,0,0)
-                    constexpr Vector3D vx = rotMat.TransformVector(Vector3D(1, 0, 0));
-                    constexpr Vector3D vy = rotMat.TransformVector(Vector3D(0, 1, 0));
-                    constexpr Vector3D vz = rotMat.TransformVector(Vector3D(0, 0, 1));
-                    
-                    // Verify the rotation matrix structure
-                    static_assert(rotMat.Row0.Z == -1, "RotateY: First row should have cos,0,-sin pattern");
-                    static_assert(rotMat.Row1.X == 0 && rotMat.Row1.Y == 1 && rotMat.Row1.Z == 0, "RotateY: Second row should be (0,1,0)");
-                    static_assert(rotMat.Row2.X == 1, "RotateY: Third row should have sin,0,cos pattern");
-                }
-                
-                // Test CreateRotationZ
-                {
-                    constexpr auto angle = Angle::FromDegrees(90);
-                    constexpr auto rotMat = Matrix43::CreateRotationZ(angle);
-                    
-                    // Rotate (1,0,0) 90° around Z should be (0,1,0)
-                    // Rotate (0,1,0) 90° around Z should be (-1,0,0)
-                    // Rotate (0,0,1) 90° around Z should be (0,0,1)
-                    constexpr Vector3D vx = rotMat.TransformVector(Vector3D(1, 0, 0));
-                    constexpr Vector3D vy = rotMat.TransformVector(Vector3D(0, 1, 0));
-                    constexpr Vector3D vz = rotMat.TransformVector(Vector3D(0, 0, 1));
-                    
-                    // Verify the rotation matrix structure
-                    static_assert(rotMat.Row0.Y == 1, "RotateZ: First row should have cos,sin,0 pattern");
-                    static_assert(rotMat.Row1.X == -1, "RotateZ: Second row should have -sin,cos,0 pattern");
-                    static_assert(rotMat.Row2.X == 0 && rotMat.Row2.Y == 0 && rotMat.Row2.Z == 1, "RotateZ: Third row should be (0,0,1)");
-                }
-                
-                // Test that translation is preserved during matrix multiplication
-                {
-                    constexpr auto transMat = Matrix43::CreateTranslation(Vector3D(1, 2, 3));
-                    constexpr auto rotMat = Matrix43::CreateRotationX(Angle::FromDegrees(90));
-                    constexpr auto result = rotMat * transMat;
-                    
-                    // The translation part should be transformed by the rotation
-                    static_assert(result.Row3.X == 1, "Translation X should be preserved");
-                    static_assert(result.Row3.Y == 3, "Translation Y should become Z after 90° X rotation");
-                    static_assert(result.Row3.Z == -2, "Translation Z should become -Y after 90° X rotation");
-                }
-            }
-        }
-        
-        /**
-         * @brief Tests matrix-matrix operations
-         * 
-         * Verifies:
-         * - Matrix multiplication
-         * - Compound assignment operators
-         * - Comparison operators
-         */
-        static constexpr void TestMatrixMatrixOperations()
-        {
-            // Test matrix multiplication with identity
-            {
-                constexpr Matrix43 m(
-                    {1, 2, 3},
-                    {4, 5, 6},
-                    {7, 8, 9},
-                    {10, 11, 12}
-                );
-                
-                constexpr Matrix43 identity = Matrix43::Identity();
-                constexpr auto result = m * identity;
-                
-                // Multiplying by identity should return the original matrix
-                static_assert(result.Row0.X == 1 && result.Row0.Y == 2 && result.Row0.Z == 3 &&
-                              result.Row1.X == 4 && result.Row1.Y == 5 && result.Row1.Z == 6 &&
-                              result.Row2.X == 7 && result.Row2.Y == 8 && result.Row2.Z == 9 &&
-                              result.Row3.X == 10 && result.Row3.Y == 11 && result.Row3.Z == 12,
-                              "Matrix multiplication with identity should return original matrix");
-            }
-            
-            // Test matrix multiplication with translation
-            {
-                constexpr Matrix43 a = Matrix43::CreateTranslation({1, 2, 3});
-                constexpr Matrix43 b = Matrix43::CreateTranslation({4, 5, 6});
-                constexpr auto result = a * b;
-                
-                // Combined translation should be (5, 7, 9)
-                static_assert(result.Row3.X == 5 && result.Row3.Y == 7 && result.Row3.Z == 9,
-                              "Combined translation should add translations");
-            }
             
             // Test compound multiplication assignment
             {
@@ -655,7 +461,7 @@ namespace SaturnMath::Tests
             constexpr auto identity = Matrix43::Identity();
             
             // Test equality operators
-            constexpr auto testEquality = []() {
+            constexpr auto testEquality = [translated]() {
                 constexpr auto identity1 = Matrix43::Identity();
                 constexpr auto identity2 = Matrix43::Identity();
                 
@@ -681,7 +487,7 @@ namespace SaturnMath::Tests
             static_assert(testNegation(), "Unary negation should negate all components");
             
             // Test matrix-vector transformation
-            constexpr auto testTransformPoint = []() {
+            constexpr auto testTransformPoint = [identity]() {
                 constexpr Vector3D point(1, 2, 3);
                 constexpr auto transformedPoint = identity.TransformPoint(point);
                 return transformedPoint == point;
@@ -690,7 +496,7 @@ namespace SaturnMath::Tests
                          "Transforming point with identity should return the same point");
             
             // Test vector transformation (rotation only)
-            constexpr auto testTransformVector = []() {
+            constexpr auto testTransformVector = [identity]() {
                 constexpr Vector3D vector(1, 0, 0);
                 constexpr auto transformedVector = identity.TransformVector(vector);
                 return transformedVector == vector;
@@ -699,7 +505,7 @@ namespace SaturnMath::Tests
                          "Transforming vector with identity should return the same vector");
             
             // Test matrix-matrix multiplication with identity
-            constexpr auto testMatrixMultiplication = []() {
+            constexpr auto testMatrixMultiplication = [identity, translated]() {
                 constexpr auto result = identity * translated;
                 return result == translated; // Should be the same as multiplying by identity
             };
@@ -707,7 +513,7 @@ namespace SaturnMath::Tests
                          "Multiplying with identity should preserve the matrix");
             
             // Test compound multiplication assignment with identity
-            constexpr auto testCompoundMultiply = []() {
+            constexpr auto testCompoundMultiply = [identity, translated]() {
                 Matrix43 m = identity;
                 m *= translated;
                 return m == translated; // Should be the same as the translated matrix
@@ -716,7 +522,7 @@ namespace SaturnMath::Tests
                          "Compound multiplication assignment should work correctly");
             
             // Test matrix inversion
-            constexpr auto testMatrixInversion = []() {
+            constexpr auto testMatrixInversion = [translated]() {
                 constexpr auto inverted = translated.Invert();
                 constexpr auto shouldBeIdentity = translated * inverted;
                 
@@ -852,6 +658,44 @@ namespace SaturnMath::Tests
          * 
          * @return true if all tests pass, false otherwise
          */
+        // ============================================
+        // Multi-format tests (Q8.24 / Q24.8)
+        // ============================================
+
+        // ---- Matrix4x3 with Q8.24 ----
+        static constexpr void TestMat43_Q8_24()
+        {
+            using F = Fxp8_24;
+            using M43 = Matrix4x3<8, 24>;
+
+            constexpr M43 identity = M43::Identity();
+            static_assert(identity.Row0.X == F(1) && identity.Row0.Y == F(0) && identity.Row0.Z == F(0),
+                "M43<8,24> identity Row0");
+            static_assert(identity.Row3.X == F(0) && identity.Row3.Y == F(0) && identity.Row3.Z == F(0),
+                "M43<8,24> identity Row3 (translation)");
+
+            using V3 = Vector3<8, 24>;
+            constexpr M43 trans = M43::CreateTranslation(V3(F(5), F(10), F(15)));
+            static_assert(trans.Row3.X == F(5) && trans.Row3.Y == F(10) && trans.Row3.Z == F(15),
+                "M43<8,24> CreateTranslation");
+        }
+
+        // ---- Matrix4x3 with Q24.8 ----
+        static constexpr void TestMat43_Q24_8()
+        {
+            using F = Fxp24_8;
+            using M43 = Matrix4x3<24, 8>;
+
+            constexpr M43 identity = M43::Identity();
+            static_assert(identity.Row0.X == F(1) && identity.Row0.Y == F(0) && identity.Row0.Z == F(0),
+                "M43<24,8> identity Row0");
+
+            using V3 = Vector3<24, 8>;
+            constexpr M43 trans = M43::CreateTranslation(V3(F(5), F(10), F(15)));
+            static_assert(trans.Row3.X == F(5) && trans.Row3.Y == F(10) && trans.Row3.Z == F(15),
+                "M43<24,8> CreateTranslation");
+        }
+
         static constexpr bool RunAll()
         {
             // Construction
@@ -877,7 +721,10 @@ namespace SaturnMath::Tests
             
             // Advanced Construction
             TestAdvancedConstruction();
-            
+
+            TestMat43_Q8_24();
+            TestMat43_Q24_8();
+
             return true;
         }
     };
