@@ -46,27 +46,26 @@ namespace SaturnMath::Types
     class PlaneX
     {
         using T = FixedPoint<I, F>;
-        using Vec3 = Vector3<I, F>;
     public:
-        Vec3 Normal; /**< Unit normal vector (should be normalized) */
+        Vector3<I, F> Normal; /**< Unit normal vector (should be normalized) */
         T SignedDistance;          /**< Signed distance from origin to plane */
 
         /** @brief Default constructor. Creates XZ plane at origin. */
-        constexpr PlaneX() : Normal(Vec3::UnitY()), SignedDistance((int16_t)0) {}
+        constexpr PlaneX() : Normal(Vector3<I, F>::UnitY()), SignedDistance((int16_t)0) {}
 
         /**
          * @brief Creates plane from normal and distance.
          * @param normal Direction perpendicular to plane (should be normalized)
          * @param signedDistance Signed distance from origin to plane along normal
          */
-        constexpr PlaneX(const Vec3& normal, T signedDistance) : Normal(normal), SignedDistance(signedDistance) {}
+        constexpr PlaneX(const Vector3<I, F>& normal, T signedDistance) : Normal(normal), SignedDistance(signedDistance) {}
 
         /**
          * @brief Creates plane from normal and point.
          * @param normal Direction perpendicular to plane (should be normalized)
          * @param point Any point that lies on the plane
          */
-        static constexpr PlaneX FromNormalAndPoint(const Vec3& normal, const Vec3& point)
+        static constexpr PlaneX FromNormalAndPoint(const Vector3<I, F>& normal, const Vector3<I, F>& point)
         {
             return PlaneX(normal, normal.Dot(point));
         }
@@ -81,10 +80,10 @@ namespace SaturnMath::Types
          * @param b Second point on plane
          * @param c Third point on plane
          */
-        static constexpr PlaneX FromPoints(const Vec3& a, const Vec3& b, const Vec3& c)
+        static constexpr PlaneX FromPoints(const Vector3<I, F>& a, const Vector3<I, F>& b, const Vector3<I, F>& c)
         {
             // Calculate normal using cross product
-            Vec3 cross = (b - a).Cross(c - a);
+            Vector3<I, F> cross = (b - a).Cross(c - a);
 
             // If the cross product is zero (points are collinear), return an invalid plane
             if (cross.LengthSquared() < T::Epsilon())
@@ -92,7 +91,7 @@ namespace SaturnMath::Types
                 return PlaneX(); // Or handle error appropriately
             }
 
-            Vec3 normal = cross.Normalize();
+            Vector3<I, F> normal = cross.Normalize();
             return PlaneX(normal, normal.Dot(a));
         }
         
@@ -101,7 +100,7 @@ namespace SaturnMath::Types
          * @param normal Direction perpendicular to plane (should be normalized)
          * @param point Any point that lies on the plane
          */
-        constexpr PlaneX(const Vec3& normal, const Vec3& point)
+        constexpr PlaneX(const Vector3<I, F>& normal, const Vector3<I, F>& point)
             : Normal(normal)
             , SignedDistance(normal.Dot(point))
         {}
@@ -115,7 +114,7 @@ namespace SaturnMath::Types
          *         = 0: Point is on plane
          *         < 0: Point is on opposite side from normal
          */
-        constexpr T GetSignedDistance(const Vec3& point) const
+        constexpr T GetSignedDistance(const Vector3<I, F>& point) const
         {
             return Normal.Dot(point) - SignedDistance;  // normal·X - d
         }
@@ -126,7 +125,7 @@ namespace SaturnMath::Types
          * @param point Point to test
          * @return Absolute distance (always positive or zero)
          */
-        constexpr T GetDistance(const Vec3& point) const
+        constexpr T GetDistance(const Vector3<I, F>& point) const
         {
             return GetSignedDistance(point).Abs();
         }
@@ -136,7 +135,7 @@ namespace SaturnMath::Types
          * @param point Point to project
          * @return Closest point on plane to given point
          */
-        constexpr Vec3 ProjectPoint(const Vec3& point) const
+        constexpr Vector3<I, F> ProjectPoint(const Vector3<I, F>& point) const
         {
             return point - Normal * GetSignedDistance(point);
         }
@@ -146,7 +145,7 @@ namespace SaturnMath::Types
          * @param point Point to reflect
          * @return Reflected point
          */
-        constexpr Vec3 ReflectPoint(const Vec3& point) const
+        constexpr Vector3<I, F> ReflectPoint(const Vector3<I, F>& point) const
         {
             return point - Normal * (GetSignedDistance(point) * 2);
         }
@@ -156,7 +155,7 @@ namespace SaturnMath::Types
          * @param direction Direction vector to reflect
          * @return Reflected direction
          */
-        constexpr Vec3 ReflectVector(const Vec3& direction) const
+        constexpr Vector3<I, F> ReflectVector(const Vector3<I, F>& direction) const
         {
             return direction - Normal * (Normal.Dot(direction) * 2);
         }

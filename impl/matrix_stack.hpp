@@ -37,7 +37,6 @@ namespace SaturnMath::Types
     class MatrixStackX
     {
         using T = FixedPoint<I, F>;
-        using Vec3 = Vector3<I, F>;
     public:
         /**
          * @brief Maximum depth of the matrix stack.
@@ -151,7 +150,7 @@ namespace SaturnMath::Types
          * @details Multiplies the top matrix by a translation matrix,
          * effectively moving the origin of the current transformation.
          */
-        constexpr void TranslateTop(const Vec3& translation)
+        constexpr void TranslateTop(const Vector3<I, F>& translation)
         {
             stack[currentDepth] = stack[currentDepth] * Matrix4x3<I, F>::CreateTranslation(translation);
         }
@@ -177,7 +176,7 @@ namespace SaturnMath::Types
          * @details Multiplies the top matrix by a scaling matrix,
          * affecting the scale of subsequent transformations.
          */
-        constexpr void ScaleTop(const Vec3& scale)
+        constexpr void ScaleTop(const Vector3<I, F>& scale)
         {
             stack[currentDepth] = stack[currentDepth] * Matrix4x3<I, F>::CreateScale(scale);
         }
@@ -187,10 +186,10 @@ namespace SaturnMath::Types
          * @param point The point to transform.
          * @return The transformed point with rotation and translation applied.
          */
-        constexpr Vec3 TransformPoint(const Vec3& point) const
+        constexpr Vector3<I, F> TransformPoint(const Vector3<I, F>& point) const
         {
             const Matrix4x3<I, F>& m = stack[currentDepth];
-            return Vec3(
+            return Vector3<I, F>(
                 m.Row0.Dot(point) + m.Row3.X,
                 m.Row1.Dot(point) + m.Row3.Y,
                 m.Row2.Dot(point) + m.Row3.Z
@@ -202,10 +201,10 @@ namespace SaturnMath::Types
          * @param vector The direction vector to transform.
          * @return The transformed vector with rotation only (no translation).
          */
-        constexpr Vec3 TransformVector(const Vec3& vector) const
+        constexpr Vector3<I, F> TransformVector(const Vector3<I, F>& vector) const
         {
             const Matrix4x3<I, F>& m = stack[currentDepth];
-            return Vec3(
+            return Vector3<I, F>(
                 m.Row0.Dot(vector),
                 m.Row1.Dot(vector),
                 m.Row2.Dot(vector)

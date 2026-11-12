@@ -59,7 +59,6 @@ namespace SaturnMath::Types
     struct FrustumX
     {
         using T = FixedPoint<I, F>;
-        using Vec3 = Vector3<I, F>;
         // Named constants for plane indices
         static constexpr size_t PLANE_NEAR = 0;
         static constexpr size_t PLANE_FAR = 1;
@@ -125,8 +124,8 @@ namespace SaturnMath::Types
          * @return Plane with inward-facing normal
          */
         static constexpr PlaneX<I, F> MakeInwardPlane(
-            const Vec3& a, const Vec3& b, const Vec3& c,
-            const Vec3& interiorPoint)
+            const Vector3<I, F>& a, const Vector3<I, F>& b, const Vector3<I, F>& c,
+            const Vector3<I, F>& interiorPoint)
         {
             PlaneX<I, F> p = PlaneX<I, F>::FromPoints(a, b, c);
             // If the interior point is behind the plane, the normal faces outward — flip it.
@@ -154,43 +153,43 @@ namespace SaturnMath::Types
             // Recover world-space camera position from the view matrix.
             // Row3 of a view matrix stores (-right·eye, -up·eye, -viewZ·eye),
             // so we reconstruct the eye position by inverting the transform.
-            const Vec3 pos = -(viewMatrix.Row0 * viewMatrix.Row3.X
+            const Vector3<I, F> pos = -(viewMatrix.Row0 * viewMatrix.Row3.X
                                  + viewMatrix.Row1 * viewMatrix.Row3.Y
                                  + viewMatrix.Row2 * viewMatrix.Row3.Z);
 
             // Camera basis vectors
-            const Vec3 right = viewMatrix.Row0;   // camera right
-            const Vec3 up    = viewMatrix.Row1;    // camera up
-            const Vec3 forward = -viewMatrix.Row2; // camera forward (into the scene)
+            const Vector3<I, F> right = viewMatrix.Row0;   // camera right
+            const Vector3<I, F> up    = viewMatrix.Row1;    // camera up
+            const Vector3<I, F> forward = -viewMatrix.Row2; // camera forward (into the scene)
 
             // Near and far plane centers at actual clipping distances
-            const Vec3 nearPlaneCenter = pos + forward * NearDist;
-            const Vec3 farPlaneCenter  = pos + forward * FarDist;
+            const Vector3<I, F> nearPlaneCenter = pos + forward * NearDist;
+            const Vector3<I, F> farPlaneCenter  = pos + forward * FarDist;
 
             // Reference near/far centers used for side plane geometry
-            const Vec3 nearCenter = pos + forward * REFERENCE_NEAR_DISTANCE;
-            const Vec3 farCenter  = pos + forward * REFERENCE_MAX_DISTANCE;
+            const Vector3<I, F> nearCenter = pos + forward * REFERENCE_NEAR_DISTANCE;
+            const Vector3<I, F> farCenter  = pos + forward * REFERENCE_MAX_DISTANCE;
 
             // Near plane corners (camera-space naming: tl/tr/bl/br)
-            const Vec3 nearUp    = up * NearHeight;
-            const Vec3 nearRight = right * NearWidth;
+            const Vector3<I, F> nearUp    = up * NearHeight;
+            const Vector3<I, F> nearRight = right * NearWidth;
 
-            const Vec3 ntl = nearCenter + nearUp - nearRight; // camera top-left
-            const Vec3 ntr = nearCenter + nearUp + nearRight; // camera top-right
-            const Vec3 nbl = nearCenter - nearUp - nearRight; // camera bottom-left
-            const Vec3 nbr = nearCenter - nearUp + nearRight; // camera bottom-right
+            const Vector3<I, F> ntl = nearCenter + nearUp - nearRight; // camera top-left
+            const Vector3<I, F> ntr = nearCenter + nearUp + nearRight; // camera top-right
+            const Vector3<I, F> nbl = nearCenter - nearUp - nearRight; // camera bottom-left
+            const Vector3<I, F> nbr = nearCenter - nearUp + nearRight; // camera bottom-right
 
             // Far plane corners
-            const Vec3 farUp    = up * FarHeight;
-            const Vec3 farRight = right * FarWidth;
+            const Vector3<I, F> farUp    = up * FarHeight;
+            const Vector3<I, F> farRight = right * FarWidth;
 
-            const Vec3 ftl = farCenter + farUp - farRight;
-            const Vec3 ftr = farCenter + farUp + farRight;
-            const Vec3 fbl = farCenter - farUp - farRight;
-            const Vec3 fbr = farCenter - farUp + farRight;
+            const Vector3<I, F> ftl = farCenter + farUp - farRight;
+            const Vector3<I, F> ftr = farCenter + farUp + farRight;
+            const Vector3<I, F> fbl = farCenter - farUp - farRight;
+            const Vector3<I, F> fbr = farCenter - farUp + farRight;
 
             // Frustum center point for inward-normal validation
-            const Vec3 frustumCenter = pos + forward * ((REFERENCE_NEAR_DISTANCE + REFERENCE_MAX_DISTANCE) / T(int16_t{2}));
+            const Vector3<I, F> frustumCenter = pos + forward * ((REFERENCE_NEAR_DISTANCE + REFERENCE_MAX_DISTANCE) / T(int16_t{2}));
 
             // Near plane: normal points into the frustum (same as forward)
             Planes[PLANE_NEAR] = PlaneX<I, F>(forward, nearPlaneCenter);
@@ -233,7 +232,7 @@ namespace SaturnMath::Types
          *         FrustumRelationship::Intersects if the point lies exactly on a frustum plane,
          *         FrustumRelationship::Outside if the point is outside any frustum plane
          */
-        constexpr FrustumRelationship Classify(const Vec3& point) const
+        constexpr FrustumRelationship Classify(const Vector3<I, F>& point) const
         {
             bool onPlane = false;
             
@@ -310,7 +309,7 @@ namespace SaturnMath::Types
          * 
          * @note This is more efficient than Classify() when you only need to know if the point is visible
          */
-        constexpr bool Intersects(const Vec3& point) const
+        constexpr bool Intersects(const Vector3<I, F>& point) const
         {
             for (const PlaneX<I, F>& p : Planes)
             {

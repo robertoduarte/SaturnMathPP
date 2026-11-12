@@ -51,19 +51,18 @@ namespace SaturnMath::Types
     class SphereX
     {
         using T = FixedPoint<I, F>;
-        using Vec3 = Vector3<I, F>;
     public:
         /**
          * @brief Default constructor creates a unit sphere at origin.
          */
-        constexpr SphereX() : position(Vec3::Zero()), radius(T(1)) {}
+        constexpr SphereX() : position(Vector3<I, F>::Zero()), radius(T(1)) {}
         
         /**
          * @brief Creates sphere from center and radius.
          * @param center Center point of sphere
          * @param radius Radius of sphere (must be >= 0)
          */
-        constexpr SphereX(const Vec3& center, const T& radius)
+        constexpr SphereX(const Vector3<I, F>& center, const T& radius)
             : position(center)
             , radius(radius)
         {}
@@ -72,10 +71,10 @@ namespace SaturnMath::Types
         constexpr T GetRadius() const { return radius; }
         
         /** @brief Gets sphere center position. */
-        constexpr Vec3 GetPosition() const { return position; }
+        constexpr Vector3<I, F> GetPosition() const { return position; }
         
         /** @brief Sets sphere center position. */
-        constexpr void SetPosition(const Vec3& pos) { position = pos; }
+        constexpr void SetPosition(const Vector3<I, F>& pos) { position = pos; }
         
         /**
          * @brief Checks if the sphere is valid (has non-negative radius).
@@ -126,7 +125,7 @@ namespace SaturnMath::Types
          * @param translation The translation vector
          * @return A new translated sphere
          */
-        constexpr SphereX Translate(const Vec3& translation) const
+        constexpr SphereX Translate(const Vector3<I, F>& translation) const
         {
             return SphereX(GetPosition() + translation, radius);
         }
@@ -146,7 +145,7 @@ namespace SaturnMath::Types
          * @param scaleFactors The scale factors for each axis
          * @return A new scaled sphere (uses minimum scale component for radius)
          */
-        constexpr SphereX Scale(const Vec3& scaleFactors) const
+        constexpr SphereX Scale(const Vector3<I, F>& scaleFactors) const
         {
             // Find minimum scale component in a constexpr-friendly way
             T minScale = scaleFactors.X;
@@ -154,8 +153,8 @@ namespace SaturnMath::Types
             if (scaleFactors.Z < minScale) minScale = scaleFactors.Z;
             
             // Scale the position by the scale factors (component-wise) and the radius by the minimum scale
-            const Vec3& pos = GetPosition();
-            return SphereX(Vec3(pos.X * scaleFactors.X, pos.Y * scaleFactors.Y, pos.Z * scaleFactors.Z), 
+            const Vector3<I, F>& pos = GetPosition();
+            return SphereX(Vector3<I, F>(pos.X * scaleFactors.X, pos.Y * scaleFactors.Y, pos.Z * scaleFactors.Z), 
                          radius * minScale);
         }
         
@@ -168,17 +167,17 @@ namespace SaturnMath::Types
          * @note For most game physics and collision detection, the default Fast precision is sufficient.
          * Use Precision::Accurate only when higher precision is required at the cost of performance.
          */
-        constexpr Vec3 GetClosestPoint(const Vec3& point) const
+        constexpr Vector3<I, F> GetClosestPoint(const Vector3<I, F>& point) const
         {
             if (radius <= 0) return GetPosition();  // Degenerate case
             
-            Vec3 direction = point - GetPosition();
+            Vector3<I, F> direction = point - GetPosition();
             T distanceSq = direction.LengthSquared();
             T radiusSq = radius * radius;
             
             // If the point is at the center, return any point on the sphere
             if (distanceSq <= T::Epsilon())
-                return GetPosition() + Vec3(radius, 0, 0);
+                return GetPosition() + Vector3<I, F>(radius, 0, 0);
             
             // If point is inside or on the sphere, return the point itself
             if (distanceSq <= radiusSq)
@@ -190,7 +189,7 @@ namespace SaturnMath::Types
         }
 
     private:
-        Vec3 position;  /**< Center position of the sphere */
+        Vector3<I, F> position;  /**< Center position of the sphere */
         T radius;          /**< Sphere radius (always >= 0) */
     };
 
