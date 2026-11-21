@@ -24,9 +24,10 @@ namespace SaturnMath
      * 
      * Implementation details:
      * - Uses Xorshift algorithm (https://en.wikipedia.org/wiki/Xorshift)
-     * - The state is an unsigned 32-bit xorshift32 (13, 17, 5) for every T up to 32 bits, and an
-     *   unsigned 64-bit xorshift64 (13, 7, 17) for 64-bit T; numbers are the state cast to T
-     * - Period: 2^32 - 1 (2^64 - 1 for 64-bit T), whatever the size of T
+     * - Shift parameters are optimized based on bit width of the template type
+     * - The state is unsigned (logical shifts, as xorshift requires) and at least 16 bits: 8-bit and
+     *   16-bit T share a 16-bit xorshift (7, 9, 8); numbers are the state cast to T
+     * - Period length depends on the bit width of type T (2^16 - 1 for 8-bit and 16-bit T)
      * - A seed of 0 is replaced by a non-zero constant (xorshift never leaves state 0)
      * 
      * Statistical properties:
@@ -66,13 +67,18 @@ namespace SaturnMath
          */
         using Unsigned = std::make_unsigned_t<T>;
 
-        /** @brief State type: xorshift needs at least 32 bits, and logical (unsigned) shifts
+        /** @brief Bit width of T
          */
-        using State = std::conditional_t<(sizeof(T) > 4), uint64_t, uint32_t>;
+        static constexpr unsigned int Bits = sizeof(T) * 8;
+
+        /** @brief State type: unsigned (logical shifts) and at least 16 bits, since xorshift has no 8-bit form
+         */
+        using State = std::conditional_t<(Bits <= 16), uint16_t,
+            std::conditional_t<(Bits <= 32), uint32_t, std::conditional_t<(Bits <= 64), uint64_t, Unsigned>>>;
 
         /** @brief Non-zero state used for a seed of 0, which xorshift never leaves
          */
-        static constexpr State ZeroSeedState = 0x9E3779B9;
+        static constexpr State ZeroSeedState = static_cast<State>(0x9E3779B9u);
 
         /** @brief Pseudo-Random number generator state
          */
@@ -83,19 +89,38 @@ namespace SaturnMath
          */
         State GetNextPeriod()
         {
-            if constexpr (sizeof(State) == 4)
-            {
-                this->startState ^= this->startState << 13;
-                this->startState ^= this->startState >> 17;
-                this->startState ^= this->startState << 5;
+            // Adjust shift values based on the bit width of T
+            constexpr unsigned int bits = Bits;
+            
+            // Recommended shift values for different bit widths
+            // These are based on the Xorshift research paper recommendations
+            unsigned int shift1, shift2, shift3;
+            
+            if constexpr (bits <= 16) {
+                // For 8-bit and 16-bit types (16-bit state)
+                shift1 = 7;
+                shift2 = 9;
+                shift3 = 8;
+            } else if constexpr (bits <= 32) {
+                // For 32-bit types (original values)
+                shift1 = 13;
+                shift2 = 17;
+                shift3 = 5;
+            } else if constexpr (bits <= 64) {
+                // For 64-bit types
+                shift1 = 13;
+                shift2 = 7;
+                shift3 = 17;
+            } else {
+                // Fallback for larger types (though not recommended)
+                shift1 = bits / 5;
+                shift2 = bits / 3;
+                shift3 = bits / 10;
             }
-            else
-            {
-                this->startState ^= this->startState << 13;
-                this->startState ^= this->startState >> 7;
-                this->startState ^= this->startState << 17;
-            }
-
+            
+            this->startState ^= static_cast<State>(this->startState << shift1);
+            this->startState ^= static_cast<State>(this->startState >> shift2);
+            this->startState ^= static_cast<State>(this->startState << shift3);
             return this->startState;
         }
 
