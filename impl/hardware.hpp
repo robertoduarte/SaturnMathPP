@@ -127,7 +127,8 @@ namespace SaturnMath::Hardware
     /**
      * @brief Arithmetic shift right by N bits.
      * SH-2 only has shar (1-bit). For N>2, GCC emits a library call.
-     * This avoids it by using negate + shlr (logical) + negate for N>2.
+     * This avoids it by using not + shlr (logical) + not for N>2, which rounds
+     * down like shar (raw -3 >> 1 is -2, raw -1 >> 4 is -1).
      * @tparam shift Number of bits to shift right [0..31]
      * @param value Value to shift (modified in place)
      */
@@ -151,11 +152,12 @@ namespace SaturnMath::Hardware
         else
         {
             // SH-2 lacks arithmetic shift right by N>2.
-            // Use: if negative, negate, logical shift, negate back.
+            // Use: if negative, complement, logical shift, complement back. ~value is
+            // -value - 1, so this rounds down like shar; negating would round toward zero.
             // GCC uses shlr8/shlr2/shlr for unsigned >> which is all 1-cycle.
             if (value < 0)
-                value = -static_cast<int32_t>(
-                    static_cast<uint32_t>(-value) >> shift);
+                value = ~static_cast<int32_t>(
+                    static_cast<uint32_t>(~value) >> shift);
             else
                 value = static_cast<int32_t>(
                     static_cast<uint32_t>(value) >> shift);
@@ -165,7 +167,7 @@ namespace SaturnMath::Hardware
     /**
      * @brief Arithmetic shift right by a runtime variable amount.
      * Runtime overload for cases where shift amount is not a compile-time constant.
-     * Uses the same negate + shlr + negate technique as the template version.
+     * Uses the same not + shlr + not technique as the template version (rounds down).
      * @param value Value to shift (modified in place)
      * @param shift Number of bits to shift right [0..31]
      */
@@ -173,8 +175,8 @@ namespace SaturnMath::Hardware
     {
         if (shift == 0) return;
         if (value < 0)
-            value = -static_cast<int32_t>(
-                static_cast<uint32_t>(-value) >> shift);
+            value = ~static_cast<int32_t>(
+                static_cast<uint32_t>(~value) >> shift);
         else
             value = static_cast<int32_t>(
                 static_cast<uint32_t>(value) >> shift);
