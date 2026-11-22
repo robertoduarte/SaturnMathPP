@@ -364,8 +364,30 @@ namespace SaturnMath::Types
                 return T::MaxValue();
             }
             
-            // Safe to calculate normally
-            return Dot(*this);
+            // Each square fits, but their sum may not (130^2 + 130^2 for 16.16): add them in 64 bits like Dot()
+            // and saturate when the sum does not fit
+            if consteval
+            {
+                const int64_t sum = static_cast<int64_t>(X.RawValue()) * X.RawValue()
+                                  + static_cast<int64_t>(Y.RawValue()) * Y.RawValue();
+                return (sum >> F) > INT32_MAX ? T::MaxValue() : T::BuildRaw(static_cast<int32_t>(sum >> F));
+            }
+            else
+            {
+                Hardware::MacClear();
+                DotAccumulate(*this, *this);
+                int32_t mach, macl;
+                Hardware::MacGet(mach, macl);
+
+                // The sum fits in 32 bits after >> F when it is below 2^(31 + F), i.e. when MACH is below 2^(F - 1)
+                if (mach >= (int32_t{1} << (F - 1))) {
+                    return T::MaxValue();
+                }
+
+                int32_t raw;
+                Hardware::Extract32<F>(mach, macl, raw);
+                return T::BuildRaw(raw);
+            }
         }
 
         /**
