@@ -4,8 +4,6 @@
 
 namespace SaturnMath::Tests
 {
-    using namespace SaturnMath::Types;
-
     /**
      * @brief Static assertion tests for the ConstexprMath class
      *
