@@ -582,7 +582,7 @@ namespace SaturnMath::Types
         }
 
         /**
-         * @brief Rounds to the nearest integer.
+         * @brief Rounds to the nearest integer, halves away from zero (2.5 -> 3, -2.5 -> -3).
          * @return Fixed-point value rounded to nearest integer.
          */
         constexpr FixedPoint Round() const
@@ -597,7 +597,9 @@ namespace SaturnMath::Types
                 FixedPoint frac = GetFraction();
                 int32_t fracValue = (frac.value >= 0) ? frac.value : -frac.value;
                 if (fracValue < half) return BuildRaw(value + half).Floor();
-                else return BuildRaw(value - half).Floor();
+                // A fraction of 1/2 or more rounds away from zero, which for a negative value is its floor
+                // (Floor(value - 1/2) went one too low above a half, and overflowed next to MinValue)
+                else return Floor();
             }
         }
 
