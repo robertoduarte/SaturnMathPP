@@ -25,8 +25,10 @@ namespace SaturnMath
      * Implementation details:
      * - Uses Xorshift algorithm (https://en.wikipedia.org/wiki/Xorshift)
      * - Shift parameters are optimized based on bit width of the template type
-     * - Automatically adjusts algorithm for different integral types
-     * - Period length depends on the bit width of type T
+     * - The state is unsigned (logical shifts, as xorshift requires) and at least 16 bits: 8-bit and
+     *   16-bit T share a 16-bit xorshift (7, 9, 8); numbers are the state cast to T
+     * - Period length depends on the bit width of type T (2^16 - 1 for 8-bit and 16-bit T)
+     * - A seed of 0 is replaced by a non-zero constant (xorshift never leaves state 0)
      * 
      * Statistical properties:
      * - Passes most common randomness tests (Die-Hard, TestU01)
@@ -61,24 +63,41 @@ namespace SaturnMath
     private:
         static_assert(std::is_integral_v<T>, "T must be an integral type");
 
-        /** @brief Pseudo-Random number generator seed
+        /** @brief Unsigned type of T, used for ranges and offsets (no signed overflow)
          */
-        T startState;
+        using Unsigned = std::make_unsigned_t<T>;
+
+        /** @brief Bit width of T
+         */
+        static constexpr unsigned int Bits = sizeof(T) * 8;
+
+        /** @brief State type: unsigned (logical shifts) and at least 16 bits, since xorshift has no 8-bit form
+         */
+        using State = std::conditional_t<(Bits <= 16), uint16_t,
+            std::conditional_t<(Bits <= 32), uint32_t, std::conditional_t<(Bits <= 64), uint64_t, Unsigned>>>;
+
+        /** @brief Non-zero state used for a seed of 0, which xorshift never leaves
+         */
+        static constexpr State ZeroSeedState = static_cast<State>(0x9E3779B9u);
+
+        /** @brief Pseudo-Random number generator state
+         */
+        State startState;
 
         /** @brief Get next pseudo-random number
-         * @return Generated number
+         * @return Next state
          */
-        T GetNextPeriod()
+        State GetNextPeriod()
         {
             // Adjust shift values based on the bit width of T
-            constexpr unsigned int bits = sizeof(T) * 8;
+            constexpr unsigned int bits = Bits;
             
             // Recommended shift values for different bit widths
             // These are based on the Xorshift research paper recommendations
             unsigned int shift1, shift2, shift3;
             
             if constexpr (bits <= 16) {
-                // For 8-bit and 16-bit types
+                // For 8-bit and 16-bit types (16-bit state)
                 shift1 = 7;
                 shift2 = 9;
                 shift3 = 8;
@@ -99,9 +118,9 @@ namespace SaturnMath
                 shift3 = bits / 10;
             }
             
-            this->startState ^= this->startState << shift1;
-            this->startState ^= this->startState >> shift2;
-            this->startState ^= this->startState << shift3;
+            this->startState ^= static_cast<State>(this->startState << shift1);
+            this->startState ^= static_cast<State>(this->startState >> shift2);
+            this->startState ^= static_cast<State>(this->startState << shift3);
             return this->startState;
         }
 
@@ -110,9 +129,9 @@ namespace SaturnMath
         /** @brief Construct a new pseudo-random number generator
          * @param seed Starting seed
          */
-        Random(T seed)
+        Random(T seed) :
+            startState(seed != 0 ? static_cast<State>(static_cast<Unsigned>(seed)) : ZeroSeedState)
         {
-            this->startState = seed;
         }
 
         /** @brief Destroy the pseudo-random number generator object
@@ -124,13 +143,14 @@ namespace SaturnMath
          */
         T GetNumber()
         {
-            return this->GetNextPeriod();
+            return static_cast<T>(this->GetNextPeriod());
         }
         
         /** @brief Get next pseudo-random number
          * @param from Inclusive start of the range
-         * @param to Inclusive end of the range
-         * @return Generated number in a range
+         * @param to Inclusive end of the range (from and to may be given in either order)
+         * @return Generated number in a range; the full range of T returns the raw number, and a raw number already
+         *         inside [from, to] is returned unchanged
          */
         T GetNumber(T from, T to)
         {
@@ -142,20 +162,19 @@ namespace SaturnMath
             }
             
             // Get a raw random number
-            T number = this->GetNumber();
-            
-            // Calculate range size (inclusive)
-            T range = to - from + 1;
-            
-            // For signed types, ensure positive modulo result
-            if constexpr (std::is_signed_v<T>) {
-                // Make number positive for modulo operation
-                // This avoids implementation-defined behavior with negative numbers
-                number = number < 0 ? -number : number;
+            const Unsigned number = static_cast<Unsigned>(this->GetNumber());
+
+            // Range size (inclusive) in the unsigned type: it cannot overflow, and 0 means the full range of T
+            const Unsigned range = static_cast<Unsigned>(static_cast<Unsigned>(to) - static_cast<Unsigned>(from) + 1u);
+
+            if (range == 0)
+            {
+                return static_cast<T>(number);
             }
-            
-            // Apply modulo and add offset
-            return from + (number % range);
+
+            // Offset from 'from', so a number already inside [from, to] is returned unchanged
+            const Unsigned offset = static_cast<Unsigned>(number - static_cast<Unsigned>(from));
+            return static_cast<T>(static_cast<Unsigned>(static_cast<Unsigned>(from) + static_cast<Unsigned>(offset % range)));
         }
     };
 }
