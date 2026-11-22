@@ -1278,7 +1278,7 @@ namespace SaturnMath::Types
          * @param vec The Vec3 object to add.
          * @return Reference to the modified Vec3 object.
          */
-        [[gnu::always_inline]] constexpr Vector3 operator+=(const Vector3& vec)
+        [[gnu::always_inline]] constexpr Vector3& operator+=(const Vector3& vec)
         {
             X += vec.X;
             Y += vec.Y;
@@ -1291,7 +1291,7 @@ namespace SaturnMath::Types
          * @param vec The Vec3 object to subtract.
          * @return Reference to the modified Vec3 object.
          */
-        [[gnu::always_inline]] constexpr Vector3 operator-=(const Vector3& vec)
+        [[gnu::always_inline]] constexpr Vector3& operator-=(const Vector3& vec)
         {
             X -= vec.X;
             Y -= vec.Y;
