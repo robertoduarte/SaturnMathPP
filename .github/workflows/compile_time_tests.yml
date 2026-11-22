@@ -3,6 +3,8 @@ name: Compile-time tests
 # Compiles tests/ with the Saturn compiler of SaturnRingLib's CI; each static_assert is one test of the report
 on:
   push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
