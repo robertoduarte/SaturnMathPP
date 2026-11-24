@@ -1,0 +1,50 @@
+---
+name: Compile-time tests
+# Compiles tests/ with the Saturn compiler of SaturnRingLib's CI; each static_assert is one test of the report
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  tests:
+    name: Compile-time tests (sh-elf-g++)
+    runs-on: ubuntu-latest
+    container:
+      # Same compiler image as the SaturnRingLib CI
+      image: willll/saturn-docker:gcc_14.2.0_vanilla
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Compile the tests
+        # test_main.hpp includes every test header, as the README describes; the exit code is kept for the report
+        run: |
+          export PATH="$PATH:/opt/saturn/toolchain/bin"
+          sh-elf-g++ --version | head -1
+          echo '#include "tests/test_main.hpp"' | sh-elf-g++ -m2 -std=c++23 -fno-exceptions -fno-rtti -fsyntax-only -x c++ - 2> compile.log; echo $? > compile_exit_code
+          cat compile.log
+      - name: Convert test results
+        # Fails when a test fails, after writing the report
+        run: |
+          python3 .github/scripts/ctrf_static_asserts.py compile.log "$(cat compile_exit_code)" uts.json
+      - name: Report Test Results
+        if: always()
+        uses: ctrf-io/github-test-reporter@v1
+        with:
+          report-path: './uts.json'
+          summary-report: true
+          failed-folded-report: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Archive report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: compile-time-tests
+          path: |
+            uts.json
+            compile.log
